@@ -15,9 +15,9 @@ object MockData {
     )
 
     val users = listOf(
-        User("u1", "Bonnie Green", email = "bonnie@email.com"),
-        User("u2", "Jese Leos", email = "jese@email.com"),
-        User("u3", "Butee Shop")
+        User("u1", "Bonnie Green", image = "c", email = "bonnie@email.com"),
+        User("u2", "Jese Leos", image = "c", email = "jese@email.com"),
+        User("u3", "Butee Shop", "c","sa")
     )
 
     val orders = listOf(
