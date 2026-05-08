@@ -1,0 +1,8 @@
+package com.example.fashionapp.model
+
+data class User(
+    val id: String,
+    val name: String,
+    val avatarUrl: String = "",
+    val email: String = ""
+)
