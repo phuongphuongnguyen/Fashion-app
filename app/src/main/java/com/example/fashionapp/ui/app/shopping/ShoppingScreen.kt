@@ -1,4 +1,4 @@
-package com.example.fashionapp.ui.app.home
+package com.example.fashionapp.ui.app.shopping
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -8,11 +8,11 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 
 @Composable
-fun HomeScreen(navController: NavController) {
+fun ShoppingScreen(navController: NavController) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text("Home Screen")
+        Text("Shopping Screen")
     }
 }

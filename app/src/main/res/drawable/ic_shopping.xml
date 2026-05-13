@@ -1,0 +1,55 @@
+<!--
+  ~ Copyright (C) 2026 The Android Open Source Project
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~      http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <path
+      android:pathData="M0,0h24v24h-24z"
+      android:strokeAlpha="0.01"
+      android:fillColor="#ffffff"
+      android:fillAlpha="0.01"/>
+  <group>
+    <clip-path
+        android:pathData="M0.976,1h22.152v22h-22.152z"/>
+    <group>
+      <clip-path
+          android:pathData="M0.976,1h22.152v22h-22.152z"/>
+      <path
+          android:pathData="M18.969,2L22.127,5.763V20.8C22.127,21.36 21.582,22 20.667,22H3.437C2.522,22 1.976,21.36 1.976,20.8V5.763L5.134,2H18.969Z"
+          android:strokeLineJoin="round"
+          android:strokeWidth="2"
+          android:fillColor="#00000000"
+          android:strokeColor="#004CFF"
+          android:strokeLineCap="round"/>
+      <path
+          android:pathData="M2.571,5.4H21.637"
+          android:strokeLineJoin="round"
+          android:strokeWidth="2"
+          android:fillColor="#00000000"
+          android:strokeColor="#004CFF"
+          android:strokeLineCap="round"/>
+      <path
+          android:pathData="M16.367,9.8C16.367,12.23 14.435,14.2 12.052,14.2C9.669,14.2 7.737,12.23 7.737,9.8"
+          android:strokeLineJoin="round"
+          android:strokeWidth="2"
+          android:fillColor="#00000000"
+          android:strokeColor="#004CFF"
+          android:strokeLineCap="round"/>
+    </group>
+  </group>
+</vector>
