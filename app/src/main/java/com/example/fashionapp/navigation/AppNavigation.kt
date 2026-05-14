@@ -44,7 +44,7 @@ import com.example.fashionapp.ui.app.settings.SettingsScreen
 import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(startDestination: String = Screen.Start.route) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val onboardingPreferences = remember { OnboardingPreferences(context) }
@@ -96,7 +96,8 @@ fun AppNavigation() {
 
         NavHost(
             navController = navController,
-            startDestination = Screen.Start.route,
+            //startDestination = Screen.Start.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Start.route) {
@@ -231,6 +232,7 @@ fun AppBottomBar(
     ) {
         Row(
             modifier = Modifier
+                .navigationBarsPadding() // Thêm khoảng đệm để tránh bị thanh điều hướng Android che
                 .fillMaxWidth()
                 .height(64.dp),
             horizontalArrangement = Arrangement.SpaceAround,
