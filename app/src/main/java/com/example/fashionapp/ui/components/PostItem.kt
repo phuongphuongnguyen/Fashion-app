@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -39,7 +38,7 @@ fun FeedPostItem(
     onCommentClick: () -> Unit
 ) {
     Column {
-        PostHeader(avatarUrl = post.avatarUrl, username = post.username)
+        PostHeader(avatarUrl = post.authorAvt, username = post.authorName)
 
         if (post.imageUrls.isNotEmpty()) {
             PostImagesRow(imageUrls = post.imageUrls)
@@ -66,7 +65,7 @@ fun FeedPostItem(
         Spacer(Modifier.height(4.dp))
 
         CaptionRow(
-            username = post.username,
+            username = post.authorName,
             caption = post.caption,
             timestamp = post.createdAt?.toDate()
         )
@@ -81,9 +80,7 @@ fun PostHeader(avatarUrl: String, username: String) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFFEEEEEE)).padding(2.dp)
-        ) {
+        Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFFEEEEEE)).padding(2.dp)) {
             AsyncImage(
                 model = avatarUrl.ifBlank { null },
                 contentDescription = null,
@@ -226,13 +223,10 @@ fun CommentBottomSheet(
         contentWindowInsets = { WindowInsets.ime }
     ) {
         Column(modifier = Modifier.fillMaxHeight(0.85f).fillMaxWidth().navigationBarsPadding()) {
-            Text(text = "Comments",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(text = "Comments", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
             LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                item { CommentItem(username = post.username, avatarUrl = post.avatarUrl, text = post.caption, isCaption = true) }
+                item { CommentItem(username = post.authorName, avatarUrl = post.authorAvt, text = post.caption, isCaption = true) }
                 items(post.comments) { comment -> CommentItem(username = comment.username, avatarUrl = comment.avatarUrl, text = comment.text) }
             }
             HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
@@ -248,10 +242,7 @@ fun CommentBottomSheet(
                     maxLines = 5
                 )
                 IconButton(onClick = { onSendComment(commentText); commentText = "" }, enabled = commentText.isNotBlank()) {
-                    Icon(painter = painterResource(R.drawable.ic_share),
-                        contentDescription = null,
-                        modifier = Modifier.size(26.dp),
-                        tint = if (commentText.isNotBlank()) Color(0xFF3669C9) else Color.LightGray)
+                    Icon(painter = painterResource(R.drawable.ic_share), contentDescription = null, modifier = Modifier.size(32.dp), tint = if (commentText.isNotBlank()) Color(0xFF3669C9) else Color.LightGray)
                 }
             }
         }
@@ -262,17 +253,12 @@ fun CommentBottomSheet(
 fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Boolean = false) {
     Row(verticalAlignment = Alignment.Top) {
         Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
-            AsyncImage(model = avatarUrl.ifBlank { null },
-                contentDescription = null, modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_profile))
+            AsyncImage(model = avatarUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop, error = painterResource(R.drawable.ic_profile))
         }
         Spacer(Modifier.width(12.dp))
         Column {
             Text(text = buildAnnotatedString { withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold)) { append(username) }; append(" "); append(text) }, fontSize = 13.sp)
-            if (!isCaption) {
-                Text(text = "Reply", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
-            }
+            if (!isCaption) { Text(text = "Reply", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp)) }
         }
     }
 }

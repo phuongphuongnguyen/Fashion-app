@@ -1,17 +1,16 @@
 package com.example.fashionapp.model
 
 import com.google.firebase.Timestamp
+
 data class Post(
     val id: String = "",
     val authorId: String = "",
-
-    val username: String = "",
-    val avatarUrl: String = "",
+    val authorName: String = "",
+    val authorAvt: String = "", // Storage path hoặc URL
 
     val caption: String = "",
     val imageUrls: List<String> = emptyList(),
     val taggedProducts: List<ProductTag> = emptyList(),
-
 
     val likeCount: Long = 0,
     val commentCount: Long = 0,
