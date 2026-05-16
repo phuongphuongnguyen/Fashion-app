@@ -15,21 +15,58 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavType
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.navArgument
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.fashionapp.data.auth.AuthRepository
+import com.example.fashionapp.data.auth.FirebaseAuthBackend
+import com.example.fashionapp.data.onboarding.OnboardingPreferences
+import com.google.firebase.auth.FirebaseAuth
 import com.example.fashionapp.ui.app.home.HomeScreen
 import com.example.fashionapp.ui.app.saved.SavedScreen
 import com.example.fashionapp.ui.app.profile.ProfileScreen
+import com.example.fashionapp.ui.app.shopping.CartScreen
+import com.example.fashionapp.ui.app.shopping.HistoryScreen
+import com.example.fashionapp.ui.app.shopping.PaymentScreen
+import com.example.fashionapp.ui.app.shopping.ReviewDoneScreen
+import com.example.fashionapp.ui.app.shopping.ReviewScreen
 import com.example.fashionapp.ui.app.shopping.ShoppingScreen
+import com.example.fashionapp.ui.auth.CreateAccountScreen
+import com.example.fashionapp.ui.auth.ForgotPasswordScreen
+import com.example.fashionapp.ui.auth.LoginScreen
+import com.example.fashionapp.ui.auth.ResetPasswordScreen
+import com.example.fashionapp.ui.auth.StartScreen
+import com.example.fashionapp.ui.auth.VerifyResetCodeScreen
+import com.example.fashionapp.ui.onboarding.FirstLoginOnboardingScreen
+import com.example.fashionapp.ui.app.settings.SettingsScreen
+import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(startDestination: String = Screen.Start.route) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val onboardingPreferences = remember { OnboardingPreferences(context) }
+    val authRepository = remember { AuthRepository(FirebaseAuthBackend()) }
+
+    fun navigateAfterAuthenticated() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+        val destination =
+            if (uid.isNotEmpty() && !onboardingPreferences.isOnboardingCompleted(uid)) {
+                Screen.FirstLoginOnboarding.route
+            } else {
+                Screen.Home.route
+            }
+        navController.navigate(destination) {
+            popUpTo(Screen.Start.route) { inclusive = true }
+        }
+    }
 
     // Lấy màn hình hiện tại
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -40,7 +77,12 @@ fun AppNavigation() {
         Screen.Home.route,
         Screen.Shop.route,
         Screen.Saved.route,
-        Screen.Profile.route
+        Screen.Profile.route,
+        Screen.Cart.route,
+        Screen.Payment.route,
+        Screen.History.route,
+        Screen.Review.route,
+        Screen.ReviewDone.route
     )
 
     Scaffold(
@@ -64,9 +106,95 @@ fun AppNavigation() {
 
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            //startDestination = Screen.Start.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Start.route) {
+                StartScreen(
+                    onGetStarted = { navController.navigate(Screen.CreateAccount.route) },
+                    onLoginClick = { navController.navigate(Screen.Login.route) }
+                )
+            }
+
+            composable(Screen.CreateAccount.route) {
+                CreateAccountScreen(
+                    authRepository = authRepository,
+                    onBack = { navController.popBackStack() },
+                    onLoginClick = { navController.navigate(Screen.Login.route) },
+                    onRegisterSuccess = { navigateAfterAuthenticated() }
+                )
+            }
+
+            composable(Screen.Login.route) {
+                LoginScreen(
+                    authRepository = authRepository,
+                    onBack = { navController.popBackStack() },
+                    onCreateAccountClick = { navController.navigate(Screen.CreateAccount.route) },
+                    onForgotPasswordClick = { navController.navigate(Screen.ForgotPassword.route) },
+                    onLoginSuccess = { navigateAfterAuthenticated() }
+                )
+            }
+
+            composable(Screen.ForgotPassword.route) {
+                ForgotPasswordScreen(
+                    authRepository = authRepository,
+                    onBack = { navController.popBackStack() },
+                    onCodeSent = { email ->
+                        navController.navigate(Screen.VerifyResetCode.createRoute(email))
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.VerifyResetCode.route,
+                arguments = listOf(navArgument("email") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email").orEmpty()
+                VerifyResetCodeScreen(
+                    authRepository = authRepository,
+                    email = email,
+                    onBack = { navController.popBackStack() },
+                    onOtpVerified = { code ->
+                        navController.navigate(Screen.ResetPassword.createRoute(email, code))
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.ResetPassword.route,
+                arguments = listOf(
+                    navArgument("email") { type = NavType.StringType },
+                    navArgument("code") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email").orEmpty()
+                val code = backStackEntry.arguments?.getString("code").orEmpty()
+                ResetPasswordScreen(
+                    authRepository = authRepository,
+                    email = email,
+                    verifiedCode = code,
+                    onBack = { navController.popBackStack() },
+                    onPasswordResetSuccess = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(Screen.FirstLoginOnboarding.route) {
+                FirstLoginOnboardingScreen(
+                    onComplete = {
+                        val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+                        onboardingPreferences.markOnboardingCompleted(uid)
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.FirstLoginOnboarding.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
             // 4 màn hình chính
             composable(Screen.Home.route) {
                 HomeScreen(navController = navController)
@@ -79,6 +207,27 @@ fun AppNavigation() {
             }
             composable(Screen.Profile.route) {
                 ProfileScreen(navController = navController)
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(navController = navController)
+            }
+            composable(Screen.Chatbot.route) {
+                ChatbotScreen(navController = navController)
+            }
+            composable(Screen.Cart.route) {
+                CartScreen(navController = navController)
+            }
+            composable(Screen.Payment.route) {
+                PaymentScreen(navController = navController)
+            }
+            composable(Screen.History.route) {
+                HistoryScreen(navController = navController)
+            }
+            composable(Screen.Review.route) {
+                ReviewScreen(navController = navController)
+            }
+            composable(Screen.ReviewDone.route) {
+                ReviewDoneScreen(navController = navController)
             }
 
             // ── Thành viên A thêm vào đây ──────────────
@@ -108,6 +257,7 @@ fun AppBottomBar(
     ) {
         Row(
             modifier = Modifier
+                .navigationBarsPadding() // Thêm khoảng đệm để tránh bị thanh điều hướng Android che
                 .fillMaxWidth()
                 .height(64.dp),
             horizontalArrangement = Arrangement.SpaceAround,
@@ -115,9 +265,18 @@ fun AppBottomBar(
         ) {
             bottomNavItems.forEach { item ->
 
-                val isSelected = currentDestination?.hierarchy?.any {
-                    it.route == item.screen.route
-                } == true
+                val currentRoute = currentDestination?.route
+                val isSelected = when (item.screen) {
+                    Screen.Shop -> currentRoute in listOf(
+                        Screen.Shop.route,
+                        Screen.Cart.route,
+                        Screen.Payment.route,
+                        Screen.History.route,
+                        Screen.Review.route,
+                        Screen.ReviewDone.route
+                    )
+                    else -> currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                }
 
                 BottomNavItemView(
                     item = item,
@@ -151,7 +310,7 @@ fun BottomNavItemView(
         Icon(
             painter = painterResource(id = item.iconRes),
             contentDescription = item.label,
-            tint = if (isSelected) Color.Black else Color.Unspecified,
+            tint = if (isSelected) Color.Black else Color(0xFF0057FF),
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))

@@ -1,15 +1,21 @@
 package com.example.fashionapp.model
 
 data class User(
-    val name: String,
-    val username: String,
-    val image: String,
-    val email:  String
-)
+    val id: String = "",
+    val name: String = "",
+    val avatarUrl: String = "",
+    val email: String = ""
+) {
+    val username: String
+        get() = name
+
+    val image: String
+        get() = avatarUrl
+}
 
 val currentUser = User(
-    name = "Diu Dao",
-    username = "sunny",
-    image = "https://s.gravatar.com/avatar/62a968f41c1feb83fd1cd142e7c043f3?s=200",
-    email = "da"
+    id = "current-user",
+    name = "Your Story",
+    avatarUrl = "https://randomuser.me/api/portraits/women/1.jpg",
+    email = "you@example.com"
 )
