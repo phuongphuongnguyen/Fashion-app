@@ -1,6 +1,5 @@
 package com.example.fashionapp.data.feed
 
-import com.example.fashionapp.data.MockData
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.ProductTag
 import com.google.firebase.firestore.FirebaseFirestore
@@ -35,7 +34,7 @@ class FeedRepository {
             .limit(20)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) {
-                    trySend(MockData.feedPosts)
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
 
@@ -91,7 +90,7 @@ class FeedRepository {
                             null
                         }
                     }
-                    trySend(posts.ifEmpty { MockData.feedPosts })
+                    trySend(posts)
                 }
             }
 

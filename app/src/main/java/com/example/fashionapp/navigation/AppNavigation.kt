@@ -214,21 +214,6 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
             composable(Screen.Chatbot.route) {
                 ChatbotScreen(navController = navController)
             }
-            composable(Screen.Cart.route) {
-                CartScreen(navController = navController)
-            }
-            composable(Screen.Payment.route) {
-                PaymentScreen(navController = navController)
-            }
-            composable(Screen.History.route) {
-                HistoryScreen(navController = navController)
-            }
-            composable(Screen.Review.route) {
-                ReviewScreen(navController = navController)
-            }
-            composable(Screen.ReviewDone.route) {
-                ReviewDoneScreen(navController = navController)
-            }
 
             // ── Thành viên A thêm vào đây ──────────────
             // composable(Screen.Login.route) {

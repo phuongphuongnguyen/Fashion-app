@@ -19,6 +19,7 @@ data class Post(
 
     val createdAt: Timestamp? = null,
     val comments: List<Comment> = emptyList(),
+
     val image: String = imageUrls.firstOrNull().orEmpty(),
     val user: User = User(id = authorId, name = authorName, avatarUrl = authorAvt),
     val isLiked: Boolean = false,
