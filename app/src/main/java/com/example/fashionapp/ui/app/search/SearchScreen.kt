@@ -1,0 +1,578 @@
+package com.example.fashionapp.ui.app.search
+
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import com.example.fashionapp.R
+import com.example.fashionapp.data.search.SubCategory
+import com.example.fashionapp.model.Product
+
+// ── Palette ───────────────────────────────────────────────────────────────────
+private val PrimaryBlue  = Color(0xFF3669C9)
+private val SearchBg     = Color(0xFFEBEEF8)
+private val TextDark     = Color(0xFF1A1A1A)
+private val TextGray     = Color(0xFF888888)
+private val StarYellow   = Color(0xFFFFC107)
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun SearchScreen(
+    navController: NavController,
+    initialQuery: String = "",
+    initialCategoryId: String? = null,
+    viewModel: SearchViewModel = viewModel(
+        factory = SearchViewModelFactory(initialQuery, initialCategoryId)
+    )
+) {
+    val state        by viewModel.uiState.collectAsState()
+    val focusManager =  LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    var showSortSheet by remember { mutableStateOf(false) }
+
+    // Auto-focus search bar khi mở màn hình
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .statusBarsPadding() // Thêm khoảng đệm cho Status Bar
+    ) {
+        // ── Top Search Bar ───────────────────────────────────────────────
+        SearchTopBar(
+            query          = state.query,
+            onQueryChange  = viewModel::onQueryChange,
+            onClear        = viewModel::clearQuery,
+            onBack         = { navController.popBackStack() },
+            focusRequester = focusRequester,
+            onSearch       = { focusManager.clearFocus() },
+            onTuneClick    = { showSortSheet = true }
+        )
+
+        // ── Nội dung cuộn ───────────────────────────────────────────────
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            // SubCategories (circles)
+            if (state.subCategories.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                SubCategoriesRow(
+                    subCategories      = state.subCategories,
+                    selectedCategoryId = state.selectedCategoryId,
+                    onSelect           = viewModel::onCategorySelected
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Hiển thị "Kết quả cho..." chỉ khi có query
+            if (state.query.isNotBlank()) {
+                Text(
+                    text = "Kết quả cho \"${state.query}\"",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = TextDark,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            // Product grid
+            when {
+                state.isLoadingInitial -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = PrimaryBlue)
+                    }
+                }
+                state.products.isEmpty() -> {
+                    EmptyState(query = state.query)
+                }
+                else -> {
+                    ProductGrid(
+                        products      = state.products,
+                        onProductClick = { product ->
+                            navController.navigate("product_detail/${product.id}")
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // ── Sort Bottom Sheet ────────────────────────────────────────────────────
+    if (showSortSheet) {
+        SortBottomSheet(
+            currentOption = state.sortOption,
+            onSelect      = { option ->
+                viewModel.onSortSelected(option)
+                showSortSheet = false
+            },
+            onDismiss     = { showSortSheet = false }
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SEARCH TOP BAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SearchTopBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClear: () -> Unit,
+    onBack: () -> Unit,
+    focusRequester: FocusRequester,
+    onSearch: () -> Unit,
+    onTuneClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Back button
+        IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint     = TextDark,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        // Search field
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(44.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(SearchBg)
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (query.isEmpty()) {
+                Text("Tìm kiếm sản phẩm...", color = Color(0xFFAAAAAA), fontSize = 14.sp)
+            }
+
+            Row(
+                modifier          = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BasicTextField(
+                    value         = query,
+                    onValueChange = onQueryChange,
+                    modifier      = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester),
+                    textStyle     = TextStyle(
+                        fontSize  = 14.sp,
+                        color     = PrimaryBlue,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    cursorBrush   = SolidColor(PrimaryBlue),
+                    singleLine    = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() })
+                )
+
+                // Clear button
+                if (query.isNotEmpty()) {
+                    IconButton(
+                        onClick  = onClear,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Clear",
+                            tint     = TextGray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Tune icon
+        IconButton(onClick = onTuneClick, modifier = Modifier.size(40.dp)) {
+            Icon(
+                Icons.Default.Tune,
+                contentDescription = "Sort",
+                tint = TextDark,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        // Camera icon
+        IconButton(onClick = { }, modifier = Modifier.size(40.dp)) {
+            Icon(
+                painter            = painterResource(R.drawable.ic_camera),
+                contentDescription = "Camera search",
+                tint               = PrimaryBlue,
+                modifier           = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SUBCATEGORIES ROW (circles)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SubCategoriesRow(
+    subCategories: List<SubCategory>,
+    selectedCategoryId: String?,
+    onSelect: (String?) -> Unit,
+) {
+    LazyRow(
+        contentPadding        = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(subCategories, key = { it.id }) { sub ->
+            SubCategoryItem(
+                sub        = sub,
+                isSelected = sub.id == selectedCategoryId,
+                onClick    = { onSelect(sub.id) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SubCategoryItem(
+    sub: SubCategory,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier            = Modifier
+            .width(68.dp)
+            .clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Circle ảnh
+        Box(
+            modifier = Modifier
+                .size(68.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF0F2F5))
+                .then(
+                    if (isSelected) Modifier.border(2.5.dp, PrimaryBlue, CircleShape)
+                    else Modifier
+                )
+        ) {
+            if (sub.previewImageUrl.isNotBlank()) {
+                AsyncImage(
+                    model              = sub.previewImageUrl,
+                    contentDescription = sub.name,
+                    modifier           = Modifier.fillMaxSize(),
+                    contentScale       = ContentScale.Crop
+                )
+            } else {
+                // Fallback emoji từ tên category
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text     = categoryEmoji(sub.name),
+                        fontSize = 28.sp
+                    )
+                }
+            }
+
+            // Viền trắng ngoài cùng (shadow effect)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .border(3.dp, Color.White, CircleShape)
+            )
+        }
+
+        Spacer(Modifier.height(6.dp))
+
+        Text(
+            text       = sub.name,
+            fontSize   = 12.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color      = if (isSelected) PrimaryBlue else TextDark,
+            maxLines   = 1,
+            overflow   = TextOverflow.Ellipsis
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PRODUCT GRID  (2 cột, staggered height)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ProductGrid(
+    products: List<Product>,
+    onProductClick: (Product) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns             = GridCells.Fixed(2),
+        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement   = Arrangement.spacedBy(16.dp),
+        modifier            = Modifier.fillMaxSize()
+    ) {
+        items(products, key = { it.id }) { product ->
+            ProductGridCard(
+                product  = product,
+                // Card chẵn cao hơn để tạo hiệu ứng staggered
+                tallCard = products.indexOf(product) % 2 == 1,
+                onClick  = { onProductClick(product) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProductGridCard(
+    product: Product,
+    tallCard: Boolean,
+    onClick: () -> Unit,
+) {
+    val imageHeight = if (tallCard) 220.dp else 180.dp
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        // Ảnh
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(imageHeight)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFFEEEEEE))
+        ) {
+            AsyncImage(
+                model              = product.imageUrl.ifBlank { null },
+                contentDescription = product.name,
+                modifier           = Modifier.fillMaxSize(),
+                contentScale       = ContentScale.Crop,
+                error              = painterResource(R.drawable.ic_launcher_foreground)
+            )
+
+            // Discount badge
+            if (product.discountPercent > 0) {
+                Surface(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .align(Alignment.TopStart),
+                    shape    = RoundedCornerShape(6.dp),
+                    color    = Color(0xFFFF3B30)
+                ) {
+                    Text(
+                        "-${product.discountPercent}%",
+                        color    = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Tên sản phẩm
+        Text(
+            text      = product.name,
+            fontSize  = 13.sp,
+            color     = TextDark,
+            maxLines  = 2,
+            overflow  = TextOverflow.Ellipsis,
+            lineHeight= 18.sp
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        // Giá
+        Text(
+            text       = "₫${formatPrice(product.price)}",
+            fontWeight = FontWeight.Bold,
+            fontSize   = 15.sp,
+            color      = TextDark
+        )
+
+        // Rating nhỏ
+        if (product.rating > 0) {
+            Spacer(Modifier.height(3.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter            = painterResource(R.drawable.ic_like_full),
+                    contentDescription = null,
+                    tint               = StarYellow,
+                    modifier           = Modifier.size(11.dp)
+                )
+                Spacer(Modifier.width(3.dp))
+                Text("${product.rating}", fontSize = 11.sp, color = TextGray)
+                Text(" • ${product.soldCount} đã bán", fontSize = 11.sp, color = TextGray)
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  EMPTY STATE
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun EmptyState(query: String) {
+    Column(
+        modifier            = Modifier
+            .fillMaxWidth()
+            .padding(top = 80.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("🔍", fontSize = 56.sp)
+        Spacer(Modifier.height(16.dp))
+        if (query.isBlank()) {
+            Text("Tìm kiếm sản phẩm bạn thích", color = TextGray, fontSize = 15.sp)
+        } else {
+            Text(
+                "Không tìm thấy kết quả cho",
+                color    = TextGray,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "\"$query\"",
+                fontWeight = FontWeight.Bold,
+                fontSize   = 16.sp,
+                color      = TextDark
+            )
+            Spacer(Modifier.height(8.dp))
+            Text("Thử tìm với từ khoá khác", color = TextGray, fontSize = 13.sp)
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SORT BOTTOM SHEET
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SortBottomSheet(
+    currentOption: SortOption,
+    onSelect: (SortOption) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor   = Color.White,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                "Sắp xếp theo",
+                fontWeight = FontWeight.Bold,
+                fontSize   = 18.sp,
+                modifier   = Modifier.padding(bottom = 16.dp)
+            )
+
+            SortOption.values().forEach { option ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(option) }
+                        .padding(vertical = 14.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        option.label,
+                        fontSize   = 15.sp,
+                        fontWeight = if (option == currentOption) FontWeight.SemiBold else FontWeight.Normal,
+                        color      = if (option == currentOption) PrimaryBlue else TextDark
+                    )
+                    if (option == currentOption) {
+                        Box(
+                            modifier         = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(PrimaryBlue),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("✓", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                if (option != SortOption.values().last()) {
+                    HorizontalDivider(color = Color(0xFFEEEEEE))
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun formatPrice(price: Double): String =
+    "%.0f".format(price).reversed().chunked(3).joinToString(".").reversed()
+
+private fun categoryEmoji(name: String): String = when {
+    name.contains("váy", true) || name.contains("dress", true)  -> "👗"
+    name.contains("quần", true) || name.contains("pant", true)  -> "👖"
+    name.contains("giày", true) || name.contains("shoe", true)  -> "👟"
+    name.contains("túi", true)  || name.contains("bag", true)   -> "👜"
+    name.contains("đồng hồ", true) || name.contains("watch", true) -> "⌚"
+    name.contains("áo khoác", true) || name.contains("jacket", true) -> "🧥"
+    name.contains("hoodie", true)                               -> "🧢"
+    name.contains("sơ mi", true) || name.contains("shirt", true) -> "👔"
+    name.contains("thể thao", true) || name.contains("sport", true) -> "🏃"
+    else                                                         -> "🛍️"
+}

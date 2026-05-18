@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Chat bubble body -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M20,2H4C2.9,2 2,2.9 2,4v18l4,-4h14c1.1,0 2,-0.9 2,-2V4C22,2.9 21.1,2 20,2zM20,16H5.17L4,17.17V4h16V16z"/>
+    <!-- Bot face - left eye -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M9,10m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0"/>
+    <!-- Bot face - right eye -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M15,10m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0"/>
+    <!-- Bot face - smile -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M12,14c-1.48,0 -2.75,-0.81 -3.45,-2h6.9c-0.7,1.19 -1.97,2 -3.45,2z"/>
+</vector>
