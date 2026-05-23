@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,12 +35,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.example.fashionapp.ui.components.FashionTopBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -46,42 +49,48 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fashionapp.data.CartItem
-import com.example.fashionapp.data.MockData
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.ui.app.shopping.ShoppingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CartScreen(navController: NavController) {
-    val items = MockData.cartItems
+fun CartScreen(
+    navController: NavController,
+    viewModel: ShoppingViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val items = uiState.cartItems
     val total = items.sumOf { it.totalPrice }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text("Shopping Cart", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            FashionTopBar(
+                title = "Shopping Cart",
+                onBackClick = { navController.popBackStack() },
+                actions = {
+                    TextButton(onClick = { /* TODO: Edit cart */ }) {
+                        Text("Edit", color = Color(0xFF0057FF), fontWeight = FontWeight.Medium)
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                }
             )
         },
         bottomBar = {
-            Surface(shadowElevation = 8.dp, color = Color.White) {
+            Surface(shadowElevation = 16.dp, color = Color.White) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
                         Text("Total", color = Color.Gray, fontSize = 12.sp)
-                        Text("$${"%.2f".format(total)}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("$${"%.2f".format(total)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                     Button(
                         onClick = {
@@ -89,11 +98,11 @@ fun CartScreen(navController: NavController) {
                                 launchSingleTop = true
                             }
                         },
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF)),
-                        modifier = Modifier.width(128.dp)
+                        modifier = Modifier.width(140.dp).height(48.dp)
                     ) {
-                        Text("Checkout")
+                        Text("Checkout", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -119,43 +128,18 @@ fun CartScreen(navController: NavController) {
                 )
             }
             items(items, key = { it.id }) { item ->
-                CartItemRow(item = item)
+                CartItemRow(
+                    item = item,
+                    onUpdateQuantity = { newQty ->
+                        viewModel.updateCartQuantity(item.id, newQty)
+                    }
+                )
             }
         }
     }
 }
 
-@Composable
-fun CartHistoryTabs(
-    selected: String,
-    onCart: () -> Unit,
-    onHistory: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        SegmentPill("Cart", selected == "Cart", onCart)
-        Spacer(Modifier.width(8.dp))
-        SegmentPill("History", selected == "History", onHistory)
-    }
-}
 
-@Composable
-private fun SegmentPill(text: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (selected) Color(0xFF0057FF) else Color(0xFFF1F4FF))
-            .clickable { onClick() }
-            .padding(horizontal = 26.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text, color = if (selected) Color.White else Color(0xFF0057FF), fontWeight = FontWeight.SemiBold)
-    }
-}
 
 @Composable
 private fun ShippingAddressCard() {
@@ -176,13 +160,13 @@ private fun ShippingAddressCard() {
 }
 
 @Composable
-private fun CartItemRow(item: CartItem) {
+private fun CartItemRow(item: CartItem, onUpdateQuantity: (Int) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color(0x1A000000))
+            .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
-            .border(1.dp, Color(0xFFEDEDED), RoundedCornerShape(10.dp))
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -192,36 +176,61 @@ private fun CartItemRow(item: CartItem) {
             colors = CheckboxDefaults.colors(checkedColor = Color(0xFF0057FF)),
             modifier = Modifier.size(34.dp)
         )
-        AsyncImage(
-            model = item.product.imageUrl,
-            contentDescription = item.product.name,
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFEDEDED)),
-            contentScale = ContentScale.Crop
-        )
+        Box(modifier = Modifier.size(64.dp)) {
+            AsyncImage(
+                model = item.product.imageUrl,
+                contentDescription = item.product.name,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFFEDEDED)),
+                contentScale = ContentScale.Crop
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .clip(RoundedCornerShape(topEnd = 6.dp, bottomStart = 6.dp))
+                    .background(Color(0xFFE53935))
+                    .padding(4.dp)
+            ) {
+                Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+            }
+        }
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(item.product.name, fontWeight = FontWeight.SemiBold, maxLines = 1, fontSize = 13.sp)
+            Spacer(Modifier.height(2.dp))
             Text("Size ${item.size}", color = Color.Gray, fontSize = 12.sp)
-            Text("$${"%.2f".format(item.product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            QuantityButton { Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(14.dp)) }
-            Text(item.quantity.toString(), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
-            QuantityButton { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp)) }
+            Spacer(Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("$${"%.2f".format(item.product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFFF5F5F5))
+                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                ) {
+                    QuantityButton(onClick = { onUpdateQuantity(item.quantity - 1) }) { Icon(Icons.Default.Remove, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp)) }
+                    Text(item.quantity.toString(), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp))
+                    QuantityButton(onClick = { onUpdateQuantity(item.quantity + 1) }) { Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp)) }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun QuantityButton(content: @Composable () -> Unit) {
+private fun QuantityButton(onClick: () -> Unit, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
-            .size(24.dp)
-            .border(1.dp, Color(0xFF0057FF), CircleShape)
-            .background(Color.White, CircleShape),
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(Color.White)
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         content()

@@ -18,6 +18,7 @@ class FeedRepository {
 
     private suspend fun resolveUrl(storagePath: String): String {
         if (storagePath.isBlank()) return ""
+        if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) return storagePath
         urlCache[storagePath]?.let { return it }
         return try {
             val url = storage.reference.child(storagePath).downloadUrl.await().toString()

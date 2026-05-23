@@ -21,7 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,21 +43,27 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.fashionapp.R
-import com.example.fashionapp.data.MockData
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.home.HomeViewModel
+import com.example.fashionapp.ui.app.profile.ProfileViewModel
+import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
+import com.example.fashionapp.ui.components.FashionTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel()
+    profileViewModel: ProfileViewModel = viewModel(),
+    homeViewModel: HomeViewModel = viewModel(),
+    savedViewModel: SavedViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val profilePosts = uiState.posts.ifEmpty { MockData.feedPosts }
+    val uiState by profileViewModel.uiState.collectAsState()
+    val homeState by homeViewModel.uiState.collectAsState()
+    val savedUiState by savedViewModel.uiState.collectAsState()
+    val profilePosts = uiState.posts
     var selectedTab by remember { mutableStateOf("Posts") }
     var selectedPostId by remember { mutableStateOf<String?>(null) }
     var showComments by remember { mutableStateOf(false) }
@@ -65,44 +72,21 @@ fun ProfileScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Profile",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+            FashionTopBar(
+                title = "",
                 actions = {
-                    // Chatbot icon
-                    IconButton(
-                        onClick = {
-                            navController.navigate(Screen.Chatbot.route)
-                        }
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_chatbot),
-                            contentDescription = "Chatbot",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    // Settings icon
                     IconButton(
                         onClick = {
                             navController.navigate(Screen.Settings.route)
                         }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = Icons.Outlined.Settings,
                             contentDescription = "Settings",
-                            tint = Color.Black
+                            tint = Color(0xFF0057FF)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
+                }
             )
         },
         containerColor = Color.White
@@ -113,7 +97,7 @@ fun ProfileScreen(
                     post = post,
                     sheetState = sheetState,
                     onDismiss = { showComments = false },
-                    onSendComment = { text -> viewModel.addComment(post.id, text) }
+                    onSendComment = { text -> homeViewModel.addComment(post.id, text) }
                 )
             }
         }
@@ -126,67 +110,34 @@ fun ProfileScreen(
         ) {
             item {
                 ProfileHeader(
-                    posts = profilePosts,
+                    user = uiState.user,
+                    postsCount = profilePosts.size,
                     selectedTab = selectedTab,
                     onTabSelected = { selectedTab = it }
                 )
             }
 
-            if (selectedTab == "Posts") {
-                items(profilePosts, key = { it.id }) { post ->
-                    FeedPostItem(
-                        post = post,
-                        isLiked = (uiState.likedPosts[post.id] ?: false) || localLikedPosts.contains(post.id),
-                        onLikeClick = {
-                            if (uiState.posts.any { it.id == post.id }) {
-                                viewModel.toggleLike(post.id)
-                            } else {
-                                localLikedPosts =
-                                    if (localLikedPosts.contains(post.id)) localLikedPosts - post.id
-                                    else localLikedPosts + post.id
-                            }
-                        },
-                        onCommentClick = {
-                            selectedPostId = post.id
-                            showComments = true
+            items(profilePosts, key = { it.id }) { post ->
+                FeedPostItem(
+                    post = post,
+                    isLiked = (homeState.likedPosts[post.id] ?: false) || localLikedPosts.contains(post.id),
+                    isSaved = savedUiState.savedPostIds.contains(post.id),
+                    onLikeClick = {
+                        if (homeState.posts.any { it.id == post.id }) {
+                            homeViewModel.toggleLike(post.id)
+                        } else {
+                            localLikedPosts =
+                                if (localLikedPosts.contains(post.id)) localLikedPosts - post.id
+                                else localLikedPosts + post.id
                         }
-                    )
-                    HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
-                }
-            } else {
-                items(MockData.products.chunked(2)) { rowProducts ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        rowProducts.forEach { product ->
-                            Column(modifier = Modifier.weight(1f)) {
-                                AsyncImage(
-                                    model = product.imageUrl.ifBlank { null },
-                                    contentDescription = product.name,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(0.78f)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFFF4F4F4)),
-                                    contentScale = ContentScale.Crop
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                Text(product.name, fontSize = 12.sp, maxLines = 2)
-                                Text(
-                                    "$${"%.2f".format(product.price)}",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-                        if (rowProducts.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
+                    },
+                    onSaveClick = { savedViewModel.toggleSave(post.id) },
+                    onCommentClick = {
+                        selectedPostId = post.id
+                        showComments = true
                     }
-                }
+                )
+                HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
             }
         }
     }
@@ -194,13 +145,15 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileHeader(
-    posts: List<Post>,
+    user: com.example.fashionapp.model.User?,
+    postsCount: Int,
     selectedTab: String,
     onTabSelected: (String) -> Unit
 ) {
-    val profilePost = posts.firstOrNull()
-    val name = profilePost?.authorName?.takeIf { it.isNotBlank() } ?: "Romina"
-    val avatar = profilePost?.authorAvt.orEmpty()
+    val name = user?.name?.takeIf { it.isNotBlank() } ?: "User"
+    val avatar = user?.avatarUrl.orEmpty()
+    val followers = user?.followersCount ?: 0
+    val following = user?.followingCount ?: 0
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -218,35 +171,45 @@ private fun ProfileHeader(
                 error = painterResource(R.drawable.ic_profile)
             )
             Spacer(Modifier.weight(1f))
-            ProfileMetric(posts.size.toString(), "Posts")
-            ProfileMetric("834", "Followers")
-            ProfileMetric("162", "Following")
+            ProfileMetric(postsCount.toString(), "Posts")
+            ProfileMetric(followers.toString(), "Followers")
+            ProfileMetric(following.toString(), "Following")
         }
 
         Spacer(Modifier.height(10.dp))
         Text(name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         Spacer(Modifier.height(16.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-            listOf("Posts", "Products").forEach { tab ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onTabSelected(tab) }
-                ) {
-                    Text(
-                        text = tab,
-                        color = if (selectedTab == tab) Color.Black else Color(0xFF9A9A9A),
-                        fontSize = 15.sp,
-                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(36.dp)
-                            .height(2.dp)
-                            .background(if (selectedTab == tab) Color.Black else Color.Transparent)
-                    )
-                }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Posts",
+                    color = Color.Black,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(36.dp)
+                        .height(2.dp)
+                        .background(Color.Black)
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.AddCircleOutline,
+                    contentDescription = "Add Post",
+                    tint = Color.Black,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
