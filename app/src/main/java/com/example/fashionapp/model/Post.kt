@@ -18,14 +18,7 @@ data class Post(
     val tags: List<String> = emptyList(),
 
     val createdAt: Timestamp? = null,
-    val comments: List<Comment> = emptyList(),
-
-    val image: String = imageUrls.firstOrNull().orEmpty(),
-    val user: User = User(id = authorId, name = authorName, avatarUrl = authorAvt),
-    val isLiked: Boolean = false,
-    val likesCount: Int = likeCount.toInt(),
-    val commentsCount: Int = commentCount.toInt(),
-    val timeStamp: Long = createdAt?.toDate()?.time ?: System.currentTimeMillis()
+    val comments: List<Comment> = emptyList()
 )
 
 data class Comment(

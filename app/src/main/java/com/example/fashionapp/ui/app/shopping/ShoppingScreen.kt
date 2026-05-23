@@ -25,22 +25,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,21 +48,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.fashionapp.data.MockData
+import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.Product
+import com.example.fashionapp.ui.app.home.HomeViewModel
+import com.example.fashionapp.ui.components.CommentBottomSheet
+import com.example.fashionapp.ui.components.FeedPostItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShoppingScreen(navController: NavController) {
+fun ShoppingScreen(
+    navController: NavController,
+    viewModel: HomeViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val sourcePosts = uiState.posts.ifEmpty { MockData.feedPosts }
+    val shopPosts = remember(sourcePosts) { sourcePosts.toShopPosts() }
+
     var selectedTab by remember { mutableStateOf("Posts") }
+    var selectedPostId by remember { mutableStateOf<String?>(null) }
+    var showComments by remember { mutableStateOf(false) }
+    var localLikedPosts by remember { mutableStateOf(setOf<String>()) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
         topBar = {
@@ -80,20 +91,53 @@ fun ShoppingScreen(navController: NavController) {
         },
         containerColor = Color.White
     ) { innerPadding ->
+        if (showComments && selectedPostId != null) {
+            shopPosts.find { it.id == selectedPostId }?.let { post ->
+                CommentBottomSheet(
+                    post = post,
+                    sheetState = sheetState,
+                    onDismiss = { showComments = false },
+                    onSendComment = { text -> viewModel.addComment(post.id, text) }
+                )
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            ShopHeader(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+            ShopHeader(
+                selectedTab = selectedTab,
+                postCount = shopPosts.size,
+                onTabSelected = { selectedTab = it }
+            )
 
             if (selectedTab == "Posts") {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 12.dp)
                 ) {
-                    items(MockData.products.take(2), key = { it.id }) { product ->
-                        ShopPostCard(product = product)
+                    items(shopPosts, key = { it.id }) { post ->
+                        FeedPostItem(
+                            post = post,
+                            isLiked = (uiState.likedPosts[post.id] ?: false) ||
+                                localLikedPosts.contains(post.id),
+                            onLikeClick = {
+                                if (uiState.posts.any { it.id == post.id }) {
+                                    viewModel.toggleLike(post.id)
+                                } else {
+                                    localLikedPosts =
+                                        if (localLikedPosts.contains(post.id)) localLikedPosts - post.id
+                                        else localLikedPosts + post.id
+                                }
+                            },
+                            onCommentClick = {
+                                selectedPostId = post.id
+                                showComments = true
+                            }
+                        )
+                        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
                     }
                 }
             } else {
@@ -114,10 +158,13 @@ fun ShoppingScreen(navController: NavController) {
 }
 
 @Composable
-private fun ShopHeader(selectedTab: String, onTabSelected: (String) -> Unit) {
+private fun ShopHeader(
+    selectedTab: String,
+    postCount: Int,
+    onTabSelected: (String) -> Unit
+) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // LSOUL avatar
             Box(
                 modifier = Modifier
                     .size(68.dp)
@@ -135,6 +182,9 @@ private fun ShopHeader(selectedTab: String, onTabSelected: (String) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
+                    Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(" Posts", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.width(12.dp))
                     Icon(
                         Icons.Default.Star,
                         contentDescription = "Rating",
@@ -160,7 +210,6 @@ private fun ShopHeader(selectedTab: String, onTabSelected: (String) -> Unit) {
 
         Spacer(Modifier.height(16.dp))
 
-        // Tabs: Posts | Products
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(20.dp)
@@ -177,107 +226,17 @@ private fun ShopHeader(selectedTab: String, onTabSelected: (String) -> Unit) {
                         fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal
                     )
                     Spacer(Modifier.height(4.dp))
-                    if (selectedTab == tab) {
-                        Box(
-                            modifier = Modifier
-                                .width(40.dp)
-                                .height(2.dp)
-                                .background(Color.Black)
-                        )
-                    }
+                    Box(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .height(2.dp)
+                            .background(if (selectedTab == tab) Color.Black else Color.Transparent)
+                    )
                 }
             }
         }
 
         Spacer(Modifier.height(8.dp))
-    }
-}
-
-@Composable
-private fun ShopPostCard(product: Product) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Post header with mini avatar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, Color(0xFFFF5F5F), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("LS", color = Color(0xFFFF7A00), fontSize = 8.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(8.dp))
-            Text("Lsoul", fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.MoreVert, contentDescription = "More", modifier = Modifier.size(22.dp))
-        }
-
-        // Product image – centered in a box
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model = product.imageUrl,
-                contentDescription = product.name,
-                modifier = Modifier
-                    .width(200.dp)
-                    .height(300.dp),
-                contentScale = ContentScale.Fit
-            )
-        }
-
-        // Action row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Outlined.Favorite, contentDescription = "Liked", tint = Color(0xFFFF4848), modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(10.dp))
-            Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Comment", tint = Color.Black, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(10.dp))
-            Icon(Icons.Outlined.Send, contentDescription = "Share", tint = Color.Black, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.weight(1f))
-            // Dots indicator
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                repeat(3) { i ->
-                    Box(
-                        modifier = Modifier
-                            .size(if (i == 0) 6.dp else 5.dp)
-                            .clip(CircleShape)
-                            .background(if (i == 0) Color(0xFF1769FF) else Color(0xFFCCCCCC))
-                    )
-                }
-            }
-            Spacer(Modifier.weight(1f))
-            Icon(Icons.Outlined.BookmarkBorder, contentDescription = "Save", tint = Color.Black, modifier = Modifier.size(24.dp))
-        }
-
-        Text(
-            "287,698 Likes",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 12.sp
-        )
-        Text(
-            buildAnnotatedString {
-                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append("lsoul ") }
-                append("View translation ")
-                withStyle(SpanStyle(color = Color(0xFF777777))) { append("June 7, 2021") }
-            },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-            fontSize = 12.sp
-        )
-        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -297,5 +256,33 @@ private fun ProductTile(product: Product) {
         Spacer(Modifier.height(6.dp))
         Text(product.name, maxLines = 1, fontSize = 12.sp)
         Text("$${" %.2f".format(product.price).trim()}", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    }
+}
+
+private fun List<Post>.toShopPosts(): List<Post> {
+    val fallbackProducts = MockData.products
+    return if (isNotEmpty()) {
+        mapIndexed { index, post ->
+            val fallbackProduct = fallbackProducts[index % fallbackProducts.size]
+            post.copy(
+                authorName = "Lsoul",
+                authorAvt = "",
+                caption = post.caption.ifBlank { fallbackProduct.name },
+                imageUrls = post.imageUrls.ifEmpty { listOf(fallbackProduct.imageUrl) },
+                likeCount = if (post.likeCount > 0) post.likeCount else 287_698L
+            )
+        }
+    } else {
+        fallbackProducts.take(2).mapIndexed { index, product ->
+            Post(
+                id = "shop-product-$index",
+                authorId = "shop-lsoul",
+                authorName = "Lsoul",
+                caption = product.name,
+                imageUrls = listOf(product.imageUrl),
+                likeCount = 287_698L,
+                commentCount = 24L
+            )
+        }
     }
 }
