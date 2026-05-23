@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
+import com.example.fashionapp.navigation.Screen
 
 // ── Palette ──
 private val PrimaryBlue   = Color(0xFF3669C9)
@@ -43,6 +45,7 @@ fun SettingsScreen(navController: NavController) {
 
     // sub-screen routing inside Settings
     var currentSubScreen by remember { mutableStateOf<SubScreen?>(null) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     AnimatedContent(
         targetState = currentSubScreen,
@@ -190,7 +193,7 @@ fun SettingsScreen(navController: NavController) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { }
+                                    .clickable { showDeleteConfirmDialog = true }
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -227,6 +230,61 @@ fun SettingsScreen(navController: NavController) {
                         }
 
                         Spacer(Modifier.height(32.dp))
+                    }
+
+                    if (showDeleteConfirmDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showDeleteConfirmDialog = false },
+                            title = {
+                                Text(
+                                    text = settings.t(
+                                        "Delete Account?",
+                                        "Xóa tài khoản?",
+                                        "Supprimer le compte?",
+                                        "アカウントを削除しますか？",
+                                        "계정을 삭제하시겠습니까?",
+                                        "删除账户？"
+                                    ),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            text = {
+                                Text(
+                                    text = settings.t(
+                                        "Are you sure you want to delete your account? This action is permanent and cannot be undone.",
+                                        "Bạn có chắc chắn muốn xóa tài khoản không? Hành động này là vĩnh viễn và không thể hoàn tác.",
+                                        "Êtes-vous sûr de vouloir supprimer votre compte? Cette action est irréversible.",
+                                        "アカウントを削除してもよろしいですか？この操作 là vĩnh viễn và không thể hoàn tác.",
+                                        "계정을 삭제하시겠습니까? 이 작업은 영구적이며 취소할 수 없습니다.",
+                                        "您确定要删除账户吗？此操作是永久性的，且无法撤销。"
+                                    )
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showDeleteConfirmDialog = false
+                                        FirebaseAuth.getInstance().currentUser?.delete()?.addOnCompleteListener {
+                                            FirebaseAuth.getInstance().signOut()
+                                            navController.navigate(Screen.Start.route) {
+                                                popUpTo(0) { inclusive = true }
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        text = settings.t("Delete", "Xóa", "Supprimer", "削除", "삭제", "删除"),
+                                        color = DangerRed,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                                    Text(text = settings.t("Cancel", "Hủy", "Annuler", "キャンセル", "취소", "取消"))
+                                }
+                            }
+                        )
                     }
                 }
             }

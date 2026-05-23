@@ -10,9 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.data.auth.AuthRepository
@@ -39,7 +45,9 @@ fun ResetPasswordScreen(
     onPasswordResetSuccess: () -> Unit
 ) {
     var newPassword by remember { mutableStateOf("") }
+    var newPasswordVisible by remember { mutableStateOf(false) }
     var confirmPassword by remember { mutableStateOf("") }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -75,7 +83,15 @@ fun ResetPasswordScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
+            visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                    Icon(
+                        imageVector = if (newPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        contentDescription = if (newPasswordVisible) "Hide password" else "Show password"
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -87,7 +103,15 @@ fun ResetPasswordScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
+            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                    Icon(
+                        imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password"
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))

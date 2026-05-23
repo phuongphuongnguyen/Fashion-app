@@ -96,8 +96,8 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
 
         NavHost(
             navController = navController,
-            //startDestination = Screen.Start.route,
-            startDestination = startDestination,
+            startDestination = Screen.FirstLoginOnboarding.route,
+//            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Start.route) {
