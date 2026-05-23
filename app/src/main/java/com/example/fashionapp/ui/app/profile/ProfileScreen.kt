@@ -15,16 +15,33 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(navController: NavController) {
+    val settings = LocalAppSettings.current
+    val isDark = settings.isDarkMode
+    
+    // Dynamic styling
+    val bgColor = if (isDark) Color(0xFF121212) else Color.White
+    val topBarBgColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+    val textColor = if (isDark) Color.White else Color(0xFF1A1A2E)
+    val iconColor = if (isDark) Color.White else Color.Black
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Profile",
+                        text = settings.t(
+                            en = "Profile",
+                            vi = "Hồ sơ",
+                            fr = "Profil",
+                            ja = "プロフィール",
+                            ko = "프로필",
+                            zh = "个人中心"
+                        ),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -39,7 +56,7 @@ fun ProfileScreen(navController: NavController) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_chatbot),
                             contentDescription = "Chatbot",
-                            tint = Color.Black,
+                            tint = iconColor,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -52,16 +69,18 @@ fun ProfileScreen(navController: NavController) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Color.Black
+                            tint = iconColor
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = topBarBgColor,
+                    titleContentColor = textColor,
+                    actionIconContentColor = textColor
                 )
             )
         },
-        containerColor = Color.White
+        containerColor = bgColor
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -69,7 +88,18 @@ fun ProfileScreen(navController: NavController) {
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ) {
-            Text("Profile Screen")
+            Text(
+                text = settings.t(
+                    en = "Profile Screen",
+                    vi = "Màn hình hồ sơ",
+                    fr = "Écran de profil",
+                    ja = "プロフィール画面",
+                    ko = "프로필 화면",
+                    zh = "个人中心"
+                ),
+                color = textColor,
+                fontSize = 16.sp
+            )
         }
     }
 }

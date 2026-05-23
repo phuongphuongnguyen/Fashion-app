@@ -40,8 +40,9 @@ import com.example.fashionapp.ui.auth.ResetPasswordScreen
 import com.example.fashionapp.ui.auth.StartScreen
 import com.example.fashionapp.ui.auth.VerifyResetCodeScreen
 import com.example.fashionapp.ui.onboarding.FirstLoginOnboardingScreen
-import com.example.fashionapp.ui.app.settings.SettingsScreen
 import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
+import com.example.fashionapp.ui.app.settings.SettingsScreen
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 @Composable
 fun AppNavigation(startDestination: String = Screen.Start.route) {
@@ -226,29 +227,37 @@ fun AppBottomBar(
     currentDestination: NavDestination?,
     onTabSelected: (Screen) -> Unit
 ) {
+    val settings = LocalAppSettings.current
+    val isDark = settings.isDarkMode
+    val bgColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+    val topDividerColor = if (isDark) Color(0xFF2C2C2C) else Color(0xFFEEEEEE)
+
     Surface(
-        color = Color.White,
+        color = bgColor,
         shadowElevation = 8.dp
     ) {
-        Row(
-            modifier = Modifier
-                .navigationBarsPadding() // Thêm khoảng đệm để tránh bị thanh điều hướng Android che
-                .fillMaxWidth()
-                .height(64.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            bottomNavItems.forEach { item ->
+        Column {
+            HorizontalDivider(thickness = 0.5.dp, color = topDividerColor)
+            Row(
+                modifier = Modifier
+                    .navigationBarsPadding() // Thêm khoảng đệm để tránh bị thanh điều hướng Android che
+                    .fillMaxWidth()
+                    .height(64.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                bottomNavItems.forEach { item ->
 
-                val isSelected = currentDestination?.hierarchy?.any {
-                    it.route == item.screen.route
-                } == true
+                    val isSelected = currentDestination?.hierarchy?.any {
+                        it.route == item.screen.route
+                    } == true
 
-                BottomNavItemView(
-                    item = item,
-                    isSelected = isSelected,
-                    onClick = { onTabSelected(item.screen) }
-                )
+                    BottomNavItemView(
+                        item = item,
+                        isSelected = isSelected,
+                        onClick = { onTabSelected(item.screen) }
+                    )
+                }
             }
         }
     }
@@ -262,6 +271,10 @@ fun BottomNavItemView(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
+    val isDark = settings.isDarkMode
+    val activeColor = if (isDark) Color.White else Color.Black
+
     Column(
         modifier = Modifier
             .clickable(
@@ -276,7 +289,7 @@ fun BottomNavItemView(
         Icon(
             painter = painterResource(id = item.iconRes),
             contentDescription = item.label,
-            tint = if (isSelected) Color.Black else Color.Unspecified,
+            tint = if (isSelected) activeColor else Color.Unspecified,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -288,7 +301,7 @@ fun BottomNavItemView(
                 .height(3.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(
-                    if (isSelected) Color.Black
+                    if (isSelected) activeColor
                     else Color.Transparent
                 )
         )
