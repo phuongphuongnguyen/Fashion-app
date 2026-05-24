@@ -1,18 +1,307 @@
 package com.example.fashionapp.ui.app.shopping
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import com.example.fashionapp.ui.components.FashionTopBar
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import com.example.fashionapp.model.Post
+import com.example.fashionapp.model.Product
+import com.example.fashionapp.model.ProductTag
+import com.example.fashionapp.ui.app.home.HomeViewModel
+import com.example.fashionapp.ui.app.shopping.ShoppingViewModel
+import com.example.fashionapp.ui.app.saved.SavedViewModel
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.components.CommentBottomSheet
+import com.example.fashionapp.ui.components.FeedPostItem
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShoppingScreen(
+    navController: NavController,
+    homeViewModel: HomeViewModel = viewModel(),
+    shoppingViewModel: ShoppingViewModel = viewModel(),
+    savedViewModel: SavedViewModel = viewModel()
+) {
+    val settings = LocalAppSettings.current
+    val isDark = settings.isDarkMode
+    val bgColor = if (isDark) Color(0xFF121212) else Color.White
+    val topBarBg = if (isDark) Color(0xFF1E1E1E) else Color.White
+    val textColor = if (isDark) Color.White else Color(0xFF1A1A2E)
+    val subTextColor = if (isDark) Color(0xFF888888) else Color.Gray
+    val iconColor = if (isDark) Color.White else Color.Black
+    val dividerColor = if (isDark) Color(0xFF2C2C2C) else Color(0xFFEEEEEE)
+    val cardBgColor = if (isDark) Color(0xFF2C2C2C) else Color(0xFFF1F1F1)
+
+    val homeState by homeViewModel.uiState.collectAsState()
+    val shoppingState by shoppingViewModel.uiState.collectAsState()
+    val savedUiState by savedViewModel.uiState.collectAsState()
+    val sourcePosts = homeState.posts
+    val shopPosts = remember(sourcePosts) {
+        sourcePosts.filter { it.authorName.equals("Romina", ignoreCase = true) }
+    }
+
+    var selectedTab by remember { mutableStateOf("Posts") }
+    var selectedPostId by remember { mutableStateOf<String?>(null) }
+    var showComments by remember { mutableStateOf(false) }
+    var localLikedPosts by remember { mutableStateOf(setOf<String>()) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    Scaffold(
+        topBar = {
+            FashionTopBar(
+                title = "",
+                onBackClick = { navController.popBackStack() },
+                isDark = isDark,
+                bgColor = topBarBg,
+                textColor = textColor
+            )
+        },
+        containerColor = bgColor
+    ) { innerPadding ->
+        if (showComments && selectedPostId != null) {
+            shopPosts.find { it.id == selectedPostId }?.let { post ->
+                CommentBottomSheet(
+                    post = post,
+                    sheetState = sheetState,
+                    onDismiss = { showComments = false },
+                    onSendComment = { text -> homeViewModel.addComment(post.id, text) }
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            ShopHeader(
+                selectedTab = selectedTab,
+                postCount = shopPosts.size,
+                onTabSelected = { selectedTab = it },
+                isDark = isDark,
+                textColor = textColor,
+                subTextColor = subTextColor,
+                iconColor = iconColor
+            )
+
+            if (selectedTab == "Posts") {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 12.dp)
+                ) {
+                    items(shopPosts, key = { it.id }) { post ->
+                        FeedPostItem(
+                            post = post,
+                            isLiked = (homeState.likedPosts[post.id] ?: false) ||
+                                localLikedPosts.contains(post.id),
+                            isSaved = savedUiState.savedPostIds.contains(post.id),
+                            onLikeClick = {
+                                if (homeState.posts.any { it.id == post.id }) {
+                                    homeViewModel.toggleLike(post.id)
+                                } else {
+                                    localLikedPosts =
+                                        if (localLikedPosts.contains(post.id)) localLikedPosts - post.id
+                                        else localLikedPosts + post.id
+                                }
+                            },
+                            onSaveClick = { savedViewModel.toggleSave(post.id) },
+                            onCommentClick = {
+                                selectedPostId = post.id
+                                showComments = true
+                            }
+                        )
+                        HorizontalDivider(thickness = 0.5.dp, color = dividerColor)
+                    }
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(shoppingState.products, key = { it.id }) { product ->
+                        ProductTile(product = product, isDark = isDark, textColor = textColor, cardBgColor = cardBgColor)
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
-fun ShoppingScreen(navController: NavController) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Shopping Screen")
+private fun ShopHeader(
+    selectedTab: String,
+    postCount: Int,
+    onTabSelected: (String) -> Unit,
+    isDark: Boolean,
+    textColor: Color,
+    subTextColor: Color,
+    iconColor: Color
+) {
+    val avatarBg = if (isDark) Color(0xFF2C2C2C) else Color.White
+    val avatarBorder = if (isDark) Color(0xFF444444) else Color(0xFFE0E0E0)
+    val tabActiveColor = if (isDark) Color.White else Color.Black
+    val tabInactiveColor = if (isDark) Color(0xFF666666) else Color(0xFF9A9A9A)
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(68.dp)
+                    .border(1.dp, avatarBorder, CircleShape)
+                    .clip(CircleShape)
+                    .background(avatarBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("ROMINA", fontWeight = FontWeight.Black, fontSize = 13.sp, color = textColor)
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Romina", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = textColor)
+                    Text(" Posts", fontSize = 12.sp, color = subTextColor)
+                    Spacer(Modifier.width(12.dp))
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = "Rating",
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(" 4.5", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor)
+                    Spacer(Modifier.width(12.dp))
+                    Text("800 ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = textColor)
+                    Text("Followers", fontSize = 12.sp, color = subTextColor)
+                }
+            }
+            Button(
+                onClick = { },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                modifier = Modifier.height(30.dp)
+            ) {
+                Text("Follow", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                listOf("Posts", "Products").forEach { tab ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onTabSelected(tab) }
+                    ) {
+                        Text(
+                            text = tab,
+                            color = if (selectedTab == tab) tabActiveColor else tabInactiveColor,
+                            fontSize = 16.sp,
+                            fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .height(2.dp)
+                                .background(if (selectedTab == tab) tabActiveColor else Color.Transparent)
+                        )
+                    }
+                }
+            }
+            Icon(
+                imageVector = Icons.Outlined.AddCircleOutline,
+                contentDescription = "Add",
+                tint = iconColor,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun ProductTile(
+    product: Product,
+    isDark: Boolean,
+    textColor: Color,
+    cardBgColor: Color
+) {
+    Column {
+        AsyncImage(
+            model = product.imageUrl,
+            contentDescription = product.name,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.78f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(cardBgColor),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(product.name, maxLines = 2, fontSize = 12.sp, color = textColor)
+        Spacer(Modifier.height(4.dp))
+        Text("${"$%.2f".format(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = textColor)
     }
 }

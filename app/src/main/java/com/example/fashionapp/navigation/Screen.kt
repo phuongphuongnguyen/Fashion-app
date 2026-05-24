@@ -18,6 +18,17 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
     object Settings : Screen("settings")
     object Chatbot : Screen("chatbot")
+    object Cart : Screen("cart")
+    object Payment : Screen("payment")
+    object History : Screen("history")
+    object Review : Screen("review/{orderId}") {
+        fun createRoute(orderId: String) = "review/$orderId"
+    }
+    object ReviewDone : Screen("review_done")
+
+    object PostDetail : Screen("post_detail/{postId}") {
+        fun createRoute(postId: String) = "post_detail/$postId"
+    }
 
     fun createRoute(vararg args: String): String {
         var builtRoute = route
@@ -57,4 +68,3 @@ val bottomNavItems = listOf(
         iconRes = R.drawable.ic_profile
     )
 )
-

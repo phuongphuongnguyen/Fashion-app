@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,7 +38,10 @@ import java.util.*
 fun FeedPostItem(
     post: Post,
     isLiked: Boolean,
+    isSaved: Boolean,
+    isVerified: Boolean = false,
     onLikeClick: () -> Unit,
+    onSaveClick: () -> Unit,
     onCommentClick: () -> Unit
 ) {
     val settings = LocalAppSettings.current
@@ -49,9 +53,9 @@ fun FeedPostItem(
             avatarUrl = post.authorAvt,
             username = post.authorName,
             isDark = isDark,
-            textColor = textColor
+            textColor = textColor,
+            isVerified = isVerified
         )
-
         if (post.imageUrls.isNotEmpty()) {
             PostImagesRow(
                 imageUrls = post.imageUrls,
@@ -68,7 +72,9 @@ fun FeedPostItem(
 
         ActionRow(
             isLiked = isLiked,
+            isSaved = isSaved,
             onLikeClick = onLikeClick,
+            onSaveClick = onSaveClick,
             onCommentClick = onCommentClick,
             imageCount = post.imageUrls.size,
             isDark = isDark
@@ -108,7 +114,8 @@ fun PostHeader(
     avatarUrl: String,
     username: String,
     isDark: Boolean,
-    textColor: Color
+    textColor: Color,
+    isVerified: Boolean = false
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -131,6 +138,11 @@ fun PostHeader(
             color = textColor,
             modifier = Modifier.weight(1f)
         )
+        if (isVerified) {
+            Spacer(Modifier.width(4.dp))
+            Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Color(0xFF0057FF), modifier = Modifier.size(14.dp))
+        }
+        Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = { }) {
             Icon(
                 Icons.Default.MoreVert,
@@ -192,7 +204,9 @@ fun ProductTagsRow(tags: List<ProductTag>, isDark: Boolean) {
 @Composable
 fun ActionRow(
     isLiked: Boolean,
+    isSaved: Boolean,
     onLikeClick: () -> Unit,
+    onSaveClick: () -> Unit,
     onCommentClick: () -> Unit,
     imageCount: Int,
     isDark: Boolean
@@ -263,9 +277,9 @@ fun CaptionRow(
         AppLanguage.CHINESE -> Locale.CHINA
         else -> Locale.ENGLISH
     }
-    
+
     val dateStr = timestamp?.let { SimpleDateFormat("MMMM d, yyyy", locale).format(it) } ?: ""
-    
+
     Text(
         text = buildAnnotatedString {
             withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold, color = textColor)) { append(username) }

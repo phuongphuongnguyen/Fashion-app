@@ -32,7 +32,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.example.fashionapp.ui.app.home.HomeScreen
 import com.example.fashionapp.ui.app.saved.SavedScreen
 import com.example.fashionapp.ui.app.profile.ProfileScreen
+import com.example.fashionapp.ui.app.shopping.CartScreen
+import com.example.fashionapp.ui.app.shopping.HistoryScreen
+import com.example.fashionapp.ui.app.shopping.PaymentScreen
+import com.example.fashionapp.ui.app.shopping.ReviewDoneScreen
+import com.example.fashionapp.ui.app.shopping.ReviewScreen
 import com.example.fashionapp.ui.app.shopping.ShoppingScreen
+import com.example.fashionapp.ui.app.saved.PostDetailScreen
 import com.example.fashionapp.ui.auth.CreateAccountScreen
 import com.example.fashionapp.ui.auth.ForgotPasswordScreen
 import com.example.fashionapp.ui.auth.LoginScreen
@@ -73,7 +79,12 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
         Screen.Home.route,
         Screen.Shop.route,
         Screen.Saved.route,
-        Screen.Profile.route
+        Screen.Profile.route,
+        Screen.Cart.route,
+        Screen.Payment.route,
+        Screen.History.route,
+        Screen.Review.route,
+        Screen.ReviewDone.route
     )
 
     Scaffold(
@@ -206,16 +217,33 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 ChatbotScreen(navController = navController)
             }
 
-            // ── Thành viên A thêm vào đây ──────────────
-            // composable(Screen.Login.route) {
-            //     LoginScreen(navController = navController)
-            // }
+            composable(Screen.Cart.route) {
+                CartScreen(navController = navController)
+            }
+            composable(Screen.Payment.route) {
+                PaymentScreen(navController = navController)
+            }
+            composable(Screen.History.route) {
+                HistoryScreen(navController = navController)
+            }
+            composable(
+                route = Screen.Review.route,
+                arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
+                ReviewScreen(navController = navController, orderId = orderId)
+            }
+            composable(Screen.ReviewDone.route) {
+                ReviewDoneScreen(navController = navController)
+            }
 
-            // ── Thành viên B thêm vào đây ──────────────
-            // composable(Screen.ProductDetail.route) { ... }
-
-            // ── Thành viên C thêm vào đây ──────────────
-            // composable(Screen.Payment.route) { ... }
+            composable(
+                route = Screen.PostDetail.route,
+                arguments = listOf(navArgument("postId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val postId = backStackEntry.arguments?.getString("postId").orEmpty()
+                PostDetailScreen(navController = navController, postId = postId)
+            }
         }
     }
 }
@@ -248,9 +276,18 @@ fun AppBottomBar(
             ) {
                 bottomNavItems.forEach { item ->
 
-                    val isSelected = currentDestination?.hierarchy?.any {
-                        it.route == item.screen.route
-                    } == true
+                val currentRoute = currentDestination?.route
+                val isSelected = when (item.screen) {
+                    Screen.Shop -> currentRoute in listOf(
+                        Screen.Shop.route,
+                        Screen.Cart.route,
+                        Screen.Payment.route,
+                        Screen.History.route,
+                        Screen.Review.route,
+                        Screen.ReviewDone.route
+                    )
+                    else -> currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                }
 
                     BottomNavItemView(
                         item = item,

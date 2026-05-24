@@ -3,6 +3,8 @@ package com.example.fashionapp.ui.app.home
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,21 +17,26 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.fashionapp.R
+import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
-import com.example.fashionapp.ui.components.MainTopBar
+//import com.example.fashionapp.ui.components.MainTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.app.saved.SavedViewModel
+import com.example.fashionapp.ui.components.FashionTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    savedViewModel: SavedViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val settings = LocalAppSettings.current
     val isDark = settings.isDarkMode
-    
+    val savedUiState by savedViewModel.uiState.collectAsState()
+
     // Dynamic styling
     val bgColor = if (isDark) Color(0xFF121212) else Color.White
     val textColor = if (isDark) Color.White else Color(0xFF1A1A2E)
@@ -41,7 +48,7 @@ fun HomeScreen(
 
     Scaffold(
         topBar = { 
-            MainTopBar(
+            FashionTopBar(
                 title = settings.t(
                     en = "Feed",
                     vi = "Bảng tin",
@@ -50,12 +57,27 @@ fun HomeScreen(
                     ko = "피드",
                     zh = "动态"
                 ),
-                onNotiClick = { },
-                onMessClick = { },
-                onCartClick = { },
                 isDark = isDark,
                 bgColor = if (isDark) Color(0xFF1E1E1E) else Color.White,
-                textColor = textColor
+                textColor = textColor,
+                actions = {
+                    IconButton(onClick = { /* TODO: Implement Search */ }) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = Color.Black
+                        )
+                    }
+
+                    IconButton(onClick = { navController.navigate(Screen.Chatbot.route) }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_chatbot),
+                            contentDescription = "Chatbot",
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
             )
         },
         containerColor = bgColor
@@ -106,9 +128,12 @@ fun HomeScreen(
                     items(uiState.posts, key = { it.id }) { post ->
                         FeedPostItem(
                             post = post,
-                            isLiked = uiState.likedPosts[post.id] ?: false,
+                            isLiked = (uiState.likedPosts[post.id] ?: false),
+                            isSaved = savedUiState.savedPostIds.contains(post.id),
+                            isVerified = (post.authorName == "mina"),
                             onLikeClick = { viewModel.toggleLike(post.id) },
-                            onCommentClick = { 
+                            onSaveClick = { savedViewModel.toggleSave(post.id) },
+                            onCommentClick = {
                                 selectedPostId = post.id
                                 showComments = true
                             }
