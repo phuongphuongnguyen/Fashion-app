@@ -54,9 +54,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.fashionapp.data.ShopProfile
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.Product
-import com.example.fashionapp.model.ProductTag
 import com.example.fashionapp.ui.app.home.HomeViewModel
 import com.example.fashionapp.ui.app.shopping.ShoppingViewModel
 import com.example.fashionapp.ui.app.saved.SavedViewModel
@@ -74,9 +74,22 @@ fun ShoppingScreen(
     val homeState by homeViewModel.uiState.collectAsState()
     val shoppingState by shoppingViewModel.uiState.collectAsState()
     val savedUiState by savedViewModel.uiState.collectAsState()
+    val shop = shoppingState.shop
     val sourcePosts = homeState.posts
-    val shopPosts = remember(sourcePosts) {
-        sourcePosts.filter { it.authorName.equals("Romina", ignoreCase = true) }
+    val shopPosts = remember(sourcePosts, shop?.ownerUserId, shop?.name, shop?.logoUrl) {
+        sourcePosts.filter { post ->
+            shop?.ownerUserId?.isNotBlank() == true && post.authorId == shop.ownerUserId
+        }.map { post ->
+            post.copy(
+                authorName = shop?.name?.takeIf { it.isNotBlank() } ?: post.authorName,
+                authorAvt = shop?.logoUrl?.takeIf { it.isNotBlank() } ?: post.authorAvt
+            )
+        }
+    }
+    val shopProducts = remember(shoppingState.products, shop?.id) {
+        shoppingState.products.filter { product ->
+            shop?.id.isNullOrBlank() || product.shopId == shop?.id
+        }
     }
 
     var selectedTab by remember { mutableStateOf("Posts") }
@@ -111,8 +124,10 @@ fun ShoppingScreen(
                 .padding(innerPadding)
         ) {
             ShopHeader(
+                shop = shop,
                 selectedTab = selectedTab,
                 postCount = shopPosts.size,
+                productCount = shopProducts.size,
                 onTabSelected = { selectedTab = it }
             )
 
@@ -153,7 +168,7 @@ fun ShoppingScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(shoppingState.products, key = { it.id }) { product ->
+                    items(shopProducts, key = { it.id }) { product ->
                         ProductTile(product = product)
                     }
                 }
@@ -164,52 +179,76 @@ fun ShoppingScreen(
 
 @Composable
 private fun ShopHeader(
+    shop: ShopProfile?,
     selectedTab: String,
     postCount: Int,
+    productCount: Int,
     onTabSelected: (String) -> Unit
 ) {
+    val shopName = shop?.name?.takeIf { it.isNotBlank() } ?: "Shop"
+    val logoUrl = shop?.logoUrl.orEmpty()
+    val rating = shop?.rating ?: 0f
+    val followers = shop?.followerCount ?: 0
+
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
+            AsyncImage(
+                model = logoUrl.ifBlank { null },
+                contentDescription = shopName,
                 modifier = Modifier
                     .size(68.dp)
                     .border(1.dp, Color(0xFFE0E0E0), CircleShape)
                     .clip(CircleShape)
                     .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("ROMINA", fontWeight = FontWeight.Black, fontSize = 13.sp)
-            }
+                contentScale = ContentScale.Crop
+            )
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("Romina", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 2.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(" Posts", fontSize = 12.sp, color = Color.Gray)
-                    Spacer(Modifier.width(12.dp))
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = "Rating",
-                        tint = Color(0xFFFFC107),
-                        modifier = Modifier.size(14.dp)
+                    Text(
+                        shopName,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
                     )
-                    Text(" 4.5", fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.width(12.dp))
-                    Text("800 ", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text("Followers", fontSize = 12.sp, color = Color.Gray)
+                    Button(
+                        onClick = { },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text("Follow", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
-            }
-            Button(
-                onClick = { },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
-                shape = RoundedCornerShape(16.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                modifier = Modifier.height(30.dp)
-            ) {
-                Text("Follow", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    MetricInline(postCount.toString(), "Posts")
+                    MetricInline(productCount.toString(), "Products")
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = "Rating",
+                            tint = Color(0xFFFFC107),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(" ${"%.1f".format(rating)}", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                    MetricInline(formatCount(followers), "Followers")
+                }
             }
         }
 
@@ -251,6 +290,23 @@ private fun ShopHeader(
         }
 
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun MetricInline(value: String, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Spacer(Modifier.width(3.dp))
+        Text(label, fontSize = 12.sp, color = Color.Gray, maxLines = 1)
+    }
+}
+
+private fun formatCount(value: Int): String {
+    return if (value >= 1000) {
+        "${"%.1f".format(value / 1000.0)}K"
+    } else {
+        value.toString()
     }
 }
 

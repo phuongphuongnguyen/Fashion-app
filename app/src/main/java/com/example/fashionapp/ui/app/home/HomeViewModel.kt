@@ -6,11 +6,9 @@ import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.model.Comment
 import com.example.fashionapp.model.Post
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -79,7 +77,7 @@ class HomeViewModel : ViewModel() {
         val currentState = _uiState.value
         val newComment = Comment(
             id = UUID.randomUUID().toString(),
-            username = "You", 
+            username = "You",
             text = text,
             createdAt = Timestamp.now()
         )

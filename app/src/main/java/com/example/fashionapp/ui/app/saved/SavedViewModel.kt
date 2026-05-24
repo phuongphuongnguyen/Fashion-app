@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.data.user.UserRepository
 import com.example.fashionapp.model.Post
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +20,6 @@ data class SavedUiState(
 class SavedViewModel : ViewModel() {
     private val userRepository = UserRepository()
     private val feedRepository = FeedRepository()
-    private val auth = FirebaseAuth.getInstance()
     
     private val _uiState = MutableStateFlow(SavedUiState())
     val uiState: StateFlow<SavedUiState> = _uiState.asStateFlow()
@@ -30,8 +28,10 @@ class SavedViewModel : ViewModel() {
         loadSavedPosts()
     }
 
+    private fun currentUserId(): String = "u001"
+
     private fun loadSavedPosts() {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = currentUserId()
         viewModelScope.launch {
             combine(
                 userRepository.getSavedPostIdsFlow(userId),
@@ -51,7 +51,7 @@ class SavedViewModel : ViewModel() {
     }
 
     fun toggleSave(postId: String) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = currentUserId()
         val currentIds = _uiState.value.savedPostIds
         viewModelScope.launch {
             if (currentIds.contains(postId)) {

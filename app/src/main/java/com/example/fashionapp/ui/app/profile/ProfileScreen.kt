@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.navigation.Screen
@@ -150,16 +153,28 @@ private fun ProfileHeader(
     selectedTab: String,
     onTabSelected: (String) -> Unit
 ) {
-    val name = user?.name?.takeIf { it.isNotBlank() } ?: "User"
+    val username = user?.username?.takeIf { it.isNotBlank() } ?: "User"
     val avatar = user?.avatarUrl.orEmpty()
+    val context = LocalContext.current
+    val avatarModel = remember(avatar) {
+        avatar.takeIf { it.isNotBlank() }?.withCacheBust()
+    }
+    val avatarRequest = remember(avatarModel, context) {
+        ImageRequest.Builder(context)
+            .data(avatarModel)
+            .memoryCachePolicy(CachePolicy.DISABLED)
+            .diskCachePolicy(CachePolicy.DISABLED)
+            .networkCachePolicy(CachePolicy.DISABLED)
+            .build()
+    }
     val followers = user?.followersCount ?: 0
     val following = user?.followingCount ?: 0
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
-                model = avatar.ifBlank { null },
-                contentDescription = name,
+                model = avatarRequest,
+                contentDescription = username,
                 modifier = Modifier
                     .size(72.dp)
                     .clip(CircleShape)
@@ -170,14 +185,14 @@ private fun ProfileHeader(
                 contentScale = ContentScale.Crop,
                 error = painterResource(R.drawable.ic_profile)
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(2f))
             ProfileMetric(postsCount.toString(), "Posts")
             ProfileMetric(followers.toString(), "Followers")
             ProfileMetric(following.toString(), "Following")
         }
 
         Spacer(Modifier.height(10.dp))
-        Text(name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        Text(username, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         Spacer(Modifier.height(16.dp))
 
         Row(
@@ -213,6 +228,11 @@ private fun ProfileHeader(
             }
         }
     }
+}
+
+private fun String.withCacheBust(): String {
+    val separator = if (contains("?")) "&" else "?"
+    return "$this${separator}profileAvatarBust=${System.currentTimeMillis()}"
 }
 
 @Composable

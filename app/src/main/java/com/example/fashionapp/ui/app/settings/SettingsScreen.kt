@@ -277,7 +277,7 @@ private fun LanguageScreen(onBack: () -> Unit) {
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
                             Text(lang.nativeName, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                            Text(lang.displayName, fontSize = 13.sp, color = Color.Gray)
+                            Text(lang.username, fontSize = 13.sp, color = Color.Gray)
                         }
                         if (settings.language == lang) {
                             Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
@@ -332,7 +332,7 @@ private fun CurrencyScreen(onBack: () -> Unit) {
                         }
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(cur.displayName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                            Text(cur.username, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                             Text(cur.code, fontSize = 13.sp, color = Color.Gray)
                         }
                         if (settings.currency == cur) {

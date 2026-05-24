@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -25,6 +26,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.ProductTag
@@ -82,13 +85,15 @@ fun FeedPostItem(
 
 @Composable
 fun PostHeader(avatarUrl: String, username: String, isVerified: Boolean = false) {
+    val avatarRequest = rememberAvatarRequest(avatarUrl)
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFFEEEEEE)).padding(2.dp)) {
             AsyncImage(
-                model = avatarUrl.ifBlank { null },
+                model = avatarRequest,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().clip(CircleShape),
                 contentScale = ContentScale.Crop,
@@ -263,9 +268,11 @@ fun CommentBottomSheet(
 
 @Composable
 fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Boolean = false) {
+    val avatarRequest = rememberAvatarRequest(avatarUrl)
+
     Row(verticalAlignment = Alignment.Top) {
         Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
-            AsyncImage(model = avatarUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop, error = painterResource(R.drawable.ic_profile))
+            AsyncImage(model = avatarRequest, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop, error = painterResource(R.drawable.ic_profile))
         }
         Spacer(Modifier.width(12.dp))
         Column {
@@ -273,4 +280,25 @@ fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Bo
             if (!isCaption) { Text(text = "Reply", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp)) }
         }
     }
+}
+
+@Composable
+private fun rememberAvatarRequest(avatarUrl: String): ImageRequest {
+    val context = LocalContext.current
+    val avatarModel = remember(avatarUrl) {
+        avatarUrl.takeIf { it.isNotBlank() }?.withAvatarCacheBust()
+    }
+    return remember(context, avatarModel) {
+        ImageRequest.Builder(context)
+            .data(avatarModel)
+            .memoryCachePolicy(CachePolicy.DISABLED)
+            .diskCachePolicy(CachePolicy.DISABLED)
+            .networkCachePolicy(CachePolicy.DISABLED)
+            .build()
+    }
+}
+
+private fun String.withAvatarCacheBust(): String {
+    val separator = if (contains("?")) "&" else "?"
+    return "$this${separator}avatarBust=${System.currentTimeMillis()}"
 }

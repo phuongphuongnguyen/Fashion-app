@@ -6,5 +6,6 @@ data class Product(
     val price: Double,
     val imageUrl: String,
     val rating: Float = 0f,
-    val soldCount: Int = 0
+    val soldCount: Int = 0,
+    val shopId: String = ""
 )

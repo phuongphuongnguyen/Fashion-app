@@ -10,7 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 
 // ── Supported Languages ──
-enum class AppLanguage(val code: String, val displayName: String, val nativeName: String, val flag: String) {
+enum class AppLanguage(val code: String, val username: String, val nativeName: String, val flag: String) {
     ENGLISH("en", "English", "English", "🇬🇧"),
     VIETNAMESE("vi", "Vietnamese", "Tiếng Việt", "🇻🇳"),
     FRENCH("fr", "French", "Français", "🇫🇷"),
@@ -20,7 +20,7 @@ enum class AppLanguage(val code: String, val displayName: String, val nativeName
 }
 
 // ── Supported Currencies ──
-enum class AppCurrency(val code: String, val symbol: String, val displayName: String) {
+enum class AppCurrency(val code: String, val symbol: String, val username: String) {
     USD("USD", "$", "US Dollar"),
     VND("VND", "₫", "Vietnamese Dong"),
     EUR("EUR", "€", "Euro"),

@@ -4,10 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.CartItem
 import com.example.fashionapp.data.ReviewOrder
+import com.example.fashionapp.data.ShopProfile
 import com.example.fashionapp.data.shopping.ShoppingRepository
 import com.example.fashionapp.model.Product
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +16,7 @@ import java.util.Date
 import java.util.Locale
 
 data class ShoppingUiState(
+    val shop: ShopProfile? = null,
     val products: List<Product> = emptyList(),
     val cartItems: List<CartItem> = emptyList(),
     val orders: List<ReviewOrder> = emptyList(),
@@ -27,15 +27,26 @@ data class ShoppingUiState(
 
 class ShoppingViewModel : ViewModel() {
     private val repository = ShoppingRepository()
-    private val auth = FirebaseAuth.getInstance()
+    private val viewedShopId = "shop001"
     
     private val _uiState = MutableStateFlow(ShoppingUiState())
     val uiState: StateFlow<ShoppingUiState> = _uiState.asStateFlow()
 
     init {
+        loadShop()
         loadProducts()
         loadCartItems()
         loadOrders()
+    }
+
+    private fun currentUserId(): String = "u001"
+
+    private fun loadShop() {
+        viewModelScope.launch {
+            repository.getShopProfileFlow(viewedShopId).collect { shop ->
+                _uiState.value = _uiState.value.copy(shop = shop)
+            }
+        }
     }
 
     private fun loadProducts() {
@@ -52,7 +63,7 @@ class ShoppingViewModel : ViewModel() {
 
 
     private fun loadCartItems() {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = currentUserId()
         viewModelScope.launch {
             repository.getCartItemsFlow(userId).collect { items ->
                 _uiState.value = _uiState.value.copy(
@@ -64,7 +75,7 @@ class ShoppingViewModel : ViewModel() {
     }
 
     private fun loadOrders() {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = currentUserId()
         viewModelScope.launch {
             repository.getOrdersFlow(userId).collect { orders ->
                 _uiState.value = _uiState.value.copy(
@@ -76,7 +87,7 @@ class ShoppingViewModel : ViewModel() {
     }
 
     fun addToCart(product: Product, color: String, size: String, quantity: Int = 1) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = currentUserId()
         val cartItem = CartItem(
             id = "${product.id}_${System.currentTimeMillis()}", // Generate a simple ID
             product = product,
@@ -90,14 +101,14 @@ class ShoppingViewModel : ViewModel() {
     }
 
     fun updateCartQuantity(cartItemId: String, newQuantity: Int) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = currentUserId()
         viewModelScope.launch {
             repository.updateCartItemQuantity(userId, cartItemId, newQuantity)
         }
     }
 
     fun placeOrderFromCart() {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = currentUserId()
         val items = _uiState.value.cartItems
         if (items.isEmpty()) return
         

@@ -4,10 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.model.Post
-import com.google.firebase.Timestamp
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +20,6 @@ data class ProfileUiState(
 class ProfileViewModel : ViewModel() {
     private val feedRepository = FeedRepository()
     private val userRepository = UserRepository()
-    private val auth = FirebaseAuth.getInstance()
     
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
@@ -33,15 +28,14 @@ class ProfileViewModel : ViewModel() {
         loadUserPosts()
     }
 
+    private fun currentUserId(): String = "u001"
+
     private fun loadUserPosts() {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = currentUserId()
         
         viewModelScope.launch {
             userRepository.getUserProfileFlow(userId).collect { user ->
                 _uiState.value = _uiState.value.copy(user = user)
-                if (user?.name.isNullOrBlank()) {
-                    seedUserProfile(userId)
-                }
             }
         }
         
@@ -56,18 +50,4 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
-    private fun seedUserProfile(userId: String) {
-        val db = FirebaseFirestore.getInstance()
-        val userEmail = auth.currentUser?.email ?: "User"
-        val authorName = userEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
-        val docRef = db.collection("users").document(userId)
-        val data = hashMapOf(
-            "name" to authorName,
-            "avatarUrl" to "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
-            "email" to userEmail,
-            "followersCount" to 834,
-            "followingCount" to 162
-        )
-        docRef.update(data as Map<String, Any>)
-    }
 }
