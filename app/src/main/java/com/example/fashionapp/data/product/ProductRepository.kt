@@ -2,49 +2,35 @@ package com.example.fashionapp.data.product
 
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
+import com.example.fashionapp.data.StorageUrlResolver
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 
 object ProductRepository {
-    private val db      = FirebaseFirestore.getInstance()
-    private val storage = FirebaseStorage.getInstance()
-    private val urlCache = mutableMapOf<String, String>()
+    private val db = FirebaseFirestore.getInstance()
 
     // ── In-Memory Cache ──────────────────────────────────────────────────────
     private val productCache = mutableMapOf<String, Product>()
     private var mostPopularCache: List<Product>? = null
 
-    private suspend fun resolveUrl(path: String): String {
-        if (path.isBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        urlCache[path]?.let { return it }
-        return try {
-            val url = storage.reference.child(path).downloadUrl.await().toString()
-            urlCache[path] = url
-            url
-        } catch (_: Exception) { path }
-    }
-
     private fun safeDouble(value: Any?): Double = (value as? Number)?.toDouble() ?: 0.0
     private fun safeInt(value: Any?): Int = (value as? Number)?.toInt() ?: 0
 
     suspend fun getProductById(productId: String): Product? {
-        // Trả về từ cache nếu đã xem sản phẩm này trước đó
         productCache[productId]?.let { return it }
 
         return try {
             val doc = db.collection("products").document(productId).get().await()
             if (!doc.exists()) return null
-            val product = parseProduct(doc)
+            val product = doc.toProduct()
             if (product != null) productCache[productId] = product
             product
         } catch (_: Exception) { null }
     }
 
     suspend fun getMostPopular(excludeId: String, limit: Int = 8): List<Product> {
-        // Cache danh sách phổ biến
         mostPopularCache?.let { list ->
             return list.filter { it.id != excludeId }.take(limit)
         }
@@ -55,19 +41,17 @@ object ProductRepository {
                 .limit((limit + 1).toLong())
                 .get().await()
 
-            val results = snap.documents.mapNotNull { parseProduct(it) }
+            val results = snap.documents.mapNotNull { it.toProduct() }
             mostPopularCache = results
             results.filter { it.id != excludeId }.take(limit)
         } catch (_: Exception) { emptyList() }
     }
 
-    private suspend fun parseProduct(
-        doc: com.google.firebase.firestore.DocumentSnapshot
-    ): Product? {
+    suspend fun parseProduct(doc: DocumentSnapshot): Product? {
         return try {
             @Suppress("UNCHECKED_CAST")
             val imagePaths = (doc.get("images") as? List<String>) ?: emptyList()
-            val imageUrls  = imagePaths.map { resolveUrl(it) }
+            val imageUrls  = imagePaths.map { StorageUrlResolver.resolve(it) }
 
             @Suppress("UNCHECKED_CAST")
             val rawVariants = (doc.get("variants") as? List<*>) ?: emptyList<Any>()
@@ -101,7 +85,7 @@ object ProductRepository {
                 price           = price,
                 originalPrice   = originalPrice,
                 discountPercent = discount,
-                imageUrl        = imageUrls.firstOrNull() ?: resolveUrl(doc.getString("imageUrl").orEmpty()),
+                imageUrl        = imageUrls.firstOrNull() ?: StorageUrlResolver.resolve(doc.getString("imageUrl").orEmpty()),
                 imageUrls       = imageUrls,
                 rating          = (doc.get("rating") as? Number)?.toFloat() ?: 0f,
                 reviewCount     = safeInt(doc.get("reviewCount")),
@@ -124,3 +108,5 @@ object ProductRepository {
         mostPopularCache = null
     }
 }
+
+suspend fun DocumentSnapshot.toProduct(): Product? = ProductRepository.parseProduct(this)

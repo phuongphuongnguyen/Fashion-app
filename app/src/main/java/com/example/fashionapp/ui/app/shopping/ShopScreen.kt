@@ -52,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.fashionapp.model.Product
+import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.home.HomeViewModel
 import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
@@ -61,6 +62,7 @@ import com.example.fashionapp.ui.components.FeedPostItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShopScreen(
+    shopId: String,
     navController: NavController,
     homeViewModel: HomeViewModel = viewModel(),
     shopViewModel: ShopViewModel = viewModel(),
@@ -71,8 +73,12 @@ fun ShopScreen(
     val savedUiState by savedViewModel.uiState.collectAsState()
     
     val sourcePosts = homeState.posts
-    val shopPosts = remember(sourcePosts) {
-        sourcePosts.filter { it.authorName.contains("Romina", ignoreCase = true) }
+    val shopPosts = remember(sourcePosts, shopId) {
+        sourcePosts.filter { it.authorId == shopId }
+    }
+    
+    val shopProducts = remember(shopState.products, shopId) {
+        shopState.products.filter { it.shopId == shopId }
     }
 
     var selectedTab by remember { mutableStateOf("Posts") }
@@ -107,7 +113,10 @@ fun ShopScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            val shopName = shopPosts.firstOrNull()?.authorName ?: "Shop"
+            
             ShopHeader(
+                shopName = shopName,
                 selectedTab = selectedTab,
                 postCount = shopPosts.size,
                 onTabSelected = { selectedTab = it }
@@ -137,6 +146,11 @@ fun ShopScreen(
                             onCommentClick = {
                                 selectedPostId = post.id
                                 showComments = true
+                            },
+                            onHeaderClick = {
+                                if (post.authorId != shopId) {
+                                    navController.navigate(Screen.Shop.createRoute(post.authorId))
+                                }
                             }
                         )
                         HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
@@ -150,7 +164,7 @@ fun ShopScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(shopState.products, key = { it.id }) { product ->
+                    items(shopProducts, key = { it.id }) { product ->
                         ProductTile(product = product)
                     }
                 }
@@ -161,6 +175,7 @@ fun ShopScreen(
 
 @Composable
 private fun ShopHeader(
+    shopName: String,
     selectedTab: String,
     postCount: Int,
     onTabSelected: (String) -> Unit
@@ -175,11 +190,11 @@ private fun ShopHeader(
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
-                Text("ROMINA", fontWeight = FontWeight.Black, fontSize = 13.sp)
+                Text(shopName.uppercase(), fontWeight = FontWeight.Black, fontSize = 13.sp)
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("Romina", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(shopName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 2.dp)
@@ -267,6 +282,6 @@ private fun ProductTile(product: Product) {
         Spacer(Modifier.height(6.dp))
         Text(product.name, maxLines = 2, fontSize = 12.sp)
         Spacer(Modifier.height(4.dp))
-        Text("$${"%.2f".format(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Text("₫${"%.0f".format(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }

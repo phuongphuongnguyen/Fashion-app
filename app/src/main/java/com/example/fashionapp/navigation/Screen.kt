@@ -15,7 +15,9 @@ sealed class Screen(val route: String) {
 
     // ── Main tabs ─────────────────────────────────────────────────────────────
     object Home    : Screen("home")
-    object Shop    : Screen("shop")
+    object Shop    : Screen("shop/{shopId}") {
+        fun createRoute(shopId: String) = "shop/$shopId"
+    }
     object Saved   : Screen("saved")
     object Profile : Screen("profile")
 

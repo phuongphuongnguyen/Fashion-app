@@ -3,14 +3,11 @@ package com.example.fashionapp.ui.app.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.feed.FeedRepository
-import com.example.fashionapp.data.user.UserRepository
 import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.model.Comment
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.User
 import com.google.firebase.Timestamp
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,8 +25,6 @@ data class HomeUiState(
 
 class HomeViewModel : ViewModel() {
     private val repository = FeedRepository()
-    private val userRepository = UserRepository()
-    private val auth = FirebaseAuth.getInstance()
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -37,7 +32,6 @@ class HomeViewModel : ViewModel() {
     init {
         loadPosts()
         observeUserSession()
-        loadUserProfile()
     }
 
     private fun observeUserSession() {
@@ -58,31 +52,6 @@ class HomeViewModel : ViewModel() {
             }
         }
     }
-
-    private fun loadUserProfile() {
-        val userId = auth.currentUser?.uid ?: return
-        val email = auth.currentUser?.email ?: ""
-        
-        viewModelScope.launch {
-            // Thử lấy trực tiếp một lần trước (Request)
-            val user = userRepository.getUserProfile(userId)
-            if (user != null && user.name.isNotBlank()) {
-                _uiState.value = _uiState.value.copy(user = user)
-            } else if (email.isNotBlank()) {
-                // Nếu không có, khởi tạo luôn (Seed)
-                userRepository.seedUserProfile(userId, email)
-            }
-
-            // Sau đó lắng nghe thay đổi (Flow)
-            userRepository.getUserProfileFlow(userId).collect { updatedUser ->
-                if (updatedUser != null) {
-                    _uiState.value = _uiState.value.copy(user = updatedUser)
-                }
-            }
-        }
-    }
-
-
 
     fun toggleLike(postId: String) {
         val currentState = _uiState.value

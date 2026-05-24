@@ -1,6 +1,7 @@
 package com.example.fashionapp.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -39,10 +40,16 @@ fun FeedPostItem(
     isVerified: Boolean = false,
     onLikeClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onCommentClick: () -> Unit
+    onCommentClick: () -> Unit,
+    onHeaderClick: () -> Unit = {}
 ) {
     Column {
-        PostHeader(avatarUrl = post.authorAvt, username = post.authorName, isVerified = isVerified)
+        PostHeader(
+            avatarUrl = post.authorAvt,
+            username = post.authorName,
+            isVerified = isVerified,
+            onHeaderClick = onHeaderClick
+        )
 
         if (post.imageUrls.isNotEmpty()) {
             PostImagesRow(imageUrls = post.imageUrls)
@@ -81,9 +88,17 @@ fun FeedPostItem(
 }
 
 @Composable
-fun PostHeader(avatarUrl: String, username: String, isVerified: Boolean = false) {
+fun PostHeader(
+    avatarUrl: String,
+    username: String,
+    isVerified: Boolean = false,
+    onHeaderClick: () -> Unit = {}
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onHeaderClick() }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFFEEEEEE)).padding(2.dp)) {

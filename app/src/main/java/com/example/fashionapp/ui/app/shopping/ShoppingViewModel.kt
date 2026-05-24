@@ -2,7 +2,7 @@ package com.example.fashionapp.ui.app.shopping
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fashionapp.data.shopping.ShoppingRepository
+import com.example.fashionapp.data.shop.ShopRepository
 import com.example.fashionapp.model.Category
 import com.example.fashionapp.model.Product
 import kotlinx.coroutines.async
@@ -28,10 +28,10 @@ class ShoppingViewModel : ViewModel() {
 
     private fun loadAll() {
         viewModelScope.launch {
-            val catDeferred     = async { ShoppingRepository.getCategories() }
-            val newDeferred     = async { ShoppingRepository.getNewItems() }
-            val popularDeferred = async { ShoppingRepository.getMostPopular() }
-            val forYouDeferred  = async { ShoppingRepository.getForYou() }
+            val catDeferred     = async { ShopRepository.getCategories() }
+            val newDeferred     = async { ShopRepository.getNewItems() }
+            val popularDeferred = async { ShopRepository.getMostPopular() }
+            val forYouDeferred  = async { ShopRepository.getForYou() }
 
             _uiState.value = ShoppingUiState(
                 isLoading   = false,

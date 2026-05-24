@@ -208,8 +208,12 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 composable(Screen.Home.route) {
                     HomeScreen(navController = navController)
                 }
-                composable(Screen.Shop.route) {
-                    ShoppingScreen(navController = navController)
+                composable(
+                    route = Screen.Shop.route,
+                    arguments = listOf(navArgument("shopId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val shopId = backStackEntry.arguments?.getString("shopId").orEmpty()
+                    ShoppingScreen(navController = navController, shopId = shopId)
                 }
                 composable(Screen.Saved.route) {
                     SavedScreen(navController = navController)

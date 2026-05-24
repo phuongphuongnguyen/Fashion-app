@@ -38,7 +38,6 @@ import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
-import com.example.fashionapp.navigation.Screen
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue   = Color(0xFF3669C9)
@@ -81,10 +80,31 @@ fun ProductDetailScreen(
         return
     }
 
+    // ── Bottom sheet state ─────────────────────────────────────────────────
+    var showAddToCart by remember { mutableStateOf(false) }
+    var showBuyNow    by remember { mutableStateOf(false) }
+
+    if (showAddToCart) {
+        AddQuantity (
+            product   = product,
+            isBuyNow  = false,
+            onDismiss = { showAddToCart = false },
+            onConfirm = { _, _ -> /* TODO: thêm vào cart */ }
+        )
+    }
+    if (showBuyNow) {
+        AddQuantity (
+            product   = product,
+            isBuyNow  = true,
+            onDismiss = { showBuyNow = false },
+            onConfirm = { _, _ -> /* TODO: navigate tới checkout */ }
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 100.dp) // chừa chỗ cho bottom bar
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             // ── Ảnh sản phẩm (pager) ────────────────────────────────────
             item {
@@ -123,7 +143,12 @@ fun ProductDetailScreen(
             item { DeliverySection(freeShipping = product.freeShipping) }
 
             // ── Rating & Reviews (mock) ───────────────────────────────────
-            item { RatingSection(rating = product.rating, reviewCount = product.reviewCount) }
+            item { 
+                RatingSection(
+                    product = product, 
+                    navController = navController 
+                ) 
+            }
 
             // ── Most Popular ─────────────────────────────────────────────
             if (state.relatedProducts.isNotEmpty()) {
@@ -140,15 +165,12 @@ fun ProductDetailScreen(
             }
         }
 
-        // ── Bottom Action Bar cố định ───────────────────────────────────────────
+        // ── Bottom Bar cố định ───────────────────────────────────────────
         BottomActionBar(
             product         = product,
             selectedVariant = state.selectedVariant,
-            onAddToCart     = { viewModel.addToCart() },
-            onBuyNow        = {
-                viewModel.addToCart()
-                navController.navigate(Screen.Cart.route)
-            },
+            onAddToCart     = { showAddToCart = true },
+            onBuyNow        = { showBuyNow = true },
             modifier        = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -575,7 +597,9 @@ private fun DeliveryRow(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun RatingSection(rating: Float, reviewCount: Int) {
+private fun RatingSection(product: Product, navController: NavController) {
+    val rating = product.rating
+    val reviewCount = product.reviewCount
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -610,7 +634,7 @@ private fun RatingSection(rating: Float, reviewCount: Int) {
 
         // View all button
         OutlinedButton(
-            onClick = { },
+            onClick = { navController.navigate("reviews/${product.id}") },
             modifier = Modifier.fillMaxWidth(),
             shape  = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue),
@@ -626,7 +650,6 @@ private fun RatingSection(rating: Float, reviewCount: Int) {
 private fun StarRow(rating: Float) {
     Row {
         val full = rating.toInt()
-        val half = rating - full >= 0.5f
         repeat(5) { i ->
             Icon(
                 imageVector = if (i < full) Icons.Filled.Star else Icons.Outlined.StarOutline,
@@ -810,8 +833,8 @@ private fun BottomActionBar(
     ) {
         Row(
             modifier = Modifier
-                .navigationBarsPadding() 
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {

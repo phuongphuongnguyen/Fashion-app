@@ -107,6 +107,11 @@ fun ProfileScreen(
                     onCommentClick = {
                         selectedPostId = post.id
                         showComments = true
+                    },
+                    onHeaderClick = {
+                        if (post.authorId.isNotBlank()) {
+                            navController.navigate(Screen.Shop.createRoute(post.authorId))
+                        }
                     }
                 )
                 HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
