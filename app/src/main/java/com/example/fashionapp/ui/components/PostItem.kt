@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,11 +35,14 @@ import java.util.*
 fun FeedPostItem(
     post: Post,
     isLiked: Boolean,
+    isSaved: Boolean,
+    isVerified: Boolean = false,
     onLikeClick: () -> Unit,
+    onSaveClick: () -> Unit,
     onCommentClick: () -> Unit
 ) {
     Column {
-        PostHeader(avatarUrl = post.authorAvt, username = post.authorName)
+        PostHeader(avatarUrl = post.authorAvt, username = post.authorName, isVerified = isVerified)
 
         if (post.imageUrls.isNotEmpty()) {
             PostImagesRow(imageUrls = post.imageUrls)
@@ -50,7 +54,9 @@ fun FeedPostItem(
 
         ActionRow(
             isLiked = isLiked,
+            isSaved = isSaved,
             onLikeClick = onLikeClick,
+            onSaveClick = onSaveClick,
             onCommentClick = onCommentClick,
             imageCount = post.imageUrls.size
         )
@@ -75,7 +81,7 @@ fun FeedPostItem(
 }
 
 @Composable
-fun PostHeader(avatarUrl: String, username: String) {
+fun PostHeader(avatarUrl: String, username: String, isVerified: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -86,11 +92,16 @@ fun PostHeader(avatarUrl: String, username: String) {
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().clip(CircleShape),
                 contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_search)
+                error = painterResource(R.drawable.ic_profile)
             )
         }
         Spacer(Modifier.width(10.dp))
-        Text(text = username, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Text(text = username, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        if (isVerified) {
+            Spacer(Modifier.width(4.dp))
+            Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Color(0xFF0057FF), modifier = Modifier.size(14.dp))
+        }
+        Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = { }) {
             Icon(Icons.Default.MoreVert, contentDescription = null)
         }
@@ -146,7 +157,9 @@ fun ProductTagsRow(tags: List<ProductTag>) {
 @Composable
 fun ActionRow(
     isLiked: Boolean,
+    isSaved: Boolean,
     onLikeClick: () -> Unit,
+    onSaveClick: () -> Unit,
     onCommentClick: () -> Unit,
     imageCount: Int
 ) {
@@ -174,9 +187,8 @@ fun ActionRow(
                 }
             }
         }
-        var bookmarked by remember { mutableStateOf(false) }
-        IconButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = { bookmarked = !bookmarked }) {
-            Icon(painter = painterResource(if (bookmarked) R.drawable.ic_bookmark_full else R.drawable.ic_bookmark), contentDescription = null, modifier = Modifier.size(22.dp))
+        IconButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = onSaveClick) {
+            Icon(painter = painterResource(if (isSaved) R.drawable.ic_bookmark_full else R.drawable.ic_bookmark), contentDescription = null, modifier = Modifier.size(22.dp))
         }
     }
 }
@@ -211,6 +223,7 @@ fun formatLikeCount(count: Long): String {
 fun CommentBottomSheet(
     post: Post,
     sheetState: SheetState,
+    currentUserAvatarUrl: String = "",
     onDismiss: () -> Unit,
     onSendComment: (String) -> Unit
 ) {
@@ -232,7 +245,13 @@ fun CommentBottomSheet(
             HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
             Row(modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
-                    Icon(painter = painterResource(R.drawable.ic_profile), contentDescription = null, modifier = Modifier.fillMaxSize().padding(4.dp), tint = Color.Unspecified)
+                    AsyncImage(
+                        model = currentUserAvatarUrl.ifBlank { null },
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        error = painterResource(R.drawable.ic_profile)
+                    )
                 }
                 TextField(
                     value = commentText, onValueChange = { commentText = it },

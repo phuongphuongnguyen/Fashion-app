@@ -34,8 +34,6 @@ class SearchViewModel(
     private val initialCategoryId: String? = null,
 ) : ViewModel() {
 
-    private val repository = SearchRepository()
-
     private val _uiState = MutableStateFlow(
         SearchUiState(
             query              = initialQuery,
@@ -75,8 +73,8 @@ class SearchViewModel(
     private suspend fun performSearch(query: String, categoryId: String?) {
         _uiState.update { it.copy(isSearching = true) }
 
-        // search() dùng cache — chỉ gọi Firestore lần đầu
-        val results = repository.search(query, categoryId)
+        // search() dùng cache từ Singleton SearchRepository
+        val results = SearchRepository.search(query, categoryId)
         val sorted  = applySorting(results, _uiState.value.sortOption)
 
         _uiState.update {
@@ -113,7 +111,7 @@ class SearchViewModel(
     }
 
     fun refresh() {
-        repository.clearCache()
+        SearchRepository.clearCache()
         triggerSearch(_uiState.value.query, _uiState.value.selectedCategoryId)
     }
 
@@ -121,7 +119,7 @@ class SearchViewModel(
 
     private fun loadSubCategories() {
         viewModelScope.launch {
-            val subs = repository.getSubCategories()
+            val subs = SearchRepository.getSubCategories()
             _uiState.update { it.copy(subCategories = subs) }
         }
     }

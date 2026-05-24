@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.data.auth.AuthRepository
+import com.example.fashionapp.data.user.UserRepository
+import com.example.fashionapp.data.user.UserSession
 import kotlinx.coroutines.launch
 
 @Composable
@@ -36,6 +38,7 @@ fun LoginScreen(
     onForgotPasswordClick: () -> Unit,
     onLoginSuccess: () -> Unit
 ) {
+    val userRepository = remember { UserRepository() }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -118,10 +121,17 @@ fun LoginScreen(
                         email = email.trim(),
                         password = password
                     )
-                    isLoading = false
                     if (result.isSuccess) {
+                        val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                        val uid = auth.currentUser?.uid
+                        if (uid != null) {
+                            val user = userRepository.getUserProfile(uid)
+                            UserSession.updateCurrentUser(user)
+                        }
+                        isLoading = false
                         onLoginSuccess()
                     } else {
+                        isLoading = false
                         errorMessage = result.message
                     }
                 }

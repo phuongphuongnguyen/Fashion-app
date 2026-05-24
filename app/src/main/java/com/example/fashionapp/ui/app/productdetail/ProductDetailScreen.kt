@@ -38,6 +38,7 @@ import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
+import com.example.fashionapp.navigation.Screen
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue   = Color(0xFF3669C9)
@@ -139,10 +140,15 @@ fun ProductDetailScreen(
             }
         }
 
-        // ── Bottom Bar cố định ───────────────────────────────────────────
+        // ── Bottom Action Bar cố định ───────────────────────────────────────────
         BottomActionBar(
             product         = product,
             selectedVariant = state.selectedVariant,
+            onAddToCart     = { viewModel.addToCart() },
+            onBuyNow        = {
+                viewModel.addToCart()
+                navController.navigate(Screen.Cart.route)
+            },
             modifier        = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -793,6 +799,8 @@ private fun GridProductCard(product: Product, modifier: Modifier, onClick: () ->
 private fun BottomActionBar(
     product: Product,
     selectedVariant: ProductVariant?,
+    onAddToCart: () -> Unit,
+    onBuyNow: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -802,14 +810,14 @@ private fun BottomActionBar(
     ) {
         Row(
             modifier = Modifier
-                .navigationBarsPadding() // Tránh bị thanh điều hướng Android che
+                .navigationBarsPadding() 
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Add to cart
             OutlinedButton(
-                onClick  = { },
+                onClick  = onAddToCart,
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue),
@@ -820,7 +828,7 @@ private fun BottomActionBar(
 
             // Buy now
             Button(
-                onClick  = { },
+                onClick  = onBuyNow,
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)

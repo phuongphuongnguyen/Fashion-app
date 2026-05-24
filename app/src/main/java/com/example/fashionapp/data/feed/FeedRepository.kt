@@ -8,6 +8,7 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -16,16 +17,18 @@ class FeedRepository {
     private val storage = FirebaseStorage.getInstance()
     private val urlCache = mutableMapOf<String, String>()
 
+    // ── In-Memory Cache ──────────────────────────────────────────────────────
+    private var cachedPosts: List<Post> = emptyList()
+
     private suspend fun resolveUrl(storagePath: String): String {
         if (storagePath.isBlank()) return ""
+        if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) return storagePath
         urlCache[storagePath]?.let { return it }
         return try {
             val url = storage.reference.child(storagePath).downloadUrl.await().toString()
             urlCache[storagePath] = url
             url
-        } catch (_: Exception) {
-            storagePath // Trả về chính nó nếu là URL có sẵn
-        }
+        } catch (_: Exception) { storagePath }
     }
 
     fun getPostsFlow(): Flow<List<Post>> = callbackFlow {
@@ -34,7 +37,7 @@ class FeedRepository {
             .limit(20)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) {
-                    trySend(emptyList())
+                    trySend(cachedPosts) // Trả về cache nếu lỗi
                     return@addSnapshotListener
                 }
 
@@ -86,15 +89,16 @@ class FeedRepository {
                                 tags           = tags,
                                 createdAt      = createdAt,
                             )
-                        } catch (_: Exception) {
-                            null
-                        }
+                        } catch (_: Exception) { null }
                     }
+                    cachedPosts = posts // Cập nhật cache
                     trySend(posts)
                 }
             }
 
         awaitClose { listener.remove() }
+    }.onStart {
+        if (cachedPosts.isNotEmpty()) emit(cachedPosts) // Phát ngay dữ liệu cũ nếu có
     }
 
     suspend fun toggleLike(postId: String, currentCount: Long, isLiked: Boolean) {
@@ -102,4 +106,6 @@ class FeedRepository {
         db.collection("posts").document(postId)
             .update("likeCount", currentCount + delta)
     }
+
+    fun clearCache() { cachedPosts = emptyList() }
 }

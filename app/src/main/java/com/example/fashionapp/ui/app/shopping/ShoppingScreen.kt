@@ -72,6 +72,9 @@ fun ShoppingScreen(
                 scrollBehavior = scrollBehavior,
                 onSearchClick = {
                     navController.navigate(Screen.Search.createRoute())
+                },
+                onCartClick = {
+                    navController.navigate(Screen.Cart.route)
                 }
             )
         },
@@ -452,8 +455,7 @@ private fun ProductCardVertical(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text       = "₫${"%.0f".format(product.price).reversed()
-                    .chunked(3).joinToString(".").reversed()}",
+                text       = "₫${formatPrice(product.price)}",
                 fontWeight = FontWeight.Bold,
                 fontSize   = 14.sp,
                 color      = TextDark
@@ -549,8 +551,7 @@ private fun ProductCardGrid(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text       = "₫${"%.0f".format(product.price).reversed()
-                    .chunked(3).joinToString(".").reversed()}",
+                text       = "₫${formatPrice(product.price)}",
                 fontWeight = FontWeight.Bold,
                 fontSize   = 14.sp,
                 color      = TextDark
@@ -596,3 +597,6 @@ private fun SkeletonProductCardGrid(modifier: Modifier = Modifier) {
         Box(Modifier.fillMaxWidth(0.5f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFFE8E8E8)))
     }
 }
+
+private fun formatPrice(price: Double): String =
+    "%.0f".format(price).reversed().chunked(3).joinToString(".").reversed()

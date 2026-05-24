@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.example.fashionapp.data.shop.ShopRepository
+import com.example.fashionapp.data.CartItem
+import com.google.firebase.auth.FirebaseAuth
+
 data class ProductDetailUiState(
     val isLoading: Boolean = true,
     val product: Product? = null,
@@ -19,11 +23,12 @@ data class ProductDetailUiState(
     val selectedVariant: ProductVariant? = null,
     val selectedImageIndex: Int = 0,
     val isWishlisted: Boolean = false,
+    val isAddedToCart: Boolean = false,
     val error: String? = null,
 )
 
 class ProductDetailViewModel(private val productId: String) : ViewModel() {
-    private val repository = ProductRepository()
+    private val auth = FirebaseAuth.getInstance()
 
     private val _uiState = MutableStateFlow(ProductDetailUiState())
     val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
@@ -32,8 +37,9 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
 
     private fun loadAll() {
         viewModelScope.launch {
-            val productDeferred = async { repository.getProductById(productId) }
-            val relatedDeferred = async { repository.getMostPopular(excludeId = productId) }
+            // Lấy từ Singleton ProductRepository (có cache bên trong)
+            val productDeferred = async { ProductRepository.getProductById(productId) }
+            val relatedDeferred = async { ProductRepository.getMostPopular(excludeId = productId) }
 
             val product = productDeferred.await()
             val related = relatedDeferred.await()
@@ -60,6 +66,25 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
         _uiState.value = _uiState.value.copy(
             isWishlisted = !_uiState.value.isWishlisted
         )
+    }
+
+    fun addToCart(quantity: Int = 1) {
+        val product = _uiState.value.product ?: return
+        val variant = _uiState.value.selectedVariant
+        val userId = auth.currentUser?.uid ?: return
+
+        val cartItem = CartItem(
+            id = "${product.id}_${System.currentTimeMillis()}",
+            product = product,
+            color = variant?.color ?: "Default",
+            size = variant?.size ?: "Default",
+            quantity = quantity
+        )
+
+        viewModelScope.launch {
+            ShopRepository.addToCart(userId, cartItem)
+            _uiState.value = _uiState.value.copy(isAddedToCart = true)
+        }
     }
 }
 

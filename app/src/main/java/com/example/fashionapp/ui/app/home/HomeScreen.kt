@@ -8,15 +8,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
 import com.example.fashionapp.ui.components.HomeTopBar
@@ -25,9 +22,11 @@ import com.example.fashionapp.ui.components.HomeTopBar
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    savedViewModel: SavedViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val savedUiState by savedViewModel.uiState.collectAsState()
 
     var showComments by remember { mutableStateOf(false) }
     var selectedPostId by remember { mutableStateOf<String?>(null) }
@@ -40,10 +39,12 @@ fun HomeScreen(
         topBar = {
             HomeTopBar(
                 scrollBehavior = scrollBehavior,
-                onSearchClick = { 
+                onSearchClick = {
                     navController.navigate(Screen.Search.createRoute())
                 },
-                onMessClick = { }
+                onMessClick = {
+                    navController.navigate(Screen.Messages.route)
+                }
             )
         },
         containerColor = Color.White,
@@ -56,6 +57,7 @@ fun HomeScreen(
                 CommentBottomSheet(
                     post = post,
                     sheetState = sheetState,
+                    currentUserAvatarUrl = uiState.user?.avatarUrl.orEmpty(),
                     onDismiss = { showComments = false },
                     onSendComment = { text ->
                         viewModel.addComment(post.id, text)
@@ -66,13 +68,19 @@ fun HomeScreen(
 
         when {
             uiState.isLoading -> {
-                Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
 
             uiState.posts.isEmpty() -> {
-                Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text("Chưa có bài đăng nào", color = Color.Gray)
                 }
             }
@@ -86,7 +94,10 @@ fun HomeScreen(
                         FeedPostItem(
                             post = post,
                             isLiked = uiState.likedPosts[post.id] ?: false,
+                            isSaved = savedUiState.savedPostIds.contains(post.id),
+                            isVerified = post.authorName == "mina",
                             onLikeClick = { viewModel.toggleLike(post.id) },
+                            onSaveClick = { savedViewModel.toggleSave(post.id) },
                             onCommentClick = {
                                 selectedPostId = post.id
                                 showComments = true

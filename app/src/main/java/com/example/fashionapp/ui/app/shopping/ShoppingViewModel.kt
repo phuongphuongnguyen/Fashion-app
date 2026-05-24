@@ -2,7 +2,7 @@ package com.example.fashionapp.ui.app.shopping
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fashionapp.data.shop.ShopRepository
+import com.example.fashionapp.data.shopping.ShoppingRepository
 import com.example.fashionapp.model.Category
 import com.example.fashionapp.model.Product
 import kotlinx.coroutines.async
@@ -20,7 +20,6 @@ data class ShoppingUiState(
 )
 
 class ShoppingViewModel : ViewModel() {
-    private val repository = ShopRepository()
 
     private val _uiState = MutableStateFlow(ShoppingUiState())
     val uiState: StateFlow<ShoppingUiState> = _uiState.asStateFlow()
@@ -29,11 +28,10 @@ class ShoppingViewModel : ViewModel() {
 
     private fun loadAll() {
         viewModelScope.launch {
-            // Load song song
-            val catDeferred     = async { repository.getCategories() }
-            val newDeferred     = async { repository.getNewItems() }
-            val popularDeferred = async { repository.getMostPopular() }
-            val forYouDeferred  = async { repository.getForYou() }
+            val catDeferred     = async { ShoppingRepository.getCategories() }
+            val newDeferred     = async { ShoppingRepository.getNewItems() }
+            val popularDeferred = async { ShoppingRepository.getMostPopular() }
+            val forYouDeferred  = async { ShoppingRepository.getForYou() }
 
             _uiState.value = ShoppingUiState(
                 isLoading   = false,

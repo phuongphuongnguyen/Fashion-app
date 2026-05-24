@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -18,6 +19,47 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.R
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  GENERIC TOP BAR (dùng chung cho các màn hình có back + actions tùy chỉnh)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FashionTopBar(
+    title: String,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    onBackClick: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    TopAppBar(
+        title = {
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+        },
+        navigationIcon = {
+            if (onBackClick != null) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back"
+                    )
+                }
+            }
+        },
+        actions = {
+            Row(
+                modifier = Modifier.padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy((-4).dp)
+            ) {
+                actions()
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+        windowInsets = TopAppBarDefaults.windowInsets,
+        scrollBehavior = scrollBehavior
+    )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  HOME TOP BAR
@@ -50,7 +92,6 @@ fun HomeTopBar(
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-        // Sử dụng mặc định để tự động căn chỉnh dưới Status Bar
         windowInsets = TopAppBarDefaults.windowInsets,
         scrollBehavior = scrollBehavior
     )
@@ -143,26 +184,16 @@ fun SavedTopBar(
 @Composable
 fun ProfileTopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    onChatbotClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     TopAppBar(
         title = { Text("Profile", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
         actions = {
-            IconButton(onClick = onChatbotClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_chatbot),
-                    contentDescription = "Chatbot",
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.Black
-                )
-            }
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = Color.Black
-                )
+            Row(
+                modifier = Modifier.padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ActionIconButton(R.drawable.ic_setting, "Settings", onSettingsClick)
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
@@ -209,4 +240,11 @@ fun HomeTopBarPreview() {
 @Composable
 fun ShoppingTopBarPreview() {
     ShoppingTopBar()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun FashionTopBarPreview() {
+    FashionTopBar(title = "Detail", onBackClick = {})
 }

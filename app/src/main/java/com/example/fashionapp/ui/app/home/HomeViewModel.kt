@@ -3,18 +3,23 @@ package com.example.fashionapp.ui.app.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.feed.FeedRepository
+import com.example.fashionapp.data.user.UserRepository
+import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.model.Comment
 import com.example.fashionapp.model.Post
+import com.example.fashionapp.model.User
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 data class HomeUiState(
     val posts: List<Post> = emptyList(),
+    val user: User? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
     // Map postId -> isLiked (local optimistic state)
@@ -23,12 +28,24 @@ data class HomeUiState(
 
 class HomeViewModel : ViewModel() {
     private val repository = FeedRepository()
+    private val userRepository = UserRepository()
+    private val auth = FirebaseAuth.getInstance()
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
         loadPosts()
+        observeUserSession()
+        loadUserProfile()
+    }
+
+    private fun observeUserSession() {
+        viewModelScope.launch {
+            UserSession.currentUser.collect { user ->
+                _uiState.value = _uiState.value.copy(user = user)
+            }
+        }
     }
 
     private fun loadPosts() {
@@ -42,10 +59,34 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    private fun loadUserProfile() {
+        val userId = auth.currentUser?.uid ?: return
+        val email = auth.currentUser?.email ?: ""
+        
+        viewModelScope.launch {
+            // Thử lấy trực tiếp một lần trước (Request)
+            val user = userRepository.getUserProfile(userId)
+            if (user != null && user.name.isNotBlank()) {
+                _uiState.value = _uiState.value.copy(user = user)
+            } else if (email.isNotBlank()) {
+                // Nếu không có, khởi tạo luôn (Seed)
+                userRepository.seedUserProfile(userId, email)
+            }
+
+            // Sau đó lắng nghe thay đổi (Flow)
+            userRepository.getUserProfileFlow(userId).collect { updatedUser ->
+                if (updatedUser != null) {
+                    _uiState.value = _uiState.value.copy(user = updatedUser)
+                }
+            }
+        }
+    }
+
+
+
     fun toggleLike(postId: String) {
         val currentState = _uiState.value
         val currentLiked = currentState.likedPosts[postId] ?: false
-        val post = currentState.posts.find { it.id == postId } ?: return
 
         // 1. Cập nhật local liked state
         val newLikedPosts = currentState.likedPosts.toMutableMap().apply {
@@ -66,6 +107,7 @@ class HomeViewModel : ViewModel() {
         )
 
         viewModelScope.launch {
+            //val post = currentState.posts.find { it.id == postId } ?: return@launch
             //repository.toggleLike(postId, post.likeCount, currentLiked)
         }
     }
@@ -74,9 +116,12 @@ class HomeViewModel : ViewModel() {
         if (text.isBlank()) return
 
         val currentState = _uiState.value
+        val user = currentState.user
+        
         val newComment = Comment(
             id = UUID.randomUUID().toString(),
-            username = "You", 
+            username = user?.name ?: "You", 
+            avatarUrl = user?.avatarUrl ?: "",
             text = text,
             createdAt = Timestamp.now()
         )
