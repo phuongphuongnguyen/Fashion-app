@@ -1,7 +1,6 @@
 package com.example.fashionapp.ui.app.shopping
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,9 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,36 +27,36 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import com.example.fashionapp.ui.components.FashionTopBar
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.fashionapp.R
 import com.example.fashionapp.data.CartItem
 import com.example.fashionapp.navigation.Screen
-import com.example.fashionapp.ui.app.shopping.ShoppingViewModel
+import com.example.fashionapp.ui.components.FashionTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(
     navController: NavController,
-    viewModel: ShoppingViewModel = viewModel()
+    viewModel: ShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val items = uiState.cartItems
@@ -72,7 +68,7 @@ fun CartScreen(
                 title = "Shopping Cart",
                 onBackClick = { navController.popBackStack() },
                 actions = {
-                    TextButton(onClick = { /* TODO: Edit cart */ }) {
+                    TextButton(onClick = { /* Handle Edit */ }) {
                         Text("Edit", color = Color(0xFF0057FF), fontWeight = FontWeight.Medium)
                     }
                 }
@@ -90,7 +86,7 @@ fun CartScreen(
                 ) {
                     Column {
                         Text("Total", color = Color.Gray, fontSize = 12.sp)
-                        Text("$${"%.2f".format(total)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("₫${formatPrice(total)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                     Button(
                         onClick = {
@@ -100,7 +96,10 @@ fun CartScreen(
                         },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF)),
-                        modifier = Modifier.width(140.dp).height(48.dp)
+                        modifier = Modifier
+                            .width(140.dp)
+                            .height(48.dp),
+                        enabled = items.isNotEmpty()
                     ) {
                         Text("Checkout", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
@@ -109,53 +108,44 @@ fun CartScreen(
         },
         containerColor = Color.White
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                CartHistoryTabs(
-                    selected = "Cart",
-                    onCart = {},
-                    onHistory = {
-                        navController.navigate(Screen.History.route) {
-                            launchSingleTop = true
+        if (items.isEmpty() && !uiState.isLoadingCart) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Your cart is empty", color = Color.Gray)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    CartHistoryTabs(
+                        selected = "Cart",
+                        onCart = {},
+                        onHistory = {
+                            navController.navigate(Screen.History.route) {
+                                launchSingleTop = true
+                            }
                         }
-                    }
-                )
-            }
-            items(items, key = { it.id }) { item ->
-                CartItemRow(
-                    item = item,
-                    onUpdateQuantity = { newQty ->
-                        viewModel.updateCartQuantity(item.id, newQty)
-                    }
-                )
+                    )
+                }
+                items(items, key = { it.id }) { item ->
+                    CartItemRow(
+                        item = item,
+                        onUpdateQuantity = { newQty ->
+                            viewModel.updateCartQuantity(item.id, newQty)
+                        }
+                    )
+                }
             }
         }
-    }
-}
-
-
-
-@Composable
-private fun ShippingAddressCard() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFFF7F8FB))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text("Shipping Address", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            Text("Da Nang Bul, Fashion Store, Da Nang", color = Color.Gray, fontSize = 12.sp)
-        }
-        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color(0xFF0057FF), modifier = Modifier.size(20.dp))
     }
 }
 
@@ -176,47 +166,63 @@ private fun CartItemRow(item: CartItem, onUpdateQuantity: (Int) -> Unit) {
             colors = CheckboxDefaults.colors(checkedColor = Color(0xFF0057FF)),
             modifier = Modifier.size(34.dp)
         )
-        Box(modifier = Modifier.size(64.dp)) {
+        Box(modifier = Modifier.size(70.dp)) {
             AsyncImage(
-                model = item.product.imageUrl,
+                model = item.product.imageUrl.ifBlank { null },
                 contentDescription = item.product.name,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFEDEDED)),
-                contentScale = ContentScale.Crop
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFFF5F5F5)),
+                contentScale = ContentScale.Crop,
+                error = painterResource(R.drawable.ic_launcher_foreground)
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .clip(RoundedCornerShape(topEnd = 6.dp, bottomStart = 6.dp))
-                    .background(Color(0xFFE53935))
-                    .padding(4.dp)
-            ) {
-                Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
-            }
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(item.product.name, fontWeight = FontWeight.SemiBold, maxLines = 1, fontSize = 13.sp)
-            Spacer(Modifier.height(2.dp))
-            Text("Size ${item.size}", color = Color.Gray, fontSize = 12.sp)
-            Spacer(Modifier.height(4.dp))
+            Text(
+                item.product.name,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                fontSize = 14.sp,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                "${item.color} | ${item.size}",
+                color = Color.Gray,
+                fontSize = 12.sp
+            )
+            Spacer(Modifier.height(8.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("$${"%.2f".format(item.product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Text(
+                    "₫${formatPrice(item.product.price)}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color(0xFF1A1A1A),
+                    modifier = Modifier.weight(1f)
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .background(Color(0xFFF5F5F5))
-                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
-                    QuantityButton(onClick = { onUpdateQuantity(item.quantity - 1) }) { Icon(Icons.Default.Remove, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp)) }
-                    Text(item.quantity.toString(), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp))
-                    QuantityButton(onClick = { onUpdateQuantity(item.quantity + 1) }) { Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp)) }
+                    QuantityButton(onClick = { onUpdateQuantity(item.quantity - 1) }) {
+                        Icon(Icons.Default.Remove, null, modifier = Modifier.size(14.dp))
+                    }
+                    Text(
+                        item.quantity.toString(),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp)
+                    )
+                    QuantityButton(onClick = { onUpdateQuantity(item.quantity + 1) }) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp))
+                    }
                 }
             }
         }
@@ -227,7 +233,7 @@ private fun CartItemRow(item: CartItem, onUpdateQuantity: (Int) -> Unit) {
 private fun QuantityButton(onClick: () -> Unit, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
-            .size(28.dp)
+            .size(26.dp)
             .clip(CircleShape)
             .background(Color.White)
             .clickable { onClick() },
@@ -235,4 +241,8 @@ private fun QuantityButton(onClick: () -> Unit, content: @Composable () -> Unit)
     ) {
         content()
     }
+}
+
+private fun formatPrice(price: Double): String {
+    return "%.0f".format(price).reversed().chunked(3).joinToString(".").reversed()
 }

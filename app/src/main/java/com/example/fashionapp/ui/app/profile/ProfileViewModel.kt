@@ -4,11 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.model.Post
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.example.fashionapp.data.user.UserRepository
+import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.model.User
 
 data class ProfileUiState(
@@ -19,25 +20,28 @@ data class ProfileUiState(
 
 class ProfileViewModel : ViewModel() {
     private val feedRepository = FeedRepository()
-    private val userRepository = UserRepository()
+    private val auth = FirebaseAuth.getInstance()
     
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
         loadUserPosts()
+        observeUserSession()
     }
 
-    private fun currentUserId(): String = "u001"
-
-    private fun loadUserPosts() {
-        val userId = currentUserId()
-        
+    private fun observeUserSession() {
         viewModelScope.launch {
-            userRepository.getUserProfileFlow(userId).collect { user ->
-                _uiState.value = _uiState.value.copy(user = user)
+            UserSession.currentUser.collect { user ->
+                if (user != null) {
+                    _uiState.value = _uiState.value.copy(user = user)
+                }
             }
         }
+    }
+
+    private fun loadUserPosts() {
+        val userId = auth.currentUser?.uid ?: return
         
         viewModelScope.launch {
             feedRepository.getPostsFlow().collect { allPosts ->
@@ -49,5 +53,4 @@ class ProfileViewModel : ViewModel() {
             }
         }
     }
-
 }

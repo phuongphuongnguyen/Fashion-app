@@ -1,20 +1,18 @@
 package com.example.fashionapp.navigation
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -30,7 +28,9 @@ import com.example.fashionapp.data.auth.FirebaseAuthBackend
 import com.example.fashionapp.data.onboarding.OnboardingPreferences
 import com.google.firebase.auth.FirebaseAuth
 import com.example.fashionapp.ui.app.home.HomeScreen
+import com.example.fashionapp.ui.app.home.MessagesScreen
 import com.example.fashionapp.ui.app.saved.SavedScreen
+import com.example.fashionapp.ui.app.saved.PostDetailScreen
 import com.example.fashionapp.ui.app.profile.ProfileScreen
 import com.example.fashionapp.ui.app.shopping.CartScreen
 import com.example.fashionapp.ui.app.shopping.HistoryScreen
@@ -38,7 +38,6 @@ import com.example.fashionapp.ui.app.shopping.PaymentScreen
 import com.example.fashionapp.ui.app.shopping.ReviewDoneScreen
 import com.example.fashionapp.ui.app.shopping.ReviewScreen
 import com.example.fashionapp.ui.app.shopping.ShoppingScreen
-import com.example.fashionapp.ui.app.saved.PostDetailScreen
 import com.example.fashionapp.ui.auth.CreateAccountScreen
 import com.example.fashionapp.ui.auth.ForgotPasswordScreen
 import com.example.fashionapp.ui.auth.LoginScreen
@@ -48,6 +47,8 @@ import com.example.fashionapp.ui.auth.VerifyResetCodeScreen
 import com.example.fashionapp.ui.onboarding.FirstLoginOnboardingScreen
 import com.example.fashionapp.ui.app.settings.SettingsScreen
 import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
+import com.example.fashionapp.ui.app.search.SearchScreen
+import com.example.fashionapp.ui.app.productdetail.ProductDetailScreen
 
 @Composable
 fun AppNavigation(startDestination: String = Screen.Start.route) {
@@ -69,11 +70,9 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
         }
     }
 
-    // Lấy màn hình hiện tại
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Chỉ hiện bottom nav ở 4 tab chính
     val showBottomBar = currentDestination?.route in listOf(
         Screen.Home.route,
         Screen.Shop.route,
@@ -102,152 +101,204 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     }
                 )
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
-
-        NavHost(
-            navController = navController,
-            //startDestination = Screen.Start.route,
-            startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
-            composable(Screen.Start.route) {
-                StartScreen(
-                    onGetStarted = { navController.navigate(Screen.CreateAccount.route) },
-                    onLoginClick = { navController.navigate(Screen.Login.route) }
-                )
-            }
+            NavHost(
+                navController = navController,
+//                startDestination = startDestination,
+                startDestination = Screen.FirstLoginOnboarding.route,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // ── Auth ──────────────────────────────────────────────────
 
-            composable(Screen.CreateAccount.route) {
-                CreateAccountScreen(
-                    authRepository = authRepository,
-                    onBack = { navController.popBackStack() },
-                    onLoginClick = { navController.navigate(Screen.Login.route) },
-                    onRegisterSuccess = { navigateAfterAuthenticated() }
-                )
-            }
+                composable(Screen.Start.route) {
+                    StartScreen(
+                        onGetStarted = { navController.navigate(Screen.CreateAccount.route) },
+                        onLoginClick = { navController.navigate(Screen.Login.route) }
+                    )
+                }
 
-            composable(Screen.Login.route) {
-                LoginScreen(
-                    authRepository = authRepository,
-                    onBack = { navController.popBackStack() },
-                    onCreateAccountClick = { navController.navigate(Screen.CreateAccount.route) },
-                    onForgotPasswordClick = { navController.navigate(Screen.ForgotPassword.route) },
-                    onLoginSuccess = { navigateAfterAuthenticated() }
-                )
-            }
+                composable(Screen.CreateAccount.route) {
+                    CreateAccountScreen(
+                        authRepository = authRepository,
+                        onBack = { navController.popBackStack() },
+                        onLoginClick = { navController.navigate(Screen.Login.route) },
+                        onRegisterSuccess = { navigateAfterAuthenticated() }
+                    )
+                }
 
-            composable(Screen.ForgotPassword.route) {
-                ForgotPasswordScreen(
-                    authRepository = authRepository,
-                    onBack = { navController.popBackStack() },
-                    onCodeSent = { email ->
-                        navController.navigate(Screen.VerifyResetCode.createRoute(email))
-                    }
-                )
-            }
+                composable(Screen.Login.route) {
+                    LoginScreen(
+                        authRepository = authRepository,
+                        onBack = { navController.popBackStack() },
+                        onCreateAccountClick = { navController.navigate(Screen.CreateAccount.route) },
+                        onForgotPasswordClick = { navController.navigate(Screen.ForgotPassword.route) },
+                        onLoginSuccess = { navigateAfterAuthenticated() }
+                    )
+                }
 
-            composable(
-                route = Screen.VerifyResetCode.route,
-                arguments = listOf(navArgument("email") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val email = backStackEntry.arguments?.getString("email").orEmpty()
-                VerifyResetCodeScreen(
-                    authRepository = authRepository,
-                    email = email,
-                    onBack = { navController.popBackStack() },
-                    onOtpVerified = { code ->
-                        navController.navigate(Screen.ResetPassword.createRoute(email, code))
-                    }
-                )
-            }
-
-            composable(
-                route = Screen.ResetPassword.route,
-                arguments = listOf(
-                    navArgument("email") { type = NavType.StringType },
-                    navArgument("code") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val email = backStackEntry.arguments?.getString("email").orEmpty()
-                val code = backStackEntry.arguments?.getString("code").orEmpty()
-                ResetPasswordScreen(
-                    authRepository = authRepository,
-                    email = email,
-                    verifiedCode = code,
-                    onBack = { navController.popBackStack() },
-                    onPasswordResetSuccess = {
-                        navController.navigate(Screen.Login.route) {
-                            popUpTo(Screen.Login.route) { inclusive = true }
+                composable(Screen.ForgotPassword.route) {
+                    ForgotPasswordScreen(
+                        authRepository = authRepository,
+                        onBack = { navController.popBackStack() },
+                        onCodeSent = { email ->
+                            navController.navigate(Screen.VerifyResetCode.createRoute(email))
                         }
-                    }
-                )
-            }
+                    )
+                }
 
-            composable(Screen.FirstLoginOnboarding.route) {
-                FirstLoginOnboardingScreen(
-                    onComplete = {
-                        val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-                        onboardingPreferences.markOnboardingCompleted(uid)
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.FirstLoginOnboarding.route) { inclusive = true }
+                composable(
+                    route = Screen.VerifyResetCode.route,
+                    arguments = listOf(navArgument("email") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val email = backStackEntry.arguments?.getString("email").orEmpty()
+                    VerifyResetCodeScreen(
+                        authRepository = authRepository,
+                        email = email,
+                        onBack = { navController.popBackStack() },
+                        onOtpVerified = { code ->
+                            navController.navigate(Screen.ResetPassword.createRoute(email, code))
                         }
-                    }
-                )
-            }
+                    )
+                }
 
-            // 4 màn hình chính
-            composable(Screen.Home.route) {
-                HomeScreen(navController = navController)
-            }
-            composable(Screen.Shop.route) {
-                ShoppingScreen(navController = navController)
-            }
-            composable(Screen.Saved.route) {
-                SavedScreen(navController = navController)
-            }
-            composable(Screen.Profile.route) {
-                ProfileScreen(navController = navController)
-            }
-            composable(Screen.Settings.route) {
-                SettingsScreen(navController = navController)
-            }
-            composable(Screen.Chatbot.route) {
-                ChatbotScreen(navController = navController)
-            }
+                composable(
+                    route = Screen.ResetPassword.route,
+                    arguments = listOf(
+                        navArgument("email") { type = NavType.StringType },
+                        navArgument("code") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val email = backStackEntry.arguments?.getString("email").orEmpty()
+                    val code = backStackEntry.arguments?.getString("code").orEmpty()
+                    ResetPasswordScreen(
+                        authRepository = authRepository,
+                        email = email,
+                        verifiedCode = code,
+                        onBack = { navController.popBackStack() },
+                        onPasswordResetSuccess = {
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
 
-            composable(Screen.Cart.route) {
-                CartScreen(navController = navController)
-            }
-            composable(Screen.Payment.route) {
-                PaymentScreen(navController = navController)
-            }
-            composable(Screen.History.route) {
-                HistoryScreen(navController = navController)
-            }
-            composable(
-                route = Screen.Review.route,
-                arguments = listOf(navArgument("orderId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
-                ReviewScreen(navController = navController, orderId = orderId)
-            }
-            composable(Screen.ReviewDone.route) {
-                ReviewDoneScreen(navController = navController)
-            }
+                // ── Onboarding ────────────────────────────────────────────
 
-            composable(
-                route = Screen.PostDetail.route,
-                arguments = listOf(navArgument("postId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val postId = backStackEntry.arguments?.getString("postId").orEmpty()
-                PostDetailScreen(navController = navController, postId = postId)
+                composable(Screen.FirstLoginOnboarding.route) {
+                    FirstLoginOnboardingScreen(
+                        onComplete = {
+                            val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+                            onboardingPreferences.markOnboardingCompleted(uid)
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.FirstLoginOnboarding.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+
+                // ── Main tabs ─────────────────────────────────────────────
+
+                composable(Screen.Home.route) {
+                    HomeScreen(navController = navController)
+                }
+                composable(
+                    route = Screen.Shop.route,
+                    arguments = listOf(navArgument("shopId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val shopId = backStackEntry.arguments?.getString("shopId").orEmpty()
+                    ShoppingScreen(navController = navController, shopId = shopId)
+                }
+                composable(Screen.Saved.route) {
+                    SavedScreen(navController = navController)
+                }
+                composable(Screen.Profile.route) {
+                    ProfileScreen(navController = navController)
+                }
+
+                // ── App screens ───────────────────────────────────────────
+
+                composable(Screen.Settings.route) {
+                    SettingsScreen(navController = navController)
+                }
+                composable(Screen.Chatbot.route) {
+                    ChatbotScreen(navController = navController)
+                }
+                composable(Screen.Messages.route) {
+                    MessagesScreen(navController = navController)
+                }
+
+                composable(
+                    route = Screen.Search.route,
+                    arguments = listOf(
+                        navArgument("query") { defaultValue = ""; type = NavType.StringType },
+                        navArgument("categoryId") { nullable = true; defaultValue = null; type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val query = backStackEntry.arguments?.getString("query").orEmpty()
+                    val catId = backStackEntry.arguments?.getString("categoryId")
+                    SearchScreen(
+                        navController = navController,
+                        initialQuery = query,
+                        initialCategoryId = catId
+                    )
+                }
+
+                composable(
+                    route = Screen.ProductDetail.route,
+                    arguments = listOf(navArgument("productId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val productId = backStackEntry.arguments?.getString("productId").orEmpty()
+                    ProductDetailScreen(
+                        productId = productId,
+                        navController = navController
+                    )
+                }
+
+                // ── Shopping flow ─────────────────────────────────────────
+
+                composable(Screen.Cart.route) {
+                    CartScreen(navController = navController)
+                }
+                composable(Screen.Payment.route) {
+                    PaymentScreen(navController = navController)
+                }
+                composable(Screen.History.route) {
+                    HistoryScreen(navController = navController)
+                }
+                composable(
+                    route = Screen.Review.route,
+                    arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
+                    ReviewScreen(navController = navController, orderId = orderId)
+                }
+                composable(Screen.ReviewDone.route) {
+                    ReviewDoneScreen(navController = navController)
+                }
+
+                // ── Saved / Social ────────────────────────────────────────
+
+                composable(
+                    route = Screen.PostDetail.route,
+                    arguments = listOf(navArgument("postId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val postId = backStackEntry.arguments?.getString("postId").orEmpty()
+                    PostDetailScreen(navController = navController, postId = postId)
+                }
             }
         }
     }
 }
 
-// ── Bottom Bar ────────────────────────────────────────────
+// ── Bottom Bar ────────────────────────────────────────────────────────────────
 
 @Composable
 fun AppBottomBar(
@@ -260,14 +311,13 @@ fun AppBottomBar(
     ) {
         Row(
             modifier = Modifier
-                .navigationBarsPadding() // Thêm khoảng đệm để tránh bị thanh điều hướng Android che
+                .navigationBarsPadding()
                 .fillMaxWidth()
                 .height(64.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
             bottomNavItems.forEach { item ->
-
                 val currentRoute = currentDestination?.route
                 val isSelected = when (item.screen) {
                     Screen.Shop -> currentRoute in listOf(
@@ -291,7 +341,7 @@ fun AppBottomBar(
     }
 }
 
-// ── Từng tab ──────────────────────────────────────────────
+// ── Bottom Nav Item ───────────────────────────────────────────────────────────
 
 @Composable
 fun BottomNavItemView(
@@ -308,26 +358,19 @@ fun BottomNavItemView(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        // Icon đổi màu theo trạng thái
         Icon(
             painter = painterResource(id = item.iconRes),
             contentDescription = item.label,
-            tint = if (isSelected) Color.Black else Color(0xFF0057FF),
+            tint = if (isSelected) Color.Black else Color.Unspecified,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
-
-        // Gạch dưới khi active
         Box(
             modifier = Modifier
                 .width(20.dp)
                 .height(3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(
-                    if (isSelected) Color.Black
-                    else Color.Transparent
-                )
+                .background(if (isSelected) Color.Black else Color.Transparent)
         )
     }
 }

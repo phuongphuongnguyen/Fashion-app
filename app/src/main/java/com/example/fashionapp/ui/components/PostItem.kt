@@ -1,6 +1,7 @@
 package com.example.fashionapp.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -16,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -26,8 +26,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import coil.request.CachePolicy
-import coil.request.ImageRequest
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.ProductTag
@@ -42,10 +40,16 @@ fun FeedPostItem(
     isVerified: Boolean = false,
     onLikeClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onCommentClick: () -> Unit
+    onCommentClick: () -> Unit,
+    onHeaderClick: () -> Unit = {}
 ) {
     Column {
-        PostHeader(avatarUrl = post.authorAvt, username = post.authorName, isVerified = isVerified)
+        PostHeader(
+            avatarUrl = post.authorAvt,
+            username = post.authorName,
+            isVerified = isVerified,
+            onHeaderClick = onHeaderClick
+        )
 
         if (post.imageUrls.isNotEmpty()) {
             PostImagesRow(imageUrls = post.imageUrls)
@@ -84,16 +88,22 @@ fun FeedPostItem(
 }
 
 @Composable
-fun PostHeader(avatarUrl: String, username: String, isVerified: Boolean = false) {
-    val avatarRequest = rememberAvatarRequest(avatarUrl)
-
+fun PostHeader(
+    avatarUrl: String,
+    username: String,
+    isVerified: Boolean = false,
+    onHeaderClick: () -> Unit = {}
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onHeaderClick() }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFFEEEEEE)).padding(2.dp)) {
             AsyncImage(
-                model = avatarRequest,
+                model = avatarUrl.ifBlank { null },
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().clip(CircleShape),
                 contentScale = ContentScale.Crop,
@@ -228,6 +238,7 @@ fun formatLikeCount(count: Long): String {
 fun CommentBottomSheet(
     post: Post,
     sheetState: SheetState,
+    currentUserAvatarUrl: String = "",
     onDismiss: () -> Unit,
     onSendComment: (String) -> Unit
 ) {
@@ -249,7 +260,13 @@ fun CommentBottomSheet(
             HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
             Row(modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
-                    Icon(painter = painterResource(R.drawable.ic_profile), contentDescription = null, modifier = Modifier.fillMaxSize().padding(4.dp), tint = Color.Unspecified)
+                    AsyncImage(
+                        model = currentUserAvatarUrl.ifBlank { null },
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        error = painterResource(R.drawable.ic_profile)
+                    )
                 }
                 TextField(
                     value = commentText, onValueChange = { commentText = it },
@@ -268,11 +285,9 @@ fun CommentBottomSheet(
 
 @Composable
 fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Boolean = false) {
-    val avatarRequest = rememberAvatarRequest(avatarUrl)
-
     Row(verticalAlignment = Alignment.Top) {
         Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
-            AsyncImage(model = avatarRequest, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop, error = painterResource(R.drawable.ic_profile))
+            AsyncImage(model = avatarUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop, error = painterResource(R.drawable.ic_profile))
         }
         Spacer(Modifier.width(12.dp))
         Column {
@@ -280,25 +295,4 @@ fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Bo
             if (!isCaption) { Text(text = "Reply", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp)) }
         }
     }
-}
-
-@Composable
-private fun rememberAvatarRequest(avatarUrl: String): ImageRequest {
-    val context = LocalContext.current
-    val avatarModel = remember(avatarUrl) {
-        avatarUrl.takeIf { it.isNotBlank() }?.withAvatarCacheBust()
-    }
-    return remember(context, avatarModel) {
-        ImageRequest.Builder(context)
-            .data(avatarModel)
-            .memoryCachePolicy(CachePolicy.DISABLED)
-            .diskCachePolicy(CachePolicy.DISABLED)
-            .networkCachePolicy(CachePolicy.DISABLED)
-            .build()
-    }
-}
-
-private fun String.withAvatarCacheBust(): String {
-    val separator = if (contains("?")) "&" else "?"
-    return "$this${separator}avatarBust=${System.currentTimeMillis()}"
 }

@@ -2,40 +2,20 @@ package com.example.fashionapp.ui.app.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircleOutline
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,17 +23,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import coil.request.CachePolicy
-import coil.request.ImageRequest
 import com.example.fashionapp.R
-import com.example.fashionapp.model.Post
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.home.HomeViewModel
-import com.example.fashionapp.ui.app.profile.ProfileViewModel
 import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
-import com.example.fashionapp.ui.components.FashionTopBar
+import com.example.fashionapp.ui.components.ProfileTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,38 +43,32 @@ fun ProfileScreen(
     val homeState by homeViewModel.uiState.collectAsState()
     val savedUiState by savedViewModel.uiState.collectAsState()
     val profilePosts = uiState.posts
-    var selectedTab by remember { mutableStateOf("Posts") }
+
     var selectedPostId by remember { mutableStateOf<String?>(null) }
     var showComments by remember { mutableStateOf(false) }
     var localLikedPosts by remember { mutableStateOf(setOf<String>()) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            FashionTopBar(
-                title = "",
-                actions = {
-                    IconButton(
-                        onClick = {
-                            navController.navigate(Screen.Settings.route)
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings",
-                            tint = Color(0xFF0057FF)
-                        )
-                    }
-                }
+            ProfileTopBar(
+                scrollBehavior = scrollBehavior,
+                onSettingsClick = { navController.navigate(Screen.Settings.route) }
             )
         },
-        containerColor = Color.White
+        containerColor = Color.White,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
+
         if (showComments && selectedPostId != null) {
             profilePosts.find { it.id == selectedPostId }?.let { post ->
                 CommentBottomSheet(
                     post = post,
                     sheetState = sheetState,
+                    currentUserAvatarUrl = uiState.user?.avatarUrl.orEmpty(),
                     onDismiss = { showComments = false },
                     onSendComment = { text -> homeViewModel.addComment(post.id, text) }
                 )
@@ -114,9 +84,7 @@ fun ProfileScreen(
             item {
                 ProfileHeader(
                     user = uiState.user,
-                    postsCount = profilePosts.size,
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it }
+                    postsCount = profilePosts.size
                 )
             }
 
@@ -125,6 +93,7 @@ fun ProfileScreen(
                     post = post,
                     isLiked = (homeState.likedPosts[post.id] ?: false) || localLikedPosts.contains(post.id),
                     isSaved = savedUiState.savedPostIds.contains(post.id),
+                    isVerified = post.authorName == "mina",
                     onLikeClick = {
                         if (homeState.posts.any { it.id == post.id }) {
                             homeViewModel.toggleLike(post.id)
@@ -138,6 +107,11 @@ fun ProfileScreen(
                     onCommentClick = {
                         selectedPostId = post.id
                         showComments = true
+                    },
+                    onHeaderClick = {
+                        if (post.authorId.isNotBlank()) {
+                            navController.navigate(Screen.Shop.createRoute(post.authorId))
+                        }
                     }
                 )
                 HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
@@ -146,35 +120,23 @@ fun ProfileScreen(
     }
 }
 
+// ── Profile Header ────────────────────────────────────────────────────────────
+
 @Composable
 private fun ProfileHeader(
     user: com.example.fashionapp.model.User?,
-    postsCount: Int,
-    selectedTab: String,
-    onTabSelected: (String) -> Unit
+    postsCount: Int
 ) {
-    val username = user?.username?.takeIf { it.isNotBlank() } ?: "User"
+    val name = user?.name?.takeIf { it.isNotBlank() } ?: "User"
     val avatar = user?.avatarUrl.orEmpty()
-    val context = LocalContext.current
-    val avatarModel = remember(avatar) {
-        avatar.takeIf { it.isNotBlank() }?.withCacheBust()
-    }
-    val avatarRequest = remember(avatarModel, context) {
-        ImageRequest.Builder(context)
-            .data(avatarModel)
-            .memoryCachePolicy(CachePolicy.DISABLED)
-            .diskCachePolicy(CachePolicy.DISABLED)
-            .networkCachePolicy(CachePolicy.DISABLED)
-            .build()
-    }
     val followers = user?.followersCount ?: 0
     val following = user?.followingCount ?: 0
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
-                model = avatarRequest,
-                contentDescription = username,
+                model = avatar.ifBlank { null },
+                contentDescription = name,
                 modifier = Modifier
                     .size(72.dp)
                     .clip(CircleShape)
@@ -185,14 +147,14 @@ private fun ProfileHeader(
                 contentScale = ContentScale.Crop,
                 error = painterResource(R.drawable.ic_profile)
             )
-            Spacer(Modifier.weight(2f))
+            Spacer(Modifier.weight(1f))
             ProfileMetric(postsCount.toString(), "Posts")
             ProfileMetric(followers.toString(), "Followers")
             ProfileMetric(following.toString(), "Following")
         }
 
         Spacer(Modifier.height(10.dp))
-        Text(username, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        Text(name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         Spacer(Modifier.height(16.dp))
 
         Row(
@@ -200,9 +162,7 @@ private fun ProfileHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "Posts",
                     color = Color.Black,
@@ -217,7 +177,6 @@ private fun ProfileHeader(
                         .background(Color.Black)
                 )
             }
-
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(
                     imageVector = Icons.Outlined.AddCircleOutline,
@@ -230,10 +189,7 @@ private fun ProfileHeader(
     }
 }
 
-private fun String.withCacheBust(): String {
-    val separator = if (contains("?")) "&" else "?"
-    return "$this${separator}profileAvatarBust=${System.currentTimeMillis()}"
-}
+// ── Profile Metric ────────────────────────────────────────────────────────────
 
 @Composable
 private fun ProfileMetric(value: String, label: String) {

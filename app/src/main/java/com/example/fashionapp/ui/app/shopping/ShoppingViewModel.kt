@@ -2,131 +2,44 @@ package com.example.fashionapp.ui.app.shopping
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fashionapp.data.CartItem
-import com.example.fashionapp.data.ReviewOrder
-import com.example.fashionapp.data.ShopProfile
-import com.example.fashionapp.data.shopping.ShoppingRepository
+import com.example.fashionapp.data.shop.ShopRepository
+import com.example.fashionapp.model.Category
 import com.example.fashionapp.model.Product
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 data class ShoppingUiState(
-    val shop: ShopProfile? = null,
-    val products: List<Product> = emptyList(),
-    val cartItems: List<CartItem> = emptyList(),
-    val orders: List<ReviewOrder> = emptyList(),
-    val isLoadingProducts: Boolean = true,
-    val isLoadingCart: Boolean = true,
-    val isLoadingOrders: Boolean = true
+    val isLoading: Boolean = true,
+    val categories: List<Category> = emptyList(),
+    val newItems: List<Product> = emptyList(),
+    val mostPopular: List<Product> = emptyList(),
+    val forYou: List<Product> = emptyList(),
 )
 
 class ShoppingViewModel : ViewModel() {
-    private val repository = ShoppingRepository()
-    private val viewedShopId = "shop001"
-    
+
     private val _uiState = MutableStateFlow(ShoppingUiState())
     val uiState: StateFlow<ShoppingUiState> = _uiState.asStateFlow()
 
-    init {
-        loadShop()
-        loadProducts()
-        loadCartItems()
-        loadOrders()
-    }
+    init { loadAll() }
 
-    private fun currentUserId(): String = "u001"
-
-    private fun loadShop() {
+    private fun loadAll() {
         viewModelScope.launch {
-            repository.getShopProfileFlow(viewedShopId).collect { shop ->
-                _uiState.value = _uiState.value.copy(shop = shop)
-            }
-        }
-    }
+            val catDeferred     = async { ShopRepository.getCategories() }
+            val newDeferred     = async { ShopRepository.getNewItems() }
+            val popularDeferred = async { ShopRepository.getMostPopular() }
+            val forYouDeferred  = async { ShopRepository.getForYou() }
 
-    private fun loadProducts() {
-        viewModelScope.launch {
-            repository.getProductsFlow().collect { products ->
-                _uiState.value = _uiState.value.copy(
-                    products = products,
-                    isLoadingProducts = false
-                )
-            }
-        }
-    }
-
-
-
-    private fun loadCartItems() {
-        val userId = currentUserId()
-        viewModelScope.launch {
-            repository.getCartItemsFlow(userId).collect { items ->
-                _uiState.value = _uiState.value.copy(
-                    cartItems = items,
-                    isLoadingCart = false
-                )
-            }
-        }
-    }
-
-    private fun loadOrders() {
-        val userId = currentUserId()
-        viewModelScope.launch {
-            repository.getOrdersFlow(userId).collect { orders ->
-                _uiState.value = _uiState.value.copy(
-                    orders = orders,
-                    isLoadingOrders = false
-                )
-            }
-        }
-    }
-
-    fun addToCart(product: Product, color: String, size: String, quantity: Int = 1) {
-        val userId = currentUserId()
-        val cartItem = CartItem(
-            id = "${product.id}_${System.currentTimeMillis()}", // Generate a simple ID
-            product = product,
-            color = color,
-            size = size,
-            quantity = quantity
-        )
-        viewModelScope.launch {
-            repository.addToCart(userId, cartItem)
-        }
-    }
-
-    fun updateCartQuantity(cartItemId: String, newQuantity: Int) {
-        val userId = currentUserId()
-        viewModelScope.launch {
-            repository.updateCartItemQuantity(userId, cartItemId, newQuantity)
-        }
-    }
-
-    fun placeOrderFromCart() {
-        val userId = currentUserId()
-        val items = _uiState.value.cartItems
-        if (items.isEmpty()) return
-        
-        val dateFormat = SimpleDateFormat("MMMM yyyy", Locale.US)
-        val currentDate = dateFormat.format(Date())
-
-        val orders = items.map {
-            ReviewOrder(
-                id = "order_${System.currentTimeMillis()}_${it.id}",
-                product = it.product,
-                status = "Paid",
-                orderDate = currentDate
+            _uiState.value = ShoppingUiState(
+                isLoading   = false,
+                categories  = catDeferred.await(),
+                newItems    = newDeferred.await(),
+                mostPopular = popularDeferred.await(),
+                forYou      = forYouDeferred.await(),
             )
-        }
-        
-        viewModelScope.launch {
-            repository.placeOrder(userId, orders)
-            repository.clearCart(userId, items)
         }
     }
 }

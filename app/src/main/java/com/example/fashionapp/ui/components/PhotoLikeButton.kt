@@ -66,7 +66,7 @@ fun DoubleTapPhotoLikeAnimation(
             }
     ) {
         Icon(
-            painter = painterResource(id = R.drawable.ic_filled_favorite),
+            painter = painterResource(id = R.drawable.ic_like_full),
             contentDescription = "Like",
             tint = Color.White,
             modifier = Modifier

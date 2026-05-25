@@ -2,32 +2,20 @@ package com.example.fashionapp.data.feed
 
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.ProductTag
+import com.example.fashionapp.data.StorageUrlResolver
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class FeedRepository {
-    private val db      = FirebaseFirestore.getInstance()
-    private val storage = FirebaseStorage.getInstance()
-    private val urlCache = mutableMapOf<String, String>()
+    private val db = FirebaseFirestore.getInstance()
 
-    private suspend fun resolveUrl(storagePath: String): String {
-        if (storagePath.isBlank()) return ""
-        if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) return storagePath
-        urlCache[storagePath]?.let { return it }
-        return try {
-            val url = storage.reference.child(storagePath).downloadUrl.await().toString()
-            urlCache[storagePath] = url
-            url
-        } catch (_: Exception) {
-            storagePath // Trả về chính nó nếu là URL có sẵn
-        }
-    }
+    // ── In-Memory Cache ──────────────────────────────────────────────────────
+    private var cachedPosts: List<Post> = emptyList()
 
     fun getPostsFlow(): Flow<List<Post>> = callbackFlow {
         val listener = db.collection("posts")
@@ -35,7 +23,7 @@ class FeedRepository {
             .limit(20)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) {
-                    trySend(emptyList())
+                    trySend(cachedPosts)
                     return@addSnapshotListener
                 }
 
@@ -59,15 +47,15 @@ class FeedRepository {
                             val rawTags = (doc.get("taggedProducts") as? List<*>) ?: emptyList<Any>()
 
                             val authorName = doc.getString("authorName").orEmpty()
-                            val authorAvt  = resolveUrl(doc.getString("authorAvt").orEmpty())
+                            val authorAvt  = StorageUrlResolver.resolve(doc.getString("authorAvt").orEmpty())
 
-                            val imageUrls = imagePaths.map { resolveUrl(it) }
+                            val imageUrls = imagePaths.map { StorageUrlResolver.resolve(it) }
 
                             val productTags = rawTags.mapNotNull { item ->
                                 (item as? Map<*, *>)?.let { map ->
                                     ProductTag(
                                         productId    = map["productId"]    as? String ?: "",
-                                        thumbnailUrl = resolveUrl(map["thumbnailRef"] as? String ?: ""),
+                                        thumbnailUrl = StorageUrlResolver.resolve(map["thumbnailRef"] as? String ?: ""),
                                         label        = map["label"]        as? String ?: "",
                                     )
                                 }
@@ -87,15 +75,16 @@ class FeedRepository {
                                 tags           = tags,
                                 createdAt      = createdAt,
                             )
-                        } catch (_: Exception) {
-                            null
-                        }
+                        } catch (_: Exception) { null }
                     }
+                    cachedPosts = posts
                     trySend(posts)
                 }
             }
 
         awaitClose { listener.remove() }
+    }.onStart {
+        if (cachedPosts.isNotEmpty()) emit(cachedPosts)
     }
 
     suspend fun toggleLike(postId: String, currentCount: Long, isLiked: Boolean) {
@@ -103,4 +92,6 @@ class FeedRepository {
         db.collection("posts").document(postId)
             .update("likeCount", currentCount + delta)
     }
+
+    fun clearCache() { cachedPosts = emptyList() }
 }

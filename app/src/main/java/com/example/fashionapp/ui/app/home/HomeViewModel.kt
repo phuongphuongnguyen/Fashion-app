@@ -3,8 +3,10 @@ package com.example.fashionapp.ui.app.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.feed.FeedRepository
+import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.model.Comment
 import com.example.fashionapp.model.Post
+import com.example.fashionapp.model.User
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +16,7 @@ import java.util.UUID
 
 data class HomeUiState(
     val posts: List<Post> = emptyList(),
+    val user: User? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
     // Map postId -> isLiked (local optimistic state)
@@ -28,6 +31,15 @@ class HomeViewModel : ViewModel() {
 
     init {
         loadPosts()
+        observeUserSession()
+    }
+
+    private fun observeUserSession() {
+        viewModelScope.launch {
+            UserSession.currentUser.collect { user ->
+                _uiState.value = _uiState.value.copy(user = user)
+            }
+        }
     }
 
     private fun loadPosts() {
@@ -41,12 +53,9 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-
-
     fun toggleLike(postId: String) {
         val currentState = _uiState.value
         val currentLiked = currentState.likedPosts[postId] ?: false
-        val post = currentState.posts.find { it.id == postId } ?: return
 
         // 1. Cập nhật local liked state
         val newLikedPosts = currentState.likedPosts.toMutableMap().apply {
@@ -67,6 +76,7 @@ class HomeViewModel : ViewModel() {
         )
 
         viewModelScope.launch {
+            //val post = currentState.posts.find { it.id == postId } ?: return@launch
             //repository.toggleLike(postId, post.likeCount, currentLiked)
         }
     }
@@ -75,9 +85,12 @@ class HomeViewModel : ViewModel() {
         if (text.isBlank()) return
 
         val currentState = _uiState.value
+        val user = currentState.user
+        
         val newComment = Comment(
             id = UUID.randomUUID().toString(),
-            username = "You",
+            username = user?.name ?: "You", 
+            avatarUrl = user?.avatarUrl ?: "",
             text = text,
             createdAt = Timestamp.now()
         )

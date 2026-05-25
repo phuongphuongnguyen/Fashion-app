@@ -10,7 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 
 // ── Supported Languages ──
-enum class AppLanguage(val code: String, val username: String, val nativeName: String, val flag: String) {
+enum class AppLanguage(val code: String, val displayName: String, val nativeName: String, val flag: String) {
     ENGLISH("en", "English", "English", "🇬🇧"),
     VIETNAMESE("vi", "Vietnamese", "Tiếng Việt", "🇻🇳"),
     FRENCH("fr", "French", "Français", "🇫🇷"),
@@ -20,7 +20,7 @@ enum class AppLanguage(val code: String, val username: String, val nativeName: S
 }
 
 // ── Supported Currencies ──
-enum class AppCurrency(val code: String, val symbol: String, val username: String) {
+enum class AppCurrency(val code: String, val symbol: String, val displayName: String) {
     USD("USD", "$", "US Dollar"),
     VND("VND", "₫", "Vietnamese Dong"),
     EUR("EUR", "€", "Euro"),
@@ -120,7 +120,23 @@ class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
     }
 
     // Translate helper
-    fun t(en: String, vi: String): String = if (language == AppLanguage.VIETNAMESE) vi else en
+    fun t(
+        en: String,
+        vi: String = en,
+        fr: String = en,
+        ja: String = en,
+        ko: String = en,
+        zh: String = en
+    ): String {
+        return when (language) {
+            AppLanguage.VIETNAMESE -> vi
+            AppLanguage.FRENCH -> fr
+            AppLanguage.JAPANESE -> ja
+            AppLanguage.KOREAN -> ko
+            AppLanguage.CHINESE -> zh
+            else -> en
+        }
+    }
 }
 
 class AppSettingsViewModelFactory(private val context: Context) : ViewModelProvider.Factory {

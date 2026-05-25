@@ -53,6 +53,7 @@ fun PostDetailScreen(
             CommentBottomSheet(
                 post = post,
                 sheetState = sheetState,
+                currentUserAvatarUrl = homeState.user?.avatarUrl.orEmpty(),
                 onDismiss = { showComments = false },
                 onSendComment = { text ->
                     homeViewModel.addComment(post.id, text)

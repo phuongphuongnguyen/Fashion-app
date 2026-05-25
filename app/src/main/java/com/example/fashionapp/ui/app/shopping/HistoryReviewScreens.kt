@@ -1,6 +1,5 @@
 package com.example.fashionapp.ui.app.shopping
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,20 +8,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -32,15 +28,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import com.example.fashionapp.ui.components.FashionTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,101 +45,110 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-
+import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.ui.components.FashionTopBar
 import kotlinx.coroutines.delay
-
-import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.fashionapp.ui.app.shopping.ShoppingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     navController: NavController,
-    viewModel: ShoppingViewModel = viewModel()
+    viewModel: ShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val orders = uiState.orders
+
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Shopping Cart",
+                title = "Order History",
                 onBackClick = { navController.popBackStack() }
             )
         },
         containerColor = Color.White
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                CartHistoryTabs(
-                    selected = "History",
-                    onCart = {
-                        navController.navigate(Screen.Cart.route) {
-                            popUpTo(Screen.Cart.route) { inclusive = false }
-                            launchSingleTop = true
-                        }
-                    },
-                    onHistory = {}
-                )
+        if (orders.isEmpty() && !uiState.isLoadingOrders) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No order history", color = Color.Gray)
             }
-            items(orders, key = { it.id }) { order ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White)
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AsyncImage(
-                        model = order.product.imageUrl,
-                        contentDescription = order.product.name,
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFFF1F1F1)),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(order.product.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            "Order #${order.id.takeLast(1).padStart(5, '0')}",
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(order.orderDate, color = Color(0xFF0057FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    }
-                    Button(
-                        onClick = {
-                            navController.navigate(Screen.Review.createRoute(order.id)) {
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    CartHistoryTabs(
+                        selected = "History",
+                        onCart = {
+                            navController.navigate(Screen.Cart.route) {
+                                popUpTo(Screen.Cart.route) { inclusive = false }
                                 launchSingleTop = true
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE5EDFF), contentColor = Color(0xFF0057FF)),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        modifier = Modifier.height(34.dp),
-                        shape = RoundedCornerShape(17.dp)
+                        onHistory = {}
+                    )
+                }
+                items(orders, key = { it.id }) { order ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF9F9F9))
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "Review",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                        AsyncImage(
+                            model = order.product.imageUrl.ifBlank { null },
+                            contentDescription = order.product.name,
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFF1F1F1)),
+                            contentScale = ContentScale.Crop,
+                            error = painterResource(R.drawable.ic_launcher_foreground)
                         )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(order.product.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "Order #${order.id.takeLast(6)}",
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(order.orderDate, color = Color(0xFF0057FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        }
+                        Button(
+                            onClick = {
+                                navController.navigate(Screen.Review.createRoute(order.id)) {
+                                    launchSingleTop = true
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE5EDFF),
+                                contentColor = Color(0xFF0057FF)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            modifier = Modifier.height(32.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("Review", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -182,7 +186,12 @@ private fun SegmentPill(text: String, selected: Boolean, onClick: () -> Unit, mo
             .padding(vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = if (selected) Color.Black else Color.Gray, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 14.sp)
+        Text(
+            text,
+            color = if (selected) Color.Black else Color.Gray,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            fontSize = 14.sp
+        )
     }
 }
 
@@ -191,75 +200,81 @@ private fun SegmentPill(text: String, selected: Boolean, onClick: () -> Unit, mo
 fun ReviewScreen(
     navController: NavController,
     orderId: String,
-    viewModel: ShoppingViewModel = viewModel()
+    viewModel: ShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val orderToReview = uiState.orders.firstOrNull { it.id == orderId }
     val productToReview = orderToReview?.product
-    var rating by remember { mutableStateOf(4) }
+    var rating by remember { mutableStateOf(5) }
     var comment by remember { mutableStateOf("") }
+
     Scaffold(
-        containerColor = Color(0x99F7F7F7)
+        topBar = {
+            FashionTopBar(
+                title = "Write a Review",
+                onBackClick = { navController.popBackStack() }
+            )
+        },
+        containerColor = Color(0xFFF9F9F9)
     ) { padding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.BottomCenter
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentAlignment = Alignment.TopCenter
         ) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 80.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Review", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Spacer(Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (productToReview != null) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Text("Review Product", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Spacer(Modifier.height(16.dp))
+                    
+                    if (productToReview != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             AsyncImage(
-                                model = productToReview.imageUrl,
+                                model = productToReview.imageUrl.ifBlank { null },
                                 contentDescription = null,
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
+                                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.ic_launcher_foreground)
                             )
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(12.dp))
                             Column {
-                                Text(productToReview.name, fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    "Order #${orderToReview.id.takeLast(1).padStart(5, '0')}",
-                                    color = Color.Gray,
-                                    fontSize = 12.sp
-                                )
+                                Text(productToReview.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Text("Order #${orderId.takeLast(6)}", color = Color.Gray, fontSize = 12.sp)
                             }
-                        } else {
-                            Text("Order not found", color = Color.Gray, fontSize = 13.sp)
                         }
                     }
-                    Spacer(Modifier.height(16.dp))
-                    Row {
-                        repeat(5) {
+
+                    Spacer(Modifier.height(24.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        repeat(5) { index ->
+                            val starIndex = index + 1
                             Icon(
-                                Icons.Outlined.StarBorder,
+                                imageVector = if (starIndex <= rating) Icons.Filled.Star else Icons.Outlined.StarBorder,
                                 contentDescription = null,
-                                tint = Color(0xFFFFB300),
-                                modifier = Modifier.size(32.dp)
+                                tint = if (starIndex <= rating) Color(0xFFFFB300) else Color.Gray,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clickable { rating = starIndex }
                             )
                         }
                     }
-                    Spacer(Modifier.height(16.dp))
+
+                    Spacer(Modifier.height(24.dp))
+                    
                     TextField(
                         value = comment,
                         onValueChange = { comment = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                            .clip(RoundedCornerShape(16.dp)),
-                        placeholder = { Text("Your comment", color = Color.Gray) },
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        placeholder = { Text("Share your thoughts about this product...", color = Color.Gray, fontSize = 14.sp) },
+                        shape = RoundedCornerShape(16.dp),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color(0xFFF5F5F5),
                             unfocusedContainerColor = Color(0xFFF5F5F5),
@@ -267,19 +282,20 @@ fun ReviewScreen(
                             unfocusedIndicatorColor = Color.Transparent
                         )
                     )
-                    Spacer(Modifier.height(16.dp))
+
+                    Spacer(Modifier.height(24.dp))
+                    
                     Button(
                         onClick = {
                             navController.navigate(Screen.ReviewDone.route) {
                                 popUpTo(Screen.Review.route) { inclusive = true }
-                                launchSingleTop = true
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF)),
-                        shape = RoundedCornerShape(24.dp)
+                        shape = RoundedCornerShape(25.dp)
                     ) {
-                        Text("Send it")
+                        Text("Submit Review", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -291,71 +307,50 @@ fun ReviewScreen(
 @Composable
 fun ReviewDoneScreen(navController: NavController) {
     LaunchedEffect(Unit) {
-        delay(1400)
+        delay(1500)
         navController.navigate(Screen.History.route) {
-            popUpTo(Screen.History.route) { inclusive = false }
-            launchSingleTop = true
+            popUpTo(Screen.History.route) { inclusive = true }
         }
     }
 
     Scaffold(containerColor = Color(0xAA000000)) { padding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding),
             contentAlignment = Alignment.Center
         ) {
             Box(
-                modifier = Modifier
-                    .padding(32.dp)
-                    .fillMaxWidth(),
+                modifier = Modifier.padding(32.dp).fillMaxWidth(),
                 contentAlignment = Alignment.TopCenter
             ) {
                 Card(
                     modifier = Modifier.padding(top = 28.dp).fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(20.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    shape = RoundedCornerShape(20.dp)
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 40.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Done!", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Thank you for your review", color = Color.Gray, fontSize = 14.sp)
-                        Spacer(Modifier.height(16.dp))
+                        Text("Success!", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Thank you for your feedback!", color = Color.Gray, fontSize = 14.sp)
+                        Spacer(Modifier.height(20.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             repeat(5) {
-                                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(28.dp))
+                                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(30.dp))
                             }
                         }
                     }
                 }
 
-                // Floating checkmark
                 Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .padding(4.dp)
+                    modifier = Modifier.size(56.dp).clip(CircleShape).background(Color.White).padding(4.dp)
                 ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(Color(0xFF0057FF)),
+                        modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color(0xFF0057FF)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
+                        Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(32.dp))
                     }
                 }
             }

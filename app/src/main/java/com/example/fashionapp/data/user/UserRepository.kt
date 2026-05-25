@@ -1,35 +1,13 @@
 package com.example.fashionapp.data.user
 
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class UserRepository {
     private val db = FirebaseFirestore.getInstance()
-    private val storage = FirebaseStorage.getInstance()
-
-    private suspend fun resolveAvatarUrl(avatarUrl: String): String {
-        val cleanAvatarUrl = avatarUrl.trim()
-        if (cleanAvatarUrl.isBlank()) return ""
-        if (cleanAvatarUrl.startsWith("http://") || cleanAvatarUrl.startsWith("https://")) {
-            return cleanAvatarUrl
-        }
-        return try {
-            val reference = if (cleanAvatarUrl.startsWith("gs://")) {
-                storage.getReferenceFromUrl(cleanAvatarUrl)
-            } else {
-                storage.reference.child(cleanAvatarUrl.trimStart('/'))
-            }
-            reference.downloadUrl.await().toString()
-        } catch (_: Exception) {
-            cleanAvatarUrl
-        }
-    }
 
     fun getUserProfileFlow(userId: String): Flow<com.example.fashionapp.model.User?> = callbackFlow {
         if (userId.isBlank()) {
@@ -39,24 +17,60 @@ class UserRepository {
         }
         val listener = db.collection("users").document(userId)
             .addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null || !snapshot.exists()) {
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot == null || !snapshot.exists()) {
                     trySend(null)
                     return@addSnapshotListener
                 }
-
-                launch {
-                    val user = com.example.fashionapp.model.User(
-                        id = snapshot.id,
-                        username = snapshot.firstString("username", "name", "fullName"),
-                        avatarUrl = resolveAvatarUrl(snapshot.getString("avatarUrl").orEmpty()),
-                        email = snapshot.getString("email") ?: "",
-                        followersCount = snapshot.firstLong("followersCount", "followerCount").toInt(),
-                        followingCount = snapshot.firstLong("followingCount", "following").toInt()
-                    )
-                    trySend(user)
-                }
+                
+                val user = com.example.fashionapp.model.User(
+                    id = snapshot.id,
+                    name = snapshot.getString("name") ?: "",
+                    avatarUrl = snapshot.getString("avatarUrl") ?: "",
+                    email = snapshot.getString("email") ?: "",
+                    followersCount = snapshot.getLong("followersCount")?.toInt() ?: 0,
+                    followingCount = snapshot.getLong("followingCount")?.toInt() ?: 0
+                )
+                trySend(user)
             }
         awaitClose { listener.remove() }
+    }
+
+    suspend fun getUserProfile(userId: String): com.example.fashionapp.model.User? {
+        if (userId.isBlank()) return null
+        return try {
+            val snapshot = db.collection("users").document(userId).get().await()
+            if (!snapshot.exists()) return null
+            com.example.fashionapp.model.User(
+                id = snapshot.id,
+                name = snapshot.getString("name") ?: "",
+                avatarUrl = snapshot.getString("avatarUrl") ?: "",
+                email = snapshot.getString("email") ?: "",
+                followersCount = snapshot.getLong("followersCount")?.toInt() ?: 0,
+                followingCount = snapshot.getLong("followingCount")?.toInt() ?: 0
+            )
+        } catch (_: Exception) { null }
+    }
+
+    suspend fun seedUserProfile(userId: String, email: String) {
+        if (userId.isBlank()) return
+        val name = email.substringBefore("@").replaceFirstChar { it.uppercase() }
+        // Tạo avatar ngẫu nhiên dựa trên UID để mỗi user có 1 ảnh khác nhau nếu chưa có
+        val randomSeed = userId.take(5)
+        val avatarUrl = "https://api.dicebear.com/7.x/avataaars/svg?seed=$randomSeed"
+        
+        val data = hashMapOf(
+            "name" to name,
+            "avatarUrl" to avatarUrl,
+            "email" to email,
+            "followersCount" to (100..1000).random(),
+            "followingCount" to (50..500).random()
+        )
+        // Dùng set với merge để không ghi đè phoneNumber hay các field khác đã có
+        db.collection("users").document(userId).set(data as Map<String, Any>, com.google.firebase.firestore.SetOptions.merge()).await()
     }
 
     fun getSavedPostIdsFlow(userId: String): Flow<List<String>> = callbackFlow {
@@ -88,22 +102,5 @@ class UserRepository {
     suspend fun unsavePost(userId: String, postId: String) {
         if (userId.isBlank() || postId.isBlank()) return
         db.collection("users").document(userId).collection("saved_posts").document(postId).delete().await()
-    }
-
-    suspend fun seedUserProfile(userId: String, data: Map<String, Any>) {
-        if (userId.isBlank()) return
-        db.collection("users")
-            .document(userId)
-            .set(data, SetOptions.merge())
-            .await()
-    }
-
-    private fun com.google.firebase.firestore.DocumentSnapshot.firstString(vararg fields: String): String {
-        return fields.firstNotNullOfOrNull { field -> getString(field)?.takeIf { it.isNotBlank() } }
-            .orEmpty()
-    }
-
-    private fun com.google.firebase.firestore.DocumentSnapshot.firstLong(vararg fields: String): Long {
-        return fields.firstNotNullOfOrNull { field -> (get(field) as? Number)?.toLong() } ?: 0L
     }
 }
