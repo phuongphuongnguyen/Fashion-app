@@ -1,5 +1,8 @@
 package com.example.fashionapp.ui.app.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,12 +26,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.example.fashionapp.navigation.Screen
 
 // ── Palette ──
@@ -67,6 +77,33 @@ fun SettingsScreen(navController: NavController) {
         label = "settings_nav"
     ) { subScreen ->
         when (subScreen) {
+            SubScreen.PROFILE -> ProfileSubScreen(
+                onBack = { currentSubScreen = null },
+                isDark = isDark,
+                bgColor = bgColor,
+                cardColor = cardColor,
+                textColor = textColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor
+            )
+            SubScreen.SHIPPING -> ShippingSubScreen(
+                onBack = { currentSubScreen = null },
+                isDark = isDark,
+                bgColor = bgColor,
+                cardColor = cardColor,
+                textColor = textColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor
+            )
+            SubScreen.PAYMENT -> PaymentSubScreen(
+                onBack = { currentSubScreen = null },
+                isDark = isDark,
+                bgColor = bgColor,
+                cardColor = cardColor,
+                textColor = textColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor
+            )
             SubScreen.LANGUAGE   -> LanguageScreen(
                 onBack = { currentSubScreen = null },
                 isDark = isDark,
@@ -130,37 +167,6 @@ fun SettingsScreen(navController: NavController) {
             null -> {
                 // ── Main settings list ──
                 Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    settings.t(
-                                        en = "Settings",
-                                        vi = "Cài đặt",
-                                        fr = "Paramètres",
-                                        ja = "設定",
-                                        ko = "설정",
-                                        zh = "设置"
-                                    ),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp
-                                )
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = { navController.popBackStack() }) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back"
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = topBarBgColor,
-                                titleContentColor = textColor,
-                                navigationIconContentColor = textColor
-                            )
-                        )
-                    },
                     containerColor = bgColor
                 ) { innerPadding ->
                     Column(
@@ -169,180 +175,155 @@ fun SettingsScreen(navController: NavController) {
                             .padding(innerPadding)
                             .verticalScroll(scrollState)
                     ) {
-
                         Spacer(Modifier.height(12.dp))
 
-                        // ── Appearance Section ──
-                        SettingsSectionCard(
-                            title = settings.t("Appearance", "Giao diện", "Apparence", "外観", "화면 설정", "外观"),
-                            cardColor = cardColor,
-                            subTextColor = subTextColor
+                        // ── Back arrow ──
+                        IconButton(
+                            onClick = { navController.popBackStack() },
+                            modifier = Modifier.padding(start = 8.dp)
                         ) {
-                            SwitchSettingRow(
-                                icon = if (settings.isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
-                                iconTint = if (settings.isDarkMode) Color(0xFF8B5CF6) else Color(0xFFF59E0B),
-                                label = settings.t("Dark Mode", "Chế độ tối", "Mode sombre", "ダークモード", "다크 모드", "深色模式"),
-                                checked = settings.isDarkMode,
-                                onCheckedChange = { settings.updateDarkMode(it) },
-                                textColor = textColor
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = textColor
                             )
                         }
 
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(8.dp))
 
-                        // ── Language & Region ──
-                        SettingsSectionCard(
-                            title = settings.t("Language & Region", "Ngôn ngữ & Vùng", "Langue & Région", "言語と地域", "언어 및 지역", "语言与地区"),
-                            cardColor = cardColor,
-                            subTextColor = subTextColor
-                        ) {
-                            ArrowSettingRow(
-                                icon = Icons.Default.Language,
-                                iconTint = PrimaryBlue,
-                                label = settings.t("Language", "Ngôn ngữ", "Langue", "言語", "언어", "语言"),
-                                value = "${settings.language.flag} ${settings.language.nativeName}",
-                                onClick = { currentSubScreen = SubScreen.LANGUAGE },
-                                textColor = textColor,
-                                subTextColor = subTextColor
-                            )
-                            RowDivider(dividerColor)
-                            ArrowSettingRow(
-                                icon = Icons.Default.Public,
-                                iconTint = Color(0xFF10B981),
-                                label = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"),
-                                value = settings.country,
-                                onClick = { currentSubScreen = SubScreen.COUNTRY },
-                                textColor = textColor,
-                                subTextColor = subTextColor
-                            )
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        // ── Shop Preferences ──
-                        SettingsSectionCard(
-                            title = settings.t("Shop Preferences", "Tùy chọn mua sắm", "Préférences d'achat", "ショッピング設定", "쇼핑 설정", "购物偏好"),
-                            cardColor = cardColor,
-                            subTextColor = subTextColor
-                        ) {
-                            ArrowSettingRow(
-                                icon = Icons.Default.AttachMoney,
-                                iconTint = Color(0xFF059669),
-                                label = settings.t("Currency", "Tiền tệ", "Devise", "通貨", "통화", "货币"),
-                                value = "${settings.currency.symbol} ${settings.currency.code}",
-                                onClick = { currentSubScreen = SubScreen.CURRENCY },
-                                textColor = textColor,
-                                subTextColor = subTextColor
-                            )
-                            RowDivider(dividerColor)
-                            ArrowSettingRow(
-                                icon = Icons.Default.Straighten,
-                                iconTint = Color(0xFFEC4899),
-                                label = settings.t("Size System", "Hệ size", "Système de taille", "サイズ表記", "사이즈 체계", "尺码系统"),
-                                value = settings.sizeSystem.label,
-                                onClick = { currentSubScreen = SubScreen.SIZE },
-                                textColor = textColor,
-                                subTextColor = subTextColor
-                            )
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        // ── Notifications ──
-                        SettingsSectionCard(
-                            title = settings.t("Notifications", "Thông báo", "Notifications", "通知", "알림", "通知"),
-                            cardColor = cardColor,
-                            subTextColor = subTextColor
-                        ) {
-                            ArrowSettingRow(
-                                icon = Icons.Default.Notifications,
-                                iconTint = Color(0xFFF59E0B),
-                                label = settings.t("Notification Settings", "Cài đặt thông báo", "Réglages de notifications", "通知設定", "알림 설정", "通知 Cài đặt"),
-                                value = if (settings.notificationsEnabled)
-                                    settings.t("On", "Bật", "Activé", "オン", "켜짐", "开启")
-                                else
-                                    settings.t("Off", "Tắt", "Désactivé", "オフ", "꺼짐", "关闭"),
-                                onClick = { currentSubScreen = SubScreen.NOTIFICATIONS },
-                                textColor = textColor,
-                                subTextColor = subTextColor
-                            )
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        // ── About ──
-                        SettingsSectionCard(
-                            title = settings.t("About", "Giới thiệu", "À propos", "アプリについて", "정보", "关于"),
-                            cardColor = cardColor,
-                            subTextColor = subTextColor
-                        ) {
-                            ArrowSettingRow(
-                                icon = Icons.Default.Info,
-                                iconTint = Color(0xFF6366F1),
-                                label = settings.t("About Fashion App", "Về Fashion App", "À propos de Fashion App", "Fashion Appについて", "Fashion App 정보", "关于 Fashion App"),
-                                onClick = { currentSubScreen = SubScreen.ABOUT },
-                                textColor = textColor,
-                                subTextColor = subTextColor
-                            )
-                            RowDivider(dividerColor)
-                            ArrowSettingRow(
-                                icon = Icons.Default.Description,
-                                iconTint = Color(0xFF6366F1),
-                                label = settings.t("Terms & Conditions", "Điều khoản & Điều kiện", "Conditions générales", "利用規約", "이용 약관", "条款与条件"),
-                                onClick = { /* Show dialog */ },
-                                textColor = textColor,
-                                subTextColor = subTextColor
-                            )
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        // ── Danger Zone ──
-                        SettingsSectionCard(
-                            title = settings.t("Account", "Tài khoản", "Compte", "アカウント", "계정", "账户"),
-                            cardColor = cardColor,
-                            subTextColor = subTextColor
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { showDeleteConfirmDialog = true }
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.DeleteForever,
-                                    contentDescription = null,
-                                    tint = DangerRed,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    text = settings.t("Delete My Account", "Xóa tài khoản của tôi", "Supprimer mon compte", "アカウントを削除", "계정 삭제", "删除我的账户"),
-                                    color = DangerRed,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
+                        // ── Title ──
+                        Text(
+                            text = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 20.dp)
+                        )
 
                         Spacer(Modifier.height(28.dp))
 
-                        // Version info
+                        // ══ Personal ══
+                        FlatSectionHeader(
+                            title = settings.t("Personal", "Cá nhân", "Personnel", "個人", "개인", "个人"),
+                            textColor = textColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Profile", "Hồ sơ", "Profil", "プロフィール", "프로필", "个人资料"),
+                            onClick = { currentSubScreen = SubScreen.PROFILE },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Shipping Address", "Địa chỉ giao hàng", "Adresse de livraison", "配送先住所", "배송 주소", "收货地址"),
+                            onClick = { currentSubScreen = SubScreen.SHIPPING },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Payment methods", "Phương thức thanh toán", "Modes de paiement", "支払い方法", "결제 수단", "支付方式"),
+                            onClick = { currentSubScreen = SubScreen.PAYMENT },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        // ── Dark Mode toggle in Personal ──
+                        FlatSwitchRow(
+                            label = settings.t("Dark Mode", "Chế độ tối", "Mode sombre", "ダークモード", "다크 모드", "深色模式"),
+                            checked = settings.isDarkMode,
+                            onCheckedChange = { settings.updateDarkMode(it) },
+                            textColor = textColor,
+                            dividerColor = dividerColor
+                        )
+
+                        Spacer(Modifier.height(24.dp))
+
+                        // ══ Shop ══
+                        FlatSectionHeader(
+                            title = settings.t("Shop", "Cửa hàng", "Boutique", "ショップ", "쇼핑", "商店"),
+                            textColor = textColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"),
+                            value = settings.country,
+                            onClick = { currentSubScreen = SubScreen.COUNTRY },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Currency", "Tiền tệ", "Devise", "通貨", "통화", "货币"),
+                            value = "${settings.currency.symbol} ${settings.currency.code}",
+                            onClick = { currentSubScreen = SubScreen.CURRENCY },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Sizes", "Kích cỡ", "Tailles", "サイズ", "사이즈", "尺码"),
+                            value = settings.sizeSystem.label,
+                            onClick = { currentSubScreen = SubScreen.SIZE },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Terms and Conditions", "Điều khoản và Điều kiện", "Conditions générales", "利用規約", "이용 약관", "条款与条件"),
+                            onClick = { /* Show T&C */ },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+
+                        Spacer(Modifier.height(24.dp))
+
+                        // ══ Account ══
+                        FlatSectionHeader(
+                            title = settings.t("Account", "Tài khoản", "Compte", "アカウント", "계정", "账户"),
+                            textColor = textColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Language", "Ngôn ngữ", "Langue", "言語", "언어", "语言"),
+                            value = settings.language.nativeName,
+                            onClick = { currentSubScreen = SubScreen.LANGUAGE },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("About Slada", "Về Slada", "À propos de Slada", "Sladaについて", "Slada 정보", "关于 Slada"),
+                            onClick = { currentSubScreen = SubScreen.ABOUT },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+
+                        Spacer(Modifier.height(20.dp))
+
+                        // ── Delete Account ──
+                        Text(
+                            text = settings.t("Delete My Account", "Xóa tài khoản của tôi", "Supprimer mon compte", "アカウントを削除", "계정 삭제", "删除我的账户"),
+                            color = DangerRed,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Normal,
+                            modifier = Modifier
+                                .clickable { showDeleteConfirmDialog = true }
+                                .padding(horizontal = 20.dp, vertical = 12.dp)
+                        )
+
+                        Spacer(Modifier.height(24.dp))
+
+                        // ── Version info ──
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .padding(horizontal = 20.dp)
+                                .padding(bottom = 32.dp)
                         ) {
-                            Text("Fashion App", fontSize = 13.sp, color = textColor, fontWeight = FontWeight.Bold)
                             Text(
-                                settings.t("Version 1.0 · May 2026", "Phiên bản 1.0 · Tháng 5, 2026", "Version 1.0 · Mai 2026", "バージョン 1.0 · 2026年5月", "버전 1.0 · 2026년 5월", "版本 1.0 · 2026年5月"),
-                                fontSize = 12.sp, color = subTextColor
+                                "Slada",
+                                fontSize = 18.sp,
+                                color = textColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                settings.t("Version 1.0 April, 2020", "Phiên bản 1.0 Tháng 4, 2020", "Version 1.0 Avril 2020", "バージョン 1.0 2020年4月", "버전 1.0 2020년 4월", "版本 1.0 2020年4月"),
+                                fontSize = 13.sp,
+                                color = subTextColor
                             )
                         }
-
-                        Spacer(Modifier.height(32.dp))
                     }
 
                     if (showDeleteConfirmDialog) {
@@ -350,14 +331,7 @@ fun SettingsScreen(navController: NavController) {
                             onDismissRequest = { showDeleteConfirmDialog = false },
                             title = {
                                 Text(
-                                    text = settings.t(
-                                        "Delete Account?",
-                                        "Xóa tài khoản?",
-                                        "Supprimer le compte?",
-                                        "アカウントを削除しますか？",
-                                        "계정을 삭제하시겠습니까?",
-                                        "删除账户？"
-                                    ),
+                                    text = settings.t("Delete Account?", "Xóa tài khoản?", "Supprimer le compte?", "アカウントを削除しますか？", "계정을 삭제하시겠습니까?", "删除账户？"),
                                     fontWeight = FontWeight.Bold,
                                     color = textColor
                                 )
@@ -412,69 +386,423 @@ fun SettingsScreen(navController: NavController) {
 }
 
 // ── Sub-screen enum ──
-private enum class SubScreen { LANGUAGE, CURRENCY, SIZE, COUNTRY, NOTIFICATIONS, ABOUT }
+private enum class SubScreen { PROFILE, SHIPPING, PAYMENT, LANGUAGE, CURRENCY, SIZE, COUNTRY, NOTIFICATIONS, ABOUT }
 
 // ══════════════════════════════════════════
 // ── Sub Screens ──
 // ══════════════════════════════════════════
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ── Profile Sub-Screen ──
+@Composable
+private fun ProfileSubScreen(
+    onBack: () -> Unit,
+    isDark: Boolean,
+    bgColor: Color,
+    cardColor: Color,
+    textColor: Color,
+    subTextColor: Color,
+    dividerColor: Color
+) {
+    val settings = LocalAppSettings.current
+    val user = FirebaseAuth.getInstance().currentUser
+    var displayName by remember { mutableStateOf(user?.displayName ?: "") }
+    var email by remember { mutableStateOf(user?.email ?: "") }
+    var photoUri by remember { mutableStateOf(user?.photoUrl) }
+    var isSaving by remember { mutableStateOf(false) }
+    var showSnackbar by remember { mutableStateOf(false) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            photoUri = uri
+        }
+    }
+
+    Scaffold(containerColor = bgColor) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Spacer(Modifier.height(12.dp))
+
+            // Back arrow
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = textColor)
+            }
+
+            // Title
+            Text(
+                text = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = textColor,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+            Text(
+                text = settings.t("Your Profile", "Hồ sơ của bạn", "Votre profil", "あなたのプロフィール", "내 프로필", "您的资料"),
+                fontSize = 14.sp,
+                color = subTextColor,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            // Avatar
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .size(90.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                if (photoUri != null) {
+                    AsyncImage(
+                        model = photoUri,
+                        contentDescription = "Avatar",
+                        modifier = Modifier
+                            .size(90.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, PrimaryBlue, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(90.dp)
+                            .clip(CircleShape)
+                            .background(if (isDark) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            tint = subTextColor,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                }
+                // Edit badge
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryBlue)
+                        .clickable { launcher.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Change photo",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+
+            // Name field
+            FlatTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                placeholder = settings.t("Name", "Tên", "Nom", "名前", "이름", "姓名"),
+                textColor = textColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor
+            )
+
+            // Email field (read-only)
+            FlatTextField(
+                value = email,
+                onValueChange = {},
+                placeholder = settings.t("Email", "Email", "Email", "メール", "이메일", "邮箱"),
+                textColor = subTextColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor,
+                readOnly = true
+            )
+
+            // Password field (masked, read-only)
+            FlatTextField(
+                value = "••••••••••",
+                onValueChange = {},
+                placeholder = settings.t("Password", "Mật khẩu", "Mot de passe", "パスワード", "비밀번호", "密码"),
+                textColor = subTextColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor,
+                readOnly = true
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            // Save button
+            Button(
+                onClick = {
+                    isSaving = true
+                    val profileUpdates = UserProfileChangeRequest.Builder()
+                        .setDisplayName(displayName)
+                        .apply { if (photoUri != null) setPhotoUri(photoUri) }
+                        .build()
+                    user?.updateProfile(profileUpdates)?.addOnCompleteListener {
+                        isSaving = false
+                        showSnackbar = true
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                enabled = !isSaving
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        settings.t("Save Changes", "Lưu thay đổi", "Enregistrer", "保存", "저장", "保存"),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Shipping Address Sub-Screen ──
+@Composable
+private fun ShippingSubScreen(
+    onBack: () -> Unit,
+    isDark: Boolean,
+    bgColor: Color,
+    cardColor: Color,
+    textColor: Color,
+    subTextColor: Color,
+    dividerColor: Color
+) {
+    val settings = LocalAppSettings.current
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("app_settings", android.content.Context.MODE_PRIVATE)
+    var fullName by remember { mutableStateOf(prefs.getString("ship_name", "") ?: "") }
+    var address by remember { mutableStateOf(prefs.getString("ship_address", "") ?: "") }
+    var city by remember { mutableStateOf(prefs.getString("ship_city", "") ?: "") }
+    var zipCode by remember { mutableStateOf(prefs.getString("ship_zip", "") ?: "") }
+    var phone by remember { mutableStateOf(prefs.getString("ship_phone", "") ?: "") }
+    var saved by remember { mutableStateOf(false) }
+
+    Scaffold(containerColor = bgColor) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Spacer(Modifier.height(12.dp))
+
+            IconButton(onClick = onBack, modifier = Modifier.padding(start = 8.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = textColor)
+            }
+
+            Text(
+                text = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = textColor,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+            Text(
+                text = settings.t("Shipping Address", "Địa chỉ giao hàng", "Adresse de livraison", "配送先住所", "배송 주소", "收货地址"),
+                fontSize = 14.sp,
+                color = subTextColor,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            FlatTextField(value = fullName, onValueChange = { fullName = it },
+                placeholder = settings.t("Full Name", "Họ và tên", "Nom complet", "氏名", "이름", "全名"),
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+            FlatTextField(value = address, onValueChange = { address = it },
+                placeholder = settings.t("Address", "Địa chỉ", "Adresse", "住所", "주소", "地址"),
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+            FlatTextField(value = city, onValueChange = { city = it },
+                placeholder = settings.t("City", "Thành phố", "Ville", "都市", "도시", "城市"),
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+            FlatTextField(value = zipCode, onValueChange = { zipCode = it },
+                placeholder = settings.t("Zip Code", "Mã bưu điện", "Code postal", "郵便番号", "우편번호", "邮编"),
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
+                keyboardType = KeyboardType.Number)
+            FlatTextField(value = phone, onValueChange = { phone = it },
+                placeholder = settings.t("Phone Number", "Số điện thoại", "Téléphone", "電話番号", "전화번호", "电话号码"),
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
+                keyboardType = KeyboardType.Phone)
+
+            Spacer(Modifier.weight(1f))
+
+            Button(
+                onClick = {
+                    prefs.edit()
+                        .putString("ship_name", fullName)
+                        .putString("ship_address", address)
+                        .putString("ship_city", city)
+                        .putString("ship_zip", zipCode)
+                        .putString("ship_phone", phone)
+                        .apply()
+                    saved = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text(
+                    if (saved) settings.t("Saved ✓", "Đã lưu ✓", "Enregistré ✓", "保存済み ✓", "저장됨 ✓", "已保存 ✓")
+                    else settings.t("Save Address", "Lưu địa chỉ", "Enregistrer", "保存", "저장", "保存地址"),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+// ── Payment Method Sub-Screen ──
+@Composable
+private fun PaymentSubScreen(
+    onBack: () -> Unit,
+    isDark: Boolean,
+    bgColor: Color,
+    cardColor: Color,
+    textColor: Color,
+    subTextColor: Color,
+    dividerColor: Color
+) {
+    val settings = LocalAppSettings.current
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("app_settings", android.content.Context.MODE_PRIVATE)
+    var cardNumber by remember { mutableStateOf(prefs.getString("pay_card", "") ?: "") }
+    var cardHolder by remember { mutableStateOf(prefs.getString("pay_holder", "") ?: "") }
+    var expiry by remember { mutableStateOf(prefs.getString("pay_expiry", "") ?: "") }
+    var cvv by remember { mutableStateOf(prefs.getString("pay_cvv", "") ?: "") }
+    var saved by remember { mutableStateOf(false) }
+
+    Scaffold(containerColor = bgColor) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Spacer(Modifier.height(12.dp))
+
+            IconButton(onClick = onBack, modifier = Modifier.padding(start = 8.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = textColor)
+            }
+
+            Text(
+                text = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = textColor,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+            Text(
+                text = settings.t("Payment Methods", "Phương thức thanh toán", "Modes de paiement", "支払い方法", "결제 수단", "支付方式"),
+                fontSize = 14.sp,
+                color = subTextColor,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            FlatTextField(value = cardNumber, onValueChange = { cardNumber = it },
+                placeholder = settings.t("Card Number", "Số thẻ", "Numéro de carte", "カード番号", "카드 번호", "卡号"),
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
+                keyboardType = KeyboardType.Number)
+            FlatTextField(value = cardHolder, onValueChange = { cardHolder = it },
+                placeholder = settings.t("Card Holder Name", "Tên chủ thẻ", "Nom du titulaire", "カード名義人", "카드 소유자", "持卡人姓名"),
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+            FlatTextField(value = expiry, onValueChange = { expiry = it },
+                placeholder = settings.t("Expiry Date (MM/YY)", "Ngày hết hạn (MM/YY)", "Date d'expiration", "有効期限", "만료일", "有效期"),
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+            FlatTextField(value = cvv, onValueChange = { cvv = it },
+                placeholder = "CVV",
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
+                keyboardType = KeyboardType.NumberPassword)
+
+            Spacer(Modifier.weight(1f))
+
+            Button(
+                onClick = {
+                    prefs.edit()
+                        .putString("pay_card", cardNumber)
+                        .putString("pay_holder", cardHolder)
+                        .putString("pay_expiry", expiry)
+                        .putString("pay_cvv", cvv)
+                        .apply()
+                    saved = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text(
+                    if (saved) settings.t("Saved ✓", "Đã lưu ✓", "Enregistré ✓", "保存済み ✓", "저장됨 ✓", "已保存 ✓")
+                    else settings.t("Save Payment", "Lưu thanh toán", "Enregistrer", "保存", "저장", "保存"),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+
 @Composable
 private fun LanguageScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color,
-    topBarBgColor: Color
+    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
+    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
 ) {
     val settings = LocalAppSettings.current
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(settings.t("Language", "Ngôn ngữ", "Langue", "言語", "언어", "语言"), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarBgColor,
-                    titleContentColor = textColor,
-                    navigationIconContentColor = textColor
-                )
-            )
-        },
-        containerColor = bgColor
-    ) { padding ->
+    Scaffold(containerColor = bgColor) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
+            item {
+                FlatSubScreenHeader(
+                    onBack = onBack,
+                    title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                    subtitle = settings.t("Language", "Ngôn ngữ", "Langue", "言語", "언어", "语言"),
+                    textColor = textColor, subTextColor = subTextColor
+                )
+            }
             items(AppLanguage.values()) { lang ->
                 val selected = settings.language == lang
-                SelectableCard(
+                FlatSelectableRow(
                     selected = selected,
                     onClick = { settings.updateLanguage(lang) },
-                    isDark = isDark,
-                    cardColor = cardColor
+                    textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(lang.flag, fontSize = 28.sp)
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(lang.nativeName, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = textColor)
-                            Text(lang.displayName, fontSize = 13.sp, color = subTextColor)
-                        }
-                        if (selected) {
-                            Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
-                        }
+                    Text(lang.flag, fontSize = 24.sp)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(lang.nativeName, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
+                        Text(lang.displayName, fontSize = 13.sp, color = subTextColor)
+                    }
+                    if (selected) {
+                        Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -482,71 +810,40 @@ private fun LanguageScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CurrencyScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color,
-    topBarBgColor: Color
+    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
+    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
 ) {
     val settings = LocalAppSettings.current
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(settings.t("Currency", "Tiền tệ", "Devise", "通貨", "통화", "货币"), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarBgColor,
-                    titleContentColor = textColor,
-                    navigationIconContentColor = textColor
-                )
-            )
-        },
-        containerColor = bgColor
-    ) { padding ->
+    Scaffold(containerColor = bgColor) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
+            item {
+                FlatSubScreenHeader(
+                    onBack = onBack,
+                    title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                    subtitle = settings.t("Currency", "Tiền tệ", "Devise", "通貨", "통화", "货币"),
+                    textColor = textColor, subTextColor = subTextColor
+                )
+            }
             items(AppCurrency.values()) { cur ->
                 val selected = settings.currency == cur
-                SelectableCard(
+                FlatSelectableRow(
                     selected = selected,
                     onClick = { settings.updateCurrency(cur) },
-                    isDark = isDark,
-                    cardColor = cardColor
+                    textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(if (isDark) Color(0xFF1E2E4A) else LightBlue),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(cur.symbol, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                        }
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(cur.displayName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = textColor)
-                            Text(cur.code, fontSize = 13.sp, color = subTextColor)
-                        }
-                        if (selected) {
-                            Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
-                        }
+                    Text(cur.symbol, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(cur.displayName, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
+                        Text(cur.code, fontSize = 13.sp, color = subTextColor)
+                    }
+                    if (selected) {
+                        Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -554,83 +851,43 @@ private fun CurrencyScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SizeSystemScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color,
-    topBarBgColor: Color
+    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
+    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
 ) {
     val settings = LocalAppSettings.current
-
     val descriptions = mapOf(
         SizeSystem.UK to settings.t("Standard UK sizing (e.g. 6, 8, 10)", "Bảng size chuẩn Anh (ví dụ: 6, 8, 10)", "Taille standard Royaume-Uni (ex. 6, 8, 10)", "英国標準サイズ (例 6, 8, 10)", "영국 표준 사이즈 (예: 6, 8, 10)", "英国标准尺码 (例如 6, 8, 10)"),
         SizeSystem.US to settings.t("Standard US sizing (e.g. 2, 4, 6)", "Bảng size chuẩn Mỹ (ví dụ: 2, 4, 6)", "Taille standard États-Unis (ex. 2, 4, 6)", "米国標準サイズ (例 2, 4, 6)", "미국 표준 사이즈 (예: 2, 4, 6)", "美国标准尺码 (例如 2, 4, 6)"),
         SizeSystem.EU to settings.t("European sizing (e.g. 36, 38, 40)", "Bảng size chuẩn châu Âu (ví dụ: 36, 38, 40)", "Taille européenne (ex. 36, 38, 40)", "欧州サイズ (例 36, 38, 40)", "유럽 사이즈 (예: 36, 38, 40)", "欧洲尺码 (例如 36, 38, 40)"),
         SizeSystem.ASIAN to settings.t("Asian sizing (e.g. S, M, L, XL)", "Bảng size chuẩn châu Á (ví dụ: S, M, L, XL)", "Taille asiatique (ex. S, M, L, XL)", "アジアサイズ (例 S, M, L, XL)", "아시아 사이즈 (예: S, M, L, XL)", "亚洲尺码 (例如 S, M, L, XL)")
     )
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(settings.t("Size System", "Hệ size", "Système de taille", "サイズ表記", "사이즈 체계", "尺码系统"), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarBgColor,
-                    titleContentColor = textColor,
-                    navigationIconContentColor = textColor
-                )
-            )
-        },
-        containerColor = bgColor
-    ) { padding ->
+    Scaffold(containerColor = bgColor) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         ) {
+            FlatSubScreenHeader(
+                onBack = onBack,
+                title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                subtitle = settings.t("Size System", "Hệ size", "Système de taille", "サイズ表記", "사이즈 체계", "尺码系统"),
+                textColor = textColor, subTextColor = subTextColor
+            )
             SizeSystem.values().forEach { size ->
                 val selected = settings.sizeSystem == size
-                SelectableCard(
+                FlatSelectableRow(
                     selected = selected,
                     onClick = { settings.updateSizeSystem(size) },
-                    isDark = isDark,
-                    cardColor = cardColor
+                    textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (selected) PrimaryBlue else (if (isDark) Color(0xFF1E2E4A) else LightBlue)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                size.label.uppercase(java.util.Locale.ROOT),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = if (selected) Color.White else PrimaryBlue
-                            )
-                        }
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("${size.label} Sizes", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = textColor)
-                            Text(descriptions[size] ?: "", fontSize = 12.sp, color = subTextColor)
-                        }
-                        if (selected) {
-                            Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
-                        }
+                    Text(size.label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("${size.label} Sizes", fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
+                        Text(descriptions[size] ?: "", fontSize = 12.sp, color = subTextColor)
+                    }
+                    if (selected) {
+                        Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -638,78 +895,50 @@ private fun SizeSystemScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CountryScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color,
-    topBarBgColor: Color
+    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
+    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
 ) {
     val settings = LocalAppSettings.current
     var search by remember { mutableStateOf("") }
     val filtered = countryList.filter { it.contains(search, ignoreCase = true) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarBgColor,
-                    titleContentColor = textColor,
-                    navigationIconContentColor = textColor
-                )
-            )
-        },
-        containerColor = bgColor
-    ) { padding ->
+    Scaffold(containerColor = bgColor) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            FlatSubScreenHeader(
+                onBack = onBack,
+                title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                subtitle = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"),
+                textColor = textColor, subTextColor = subTextColor
+            )
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
                 placeholder = { Text(settings.t("Search country...", "Tìm quốc gia...", "Rechercher un pays...", "国を検索...", "국가 검색...", "搜索国家...")) },
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = subTextColor) },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = dividerColor,
-                    focusedTextColor = textColor,
-                    unfocusedTextColor = textColor,
-                    focusedContainerColor = cardColor,
-                    unfocusedContainerColor = cardColor
+                    unfocusedBorderColor = PrimaryBlue.copy(alpha = 0.4f),
+                    focusedTextColor = textColor, unfocusedTextColor = textColor,
+                    focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent
                 )
             )
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Spacer(Modifier.height(8.dp))
+            LazyColumn {
                 items(filtered) { c ->
                     val selected = settings.country == c
-                    SelectableCard(
+                    FlatSelectableRow(
                         selected = selected,
                         onClick = { settings.updateCountry(c) },
-                        isDark = isDark,
-                        cardColor = cardColor
+                        textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(c, modifier = Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.Medium, color = textColor)
-                            if (selected) {
-                                Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
-                            }
+                        Text(c, modifier = Modifier.weight(1f), fontSize = 15.sp, color = textColor)
+                        if (selected) {
+                            Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
@@ -718,78 +947,42 @@ private fun CountryScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NotificationScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color,
-    topBarBgColor: Color
+    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
+    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
 ) {
     val settings = LocalAppSettings.current
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(settings.t("Notifications", "Thông báo", "Notifications", "通知", "알림", "通知"), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarBgColor,
-                    titleContentColor = textColor,
-                    navigationIconContentColor = textColor
-                )
-            )
-        },
-        containerColor = bgColor
-    ) { padding ->
+    Scaffold(containerColor = bgColor) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         ) {
-            SettingsSectionCard(
-                title = settings.t("General", "Chung", "Général", "一般", "일반", "通用"),
-                cardColor = cardColor,
-                subTextColor = subTextColor
-            ) {
-                SwitchSettingRow(
-                    icon = Icons.Default.Notifications,
-                    iconTint = Color(0xFFF59E0B),
-                    label = settings.t("Enable Notifications", "Bật thông báo", "Activer les notifications", "通知を有効化", "알림 허용", "启用通知"),
-                    checked = settings.notificationsEnabled,
-                    onCheckedChange = { settings.updateNotifications(it) },
-                    textColor = textColor
-                )
-            }
-
+            FlatSubScreenHeader(
+                onBack = onBack,
+                title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                subtitle = settings.t("Notifications", "Thông báo", "Notifications", "通知", "알림", "通知"),
+                textColor = textColor, subTextColor = subTextColor
+            )
+            FlatSwitchRow(
+                label = settings.t("Enable Notifications", "Bật thông báo", "Activer les notifications", "通知を有効化", "알림 허용", "启用通知"),
+                checked = settings.notificationsEnabled,
+                onCheckedChange = { settings.updateNotifications(it) },
+                textColor = textColor, dividerColor = dividerColor
+            )
             AnimatedVisibility(visible = settings.notificationsEnabled) {
-                SettingsSectionCard(
-                    title = settings.t("Notification Types", "Loại thông báo", "Types de notification", "通知の種類", "알림 유형", "通知类型"),
-                    cardColor = cardColor,
-                    subTextColor = subTextColor
-                ) {
-                    SwitchSettingRow(
-                        icon = Icons.Default.LocalShipping,
-                        iconTint = PrimaryBlue,
+                Column {
+                    Spacer(Modifier.height(8.dp))
+                    FlatSwitchRow(
                         label = settings.t("Order Updates", "Cập nhật đơn hàng", "Mises à jour de commande", "注文状況の更新", "주문 업데이트", "订单状态更新"),
                         checked = settings.orderUpdatesEnabled,
                         onCheckedChange = { settings.updateOrderUpdates(it) },
-                        textColor = textColor
+                        textColor = textColor, dividerColor = dividerColor
                     )
-                    RowDivider(dividerColor)
-                    SwitchSettingRow(
-                        icon = Icons.Default.LocalOffer,
-                        iconTint = Color(0xFFEC4899),
+                    FlatSwitchRow(
                         label = settings.t("Promotions & Deals", "Khuyến mãi & Ưu đãi", "Promotions & Offres", "セールとオファー", "프로모션 및 혜택", "促销与优惠"),
                         checked = settings.promotionsEnabled,
                         onCheckedChange = { settings.updatePromotions(it) },
-                        textColor = textColor
+                        textColor = textColor, dividerColor = dividerColor
                     )
                 }
             }
@@ -797,74 +990,44 @@ private fun NotificationScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AboutScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color,
-    topBarBgColor: Color
+    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
+    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
 ) {
     val settings = LocalAppSettings.current
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(settings.t("About", "Giới thiệu", "À propos", "アプリについて", "정보", "关于"), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarBgColor,
-                    titleContentColor = textColor,
-                    navigationIconContentColor = textColor
-                )
-            )
-        },
-        containerColor = bgColor
-    ) { padding ->
+    Scaffold(containerColor = bgColor) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         ) {
-            Spacer(Modifier.height(24.dp))
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(if (isDark) Color(0xFF1E2E4A) else LightBlue),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("👗", fontSize = 52.sp)
-            }
-            Spacer(Modifier.height(16.dp))
-            Text("Fashion App", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = textColor)
-            Text(
-                settings.t("Version 1.0 · May 2026", "Phiên bản 1.0 · Tháng 5, 2026", "Version 1.0 · Mai 2026", "バージョン 1.0 · 2026年5月", "버전 1.0 · 2026년 5월", "版本 1.0 · 2026年5月"),
-                fontSize = 13.sp, color = subTextColor
+            FlatSubScreenHeader(
+                onBack = onBack,
+                title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
+                subtitle = settings.t("About", "Giới thiệu", "À propos", "アプリについて", "정보", "关于"),
+                textColor = textColor, subTextColor = subTextColor
             )
-            Spacer(Modifier.height(32.dp))
 
-            SettingsSectionCard(
-                title = settings.t("Information", "Thông tin", "Informations", "情報", "정보", "信息"),
-                cardColor = cardColor,
-                subTextColor = subTextColor
-            ) {
-                InfoRow(label = settings.t("Developer", "Nhà phát triển", "Développeur", "開発元", "개발자", "开发者"), value = "UET Fashion Team", textColor = textColor, subTextColor = subTextColor)
-                RowDivider(dividerColor)
-                InfoRow(label = settings.t("University", "Trường", "Université", "大学", "대학교", "学校"), value = "UET - VNU Hanoi", textColor = textColor, subTextColor = subTextColor)
-                RowDivider(dividerColor)
-                InfoRow(label = settings.t("Build", "Phiên bản build", "Build", "ビルド", "빌드", "构建版本"), value = "2026.05.07", textColor = textColor, subTextColor = subTextColor)
-                RowDivider(dividerColor)
-                InfoRow(label = settings.t("Platform", "Nền tảng", "Plateforme", "プラットフォーム", "플랫폼", "平台"), value = "Android (Compose)", textColor = textColor, subTextColor = subTextColor)
-            }
+            // App info rows
+            FlatInfoRow(
+                label = settings.t("Developer", "Nhà phát triển", "Développeur", "開発元", "개발자", "开发者"),
+                value = "UET Fashion Team",
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+            )
+            FlatInfoRow(
+                label = settings.t("University", "Trường", "Université", "大学", "대학교", "学校"),
+                value = "UET - VNU Hanoi",
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+            )
+            FlatInfoRow(
+                label = settings.t("Build", "Phiên bản build", "Build", "ビルド", "빌드", "构建版本"),
+                value = "2026.05.07",
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+            )
+            FlatInfoRow(
+                label = settings.t("Platform", "Nền tảng", "Plateforme", "プラットフォーム", "플랫폼", "平台"),
+                value = "Android (Compose)",
+                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+            )
 
             Spacer(Modifier.height(28.dp))
             Text(
@@ -877,7 +1040,8 @@ private fun AboutScreen(
                     "© 2026 Fashion App. 版权所有。"
                 ),
                 fontSize = 12.sp,
-                color = subTextColor
+                color = subTextColor,
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
         }
     }
@@ -1036,3 +1200,227 @@ private fun RowDivider(dividerColor: Color) {
         color = dividerColor
     )
 }
+
+// ── Flat-style components (matching screenshot design) ──
+
+@Composable
+private fun FlatSectionHeader(title: String, textColor: Color) {
+    Text(
+        text = title,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        color = textColor,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+    )
+}
+
+@Composable
+private fun FlatSettingRow(
+    label: String,
+    value: String? = null,
+    onClick: () -> Unit,
+    textColor: Color,
+    subTextColor: Color,
+    dividerColor: Color
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f),
+                fontSize = 15.sp,
+                color = textColor
+            )
+            if (value != null) {
+                Text(
+                    text = value,
+                    fontSize = 14.sp,
+                    color = subTextColor,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = subTextColor.copy(alpha = 0.4f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            thickness = 0.5.dp,
+            color = dividerColor
+        )
+    }
+}
+
+@Composable
+private fun FlatSwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    textColor: Color,
+    dividerColor: Color
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f),
+                fontSize = 15.sp,
+                color = textColor
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = PrimaryBlue
+                )
+            )
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            thickness = 0.5.dp,
+            color = dividerColor
+        )
+    }
+}
+
+@Composable
+private fun FlatTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    textColor: Color,
+    subTextColor: Color,
+    dividerColor: Color,
+    readOnly: Boolean = false,
+    keyboardType: KeyboardType = KeyboardType.Text
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(placeholder, color = subTextColor, fontSize = 15.sp) },
+        readOnly = readOnly,
+        singleLine = true,
+        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = textColor),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = PrimaryBlue,
+            unfocusedBorderColor = PrimaryBlue.copy(alpha = 0.4f),
+            focusedTextColor = textColor,
+            unfocusedTextColor = textColor,
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+    )
+}
+
+// ── Flat sub-screen header (reusable for all sub-screens) ──
+@Composable
+private fun FlatSubScreenHeader(
+    onBack: () -> Unit,
+    title: String,
+    subtitle: String,
+    textColor: Color,
+    subTextColor: Color
+) {
+    Spacer(Modifier.height(12.dp))
+    IconButton(onClick = onBack, modifier = Modifier.padding(start = 8.dp)) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = textColor)
+    }
+    Text(
+        text = title,
+        fontSize = 32.sp,
+        fontWeight = FontWeight.Bold,
+        color = textColor,
+        modifier = Modifier.padding(horizontal = 20.dp)
+    )
+    Text(
+        text = subtitle,
+        fontSize = 14.sp,
+        color = subTextColor,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+    )
+    Spacer(Modifier.height(16.dp))
+}
+
+@Composable
+private fun FlatSelectableRow(
+    selected: Boolean,
+    onClick: () -> Unit,
+    textColor: Color,
+    subTextColor: Color,
+    dividerColor: Color,
+    content: @Composable RowScope.() -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            content()
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            thickness = 0.5.dp,
+            color = dividerColor
+        )
+    }
+}
+
+@Composable
+private fun FlatInfoRow(
+    label: String,
+    value: String,
+    textColor: Color,
+    subTextColor: Color,
+    dividerColor: Color
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = 15.sp,
+                color = textColor,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = value,
+                fontSize = 15.sp,
+                color = subTextColor,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            thickness = 0.5.dp,
+            color = dividerColor
+        )
+    }
+}
+
