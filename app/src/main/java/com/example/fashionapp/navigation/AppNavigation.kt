@@ -49,6 +49,8 @@ import com.example.fashionapp.ui.app.settings.SettingsScreen
 import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
 import com.example.fashionapp.ui.app.search.SearchScreen
 import com.example.fashionapp.ui.app.productdetail.ProductDetailScreen
+import com.example.fashionapp.ui.app.shopping.ShopScreen
+
 
 @Composable
 fun AppNavigation(startDestination: String = Screen.Start.route) {
@@ -75,7 +77,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
 
     val showBottomBar = currentDestination?.route in listOf(
         Screen.Home.route,
-        Screen.Shop.route,
+        Screen.Shopping.route,
         Screen.Saved.route,
         Screen.Profile.route,
         Screen.Cart.route,
@@ -209,12 +211,9 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 composable(Screen.Home.route) {
                     HomeScreen(navController = navController)
                 }
-                composable(
-                    route = Screen.Shop.route,
-                    arguments = listOf(navArgument("shopId") { type = NavType.StringType })
-                ) { backStackEntry ->
-                    val shopId = backStackEntry.arguments?.getString("shopId").orEmpty()
-                    ShoppingScreen(navController = navController, shopId = shopId)
+                composable(route = Screen.Shopping.route)
+                {
+                    ShoppingScreen(navController = navController)
                 }
                 composable(Screen.Saved.route) {
                     SavedScreen(navController = navController)
@@ -258,6 +257,17 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     val productId = backStackEntry.arguments?.getString("productId").orEmpty()
                     ProductDetailScreen(
                         productId = productId,
+                        navController = navController
+                    )
+                }
+
+                composable(
+                    route = Screen.ShopDetail.route,
+                    arguments = listOf(navArgument("shopId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val shopId = backStackEntry.arguments?.getString("shopId").orEmpty()
+                    ShopScreen(
+                        shopId        = shopId,
                         navController = navController
                     )
                 }
@@ -320,8 +330,8 @@ fun AppBottomBar(
             bottomNavItems.forEach { item ->
                 val currentRoute = currentDestination?.route
                 val isSelected = when (item.screen) {
-                    Screen.Shop -> currentRoute in listOf(
-                        Screen.Shop.route,
+                    Screen.Shopping -> currentRoute in listOf(
+                        Screen.Shopping.route,
                         Screen.Cart.route,
                         Screen.Payment.route,
                         Screen.History.route,

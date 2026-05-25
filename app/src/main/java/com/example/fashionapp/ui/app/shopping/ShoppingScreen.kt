@@ -59,7 +59,6 @@ private val fallbackCategories = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingScreen(
-    shopId: String = "shop_test", // ID shop mặc định
     navController: NavController,
     viewModel: ShoppingViewModel = viewModel()
 ) {
@@ -104,10 +103,7 @@ fun ShoppingScreen(
                 val cats = state.categories.ifEmpty { fallbackCategories }
                 SectionHeader(
                     title = "Categories",
-                    onSeeAll = {
-                        // Điều hướng tới Shop với ID mặc định
-                        navController.navigate(Screen.Shop.createRoute(shopId))
-                    }
+                    onSeeAll = {}
                 )
                 Spacer(Modifier.height(12.dp))
                 CategoriesGrid(
@@ -134,10 +130,7 @@ fun ShoppingScreen(
             item {
                 SectionHeader(
                     title = "Most Popular",
-                    onSeeAll = {
-                        // Điều hướng tới shop tương ứng
-                        navController.navigate(Screen.Shop.createRoute(shopId))
-                    }
+                    onSeeAll = {}
                 )
                 Spacer(Modifier.height(12.dp))
                 ProductRow(

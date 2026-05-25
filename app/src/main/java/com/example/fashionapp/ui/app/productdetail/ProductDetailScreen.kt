@@ -38,7 +38,16 @@ import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
-
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import coil.compose.AsyncImage
+import com.example.fashionapp.data.StorageUrlResolver
+import com.example.fashionapp.navigation.Screen
+import kotlinx.coroutines.tasks.await
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue   = Color(0xFF3669C9)
 private val StarYellow    = Color(0xFFFFC107)
@@ -141,6 +150,13 @@ fun ProductDetailScreen(
 
             // ── Delivery ─────────────────────────────────────────────────
             item { DeliverySection(freeShipping = product.freeShipping) }
+            // ── Shop Info ───────────────────────────────────────────
+            item {
+                ShopSection(
+                    shopId   = product.shopId,
+                    onVisitShop = { navController.navigate(Screen.ShopDetail.createRoute(product.shopId)) }
+                )
+            }
 
             // ── Rating & Reviews (mock) ───────────────────────────────────
             item { 
@@ -868,4 +884,155 @@ private fun BottomActionBar(
 
 private fun formatPrice(price: Double): String {
     return "%.0f".format(price).reversed().chunked(3).joinToString(".").reversed()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SHOP SECTION  (giống Shopee: avatar + tên shop + stats + nút Visit)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ShopSection(
+    shopId: String,
+    onVisitShop: () -> Unit,
+) {
+    var shopName      by remember { mutableStateOf("") }
+    var shopAvatar    by remember { mutableStateOf("") }
+    var followerCount by remember { mutableStateOf(0) }
+    var rating        by remember { mutableStateOf(0f) }
+    var isLoading     by remember { mutableStateOf(true) }
+
+    LaunchedEffect(shopId) {
+        if (shopId.isBlank()) { isLoading = false; return@LaunchedEffect }
+        try {
+            val db  = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val doc = db.collection("shops").document(shopId).get().await()
+
+            shopName      = doc.getString("name").orEmpty().ifBlank { "Shop" }
+            shopAvatar    = StorageUrlResolver.resolve(doc.getString("logoRef").orEmpty()) // ← logoRef
+            followerCount = (doc.getLong("followerCount") ?: 0L).toInt()
+            rating        = (doc.get("rating") as? Number)?.toFloat() ?: 0f
+        } catch (_: Exception) {
+            shopName = "Shop"
+        } finally {
+            isLoading = false
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Text("Shop", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFF7F8FA))
+                .clickable(enabled = !isLoading) { onVisitShop() }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar / Logo
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFEEEEEE))
+            ) {
+                if (!isLoading) {
+                    AsyncImage(
+                        model              = shopAvatar.ifBlank { null },
+                        contentDescription = shopName,
+                        modifier           = Modifier.fillMaxSize(),
+                        contentScale       = ContentScale.Crop,
+                        error              = painterResource(R.drawable.ic_profile)
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            // Tên + stats
+            if (isLoading) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .width(120.dp).height(14.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFE0E0E0))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp).height(11.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFE8E8E8))
+                    )
+                }
+            } else {
+                Column(modifier = Modifier.weight(1f)) {
+                    // Tên
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text       = shopName,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize   = 15.sp,
+                            color      = TextDark
+                        )
+                    }
+
+                    Spacer(Modifier.height(3.dp))
+
+                    // Followers + Rating
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text     = "${formatFollowerCount(followerCount)} followers",
+                            fontSize = 12.sp,
+                            color    = TextGray
+                        )
+                        if (rating > 0f) {
+                            Text("•", fontSize = 12.sp, color = TextGray)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFFC107),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(Modifier.width(2.dp))
+                                Text(
+                                    text     = "$rating",
+                                    fontSize = 12.sp,
+                                    color    = TextGray
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Icon(
+                    imageVector        = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint               = TextGray,
+                    modifier           = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+
+    HorizontalDivider(color = DividerColor)
+}
+
+// ── Helper format follower count ──────────────────────────────────────────────
+
+private fun formatFollowerCount(count: Int): String = when {
+    count >= 1_000_000 -> "${"%.1f".format(count / 1_000_000.0)}M"
+    count >= 1_000     -> "${"%.1f".format(count / 1_000.0)}K"
+    else               -> count.toString()
 }
