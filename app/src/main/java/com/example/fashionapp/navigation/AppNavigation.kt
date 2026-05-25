@@ -111,7 +111,8 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
         ) {
             NavHost(
                 navController = navController,
-                startDestination = startDestination,
+//                startDestination = startDestination,
+                startDestination = Screen.FirstLoginOnboarding.route,
                 modifier = Modifier.fillMaxSize()
             ) {
                 // ── Auth ──────────────────────────────────────────────────

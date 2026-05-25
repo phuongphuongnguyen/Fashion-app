@@ -120,7 +120,23 @@ class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
     }
 
     // Translate helper
-    fun t(en: String, vi: String): String = if (language == AppLanguage.VIETNAMESE) vi else en
+    fun t(
+        en: String,
+        vi: String = en,
+        fr: String = en,
+        ja: String = en,
+        ko: String = en,
+        zh: String = en
+    ): String {
+        return when (language) {
+            AppLanguage.VIETNAMESE -> vi
+            AppLanguage.FRENCH -> fr
+            AppLanguage.JAPANESE -> ja
+            AppLanguage.KOREAN -> ko
+            AppLanguage.CHINESE -> zh
+            else -> en
+        }
+    }
 }
 
 class AppSettingsViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
