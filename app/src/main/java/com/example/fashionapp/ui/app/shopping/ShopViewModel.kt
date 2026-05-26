@@ -4,8 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.CartItem
 import com.example.fashionapp.data.ReviewOrder
+import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.data.shop.ShopRepository
+import com.example.fashionapp.data.user.UserRepository
+import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.Product
+import com.example.fashionapp.model.User
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,9 +20,12 @@ import java.util.Date
 import java.util.Locale
 
 data class ShopUiState(
+    val posts: List<Post> = emptyList(),
     val products: List<Product> = emptyList(),
     val cartItems: List<CartItem> = emptyList(),
     val orders: List<ReviewOrder> = emptyList(),
+    val shopUser: User? = null,
+    val shopLogoUrl: String = "",
     val isLoadingProducts: Boolean = true,
     val isLoadingCart: Boolean = true,
     val isLoadingOrders: Boolean = true
@@ -26,6 +33,8 @@ data class ShopUiState(
 
 class ShopViewModel : ViewModel() {
     private val repository = ShopRepository
+    private val feedRepository = FeedRepository()
+    private val userRepository = UserRepository()
     private val auth = FirebaseAuth.getInstance()
 
     private val _uiState = MutableStateFlow(ShopUiState())
@@ -35,6 +44,29 @@ class ShopViewModel : ViewModel() {
         loadProducts()
         loadCartItems()
         loadOrders()
+    }
+
+    fun loadShopUser(shopId: String) {
+        if (shopId.isBlank()) return
+        loadShopPosts(shopId)
+        viewModelScope.launch {
+            userRepository.getUserProfileFlow(shopId).collect { user ->
+                _uiState.value = _uiState.value.copy(shopUser = user)
+            }
+        }
+        viewModelScope.launch {
+            repository.getShopLogoUrlFlow(shopId).collect { logoUrl ->
+                _uiState.value = _uiState.value.copy(shopLogoUrl = logoUrl)
+            }
+        }
+    }
+
+    private fun loadShopPosts(shopId: String) {
+        viewModelScope.launch {
+            feedRepository.getPostsByAuthorFlow(shopId).collect { posts ->
+                _uiState.value = _uiState.value.copy(posts = posts)
+            }
+        }
     }
 
     private fun loadProducts() {

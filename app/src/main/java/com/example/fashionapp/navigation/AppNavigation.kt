@@ -37,6 +37,7 @@ import com.example.fashionapp.ui.app.shopping.HistoryScreen
 import com.example.fashionapp.ui.app.shopping.PaymentScreen
 import com.example.fashionapp.ui.app.shopping.ReviewDoneScreen
 import com.example.fashionapp.ui.app.shopping.ReviewScreen
+import com.example.fashionapp.ui.app.shopping.ShopScreen
 import com.example.fashionapp.ui.app.shopping.ShoppingScreen
 import com.example.fashionapp.ui.auth.CreateAccountScreen
 import com.example.fashionapp.ui.auth.ForgotPasswordScreen
@@ -49,7 +50,7 @@ import com.example.fashionapp.ui.app.settings.SettingsScreen
 import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
 import com.example.fashionapp.ui.app.search.SearchScreen
 import com.example.fashionapp.ui.app.productdetail.ProductDetailScreen
-import com.example.fashionapp.ui.app.shopping.ShopScreen
+import com.example.fashionapp.ui.app.post.CreatePostScreen
 
 
 @Composable
@@ -78,6 +79,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
     val showBottomBar = currentDestination?.route in listOf(
         Screen.Home.route,
         Screen.Shopping.route,
+        Screen.Shop.route,
         Screen.Saved.route,
         Screen.Profile.route,
         Screen.Cart.route,
@@ -113,8 +115,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
         ) {
             NavHost(
                 navController = navController,
-//                startDestination = startDestination,
-                startDestination = Screen.FirstLoginOnboarding.route,
+                startDestination = startDestination,
                 modifier = Modifier.fillMaxSize()
             ) {
                 // ── Auth ──────────────────────────────────────────────────
@@ -211,9 +212,15 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 composable(Screen.Home.route) {
                     HomeScreen(navController = navController)
                 }
-                composable(route = Screen.Shopping.route)
-                {
+                composable(Screen.Shopping.route) {
                     ShoppingScreen(navController = navController)
+                }
+                composable(
+                    route = Screen.Shop.route,
+                    arguments = listOf(navArgument("shopId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val shopId = backStackEntry.arguments?.getString("shopId").orEmpty()
+                    ShopScreen(navController = navController, shopId = shopId)
                 }
                 composable(Screen.Saved.route) {
                     SavedScreen(navController = navController)
@@ -232,6 +239,17 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 }
                 composable(Screen.Messages.route) {
                     MessagesScreen(navController = navController)
+                }
+                composable(
+                    route = Screen.CreatePost.route,
+                    arguments = listOf(
+                        navArgument("authorId") { nullable = true; defaultValue = null; type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    CreatePostScreen(
+                        navController = navController,
+                        authorId = backStackEntry.arguments?.getString("authorId")
+                    )
                 }
 
                 composable(
@@ -332,6 +350,7 @@ fun AppBottomBar(
                 val isSelected = when (item.screen) {
                     Screen.Shopping -> currentRoute in listOf(
                         Screen.Shopping.route,
+                        Screen.Shop.route,
                         Screen.Cart.route,
                         Screen.Payment.route,
                         Screen.History.route,

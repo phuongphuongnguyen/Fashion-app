@@ -51,7 +51,7 @@ object ProductRepository {
         return try {
             @Suppress("UNCHECKED_CAST")
             val imagePaths = (doc.get("images") as? List<String>) ?: emptyList()
-            val imageUrls  = imagePaths.map { StorageUrlResolver.resolve(it) }
+            val imageUrls  = StorageUrlResolver.resolveAll(imagePaths)
 
             @Suppress("UNCHECKED_CAST")
             val rawVariants = (doc.get("variants") as? List<*>) ?: emptyList<Any>()
@@ -85,7 +85,9 @@ object ProductRepository {
                 price           = price,
                 originalPrice   = originalPrice,
                 discountPercent = discount,
-                imageUrl        = imageUrls.firstOrNull() ?: StorageUrlResolver.resolve(doc.getString("imageUrl").orEmpty()),
+                imageUrl        = imageUrls.firstOrNull()
+                    ?: StorageUrlResolver.resolve(doc.getString("imageUrl").orEmpty()).takeIf { it.isNotBlank() }
+                    ?: "",
                 imageUrls       = imageUrls,
                 rating          = (doc.get("rating") as? Number)?.toFloat() ?: 0f,
                 reviewCount     = safeInt(doc.get("reviewCount")),

@@ -36,9 +36,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.fashionapp.data.StorageUrlResolver
+import com.example.fashionapp.data.user.UserSession
+import com.example.fashionapp.model.User
+import com.example.fashionapp.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
-import com.example.fashionapp.navigation.Screen
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 // ── Palette ──
 private val PrimaryBlue   = Color(0xFF3669C9)
@@ -404,20 +411,27 @@ private fun ProfileSubScreen(
     dividerColor: Color
 ) {
     val settings = LocalAppSettings.current
-    val user = FirebaseAuth.getInstance().currentUser
-    var displayName by remember { mutableStateOf(user?.displayName ?: "") }
-    var email by remember { mutableStateOf(user?.email ?: "") }
-    var photoUri by remember { mutableStateOf(user?.photoUrl) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val auth = FirebaseAuth.getInstance()
+    val user = auth.currentUser
+
+    // Đọc displayName & avatar từ UserSession (Firestore) để hiển thị đúng
+    val sessionUser by UserSession.currentUser.collectAsState()
+    var displayName by remember { mutableStateOf(sessionUser?.name ?: user?.displayName ?: "") }
+    val email = user?.email ?: ""
+
+    // photoUri: null = dùng avatar hiện tại từ Firestore, non-null = ảnh mới user vừa chọn
+    var pickedUri by remember { mutableStateOf<Uri?>(null) }
+    val currentAvatarUrl = sessionUser?.avatarUrl.orEmpty()
+
     var isSaving by remember { mutableStateOf(false) }
-    var showSnackbar by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
+    var showSuccess by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            photoUri = uri
-        }
-    }
+    ) { uri: Uri? -> if (uri != null) pickedUri = uri }
 
     Scaffold(containerColor = bgColor) { padding ->
         Column(
@@ -460,9 +474,11 @@ private fun ProfileSubScreen(
                     .size(90.dp),
                 contentAlignment = Alignment.BottomEnd
             ) {
-                if (photoUri != null) {
+                // Hiện ảnh mới pick hoặc ảnh hiện tại từ Firestore
+                val avatarModel: Any? = pickedUri ?: currentAvatarUrl.takeIf { it.isNotBlank() }
+                if (avatarModel != null) {
                     AsyncImage(
-                        model = photoUri,
+                        model = avatarModel,
                         contentDescription = "Avatar",
                         modifier = Modifier
                             .size(90.dp)
@@ -538,19 +554,78 @@ private fun ProfileSubScreen(
                 readOnly = true
             )
 
+            if (saveError != null) {
+                Text(
+                    text = saveError ?: "",
+                    color = DangerRed,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                )
+            }
+            if (showSuccess) {
+                Text(
+                    text = settings.t("Saved successfully!", "Đã lưu thành công!", "Enregistré!", "保存しました!", "저장됨!", "已保存!"),
+                    color = Color(0xFF2E7D32),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                )
+            }
+
             Spacer(Modifier.weight(1f))
 
             // Save button
             Button(
                 onClick = {
+                    val uid = user?.uid ?: return@Button
                     isSaving = true
-                    val profileUpdates = UserProfileChangeRequest.Builder()
-                        .setDisplayName(displayName)
-                        .apply { if (photoUri != null) setPhotoUri(photoUri) }
-                        .build()
-                    user?.updateProfile(profileUpdates)?.addOnCompleteListener {
-                        isSaving = false
-                        showSnackbar = true
+                    saveError = null
+                    showSuccess = false
+                    scope.launch {
+                        try {
+                            val db = FirebaseFirestore.getInstance()
+                            val storage = FirebaseStorage.getInstance()
+
+                            // 1. Upload ảnh mới lên Storage nếu user chọn ảnh mới
+                            val newAvatarUrl: String = if (pickedUri != null) {
+                                val storagePath = "avatars/$uid.jpg"
+                                val ref = storage.reference.child(storagePath)
+                                ref.putFile(pickedUri!!).await()
+                                // Xoá cache URL cũ để StorageUrlResolver lấy URL mới
+                                StorageUrlResolver.clearCache()
+                                ref.downloadUrl.await().toString()
+                            } else {
+                                currentAvatarUrl
+                            }
+
+                            // 2. Cập nhật Firestore users/{uid}
+                            val updates = mutableMapOf<String, Any>("name" to displayName)
+                            if (newAvatarUrl.isNotBlank()) {
+                                updates["avatarUrl"] = newAvatarUrl
+                            }
+                            db.collection("users").document(uid)
+                                .update(updates as Map<String, Any>)
+                                .await()
+
+                            // 3. Cập nhật UserSession để các màn hình khác thấy ngay
+                            val updatedUser = (sessionUser ?: User(id = uid)).copy(
+                                name = displayName,
+                                avatarUrl = newAvatarUrl.ifBlank { currentAvatarUrl }
+                            )
+                            UserSession.updateCurrentUser(updatedUser)
+
+                            // 4. Cập nhật Firebase Auth displayName
+                            val profileUpdates = UserProfileChangeRequest.Builder()
+                                .setDisplayName(displayName)
+                                .build()
+                            user.updateProfile(profileUpdates).await()
+
+                            pickedUri = null
+                            showSuccess = true
+                        } catch (e: Exception) {
+                            saveError = e.localizedMessage ?: "Error saving profile"
+                        } finally {
+                            isSaving = false
+                        }
                     }
                 },
                 modifier = Modifier

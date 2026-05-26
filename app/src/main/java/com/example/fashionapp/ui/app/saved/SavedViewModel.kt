@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
 
 data class SavedUiState(
     val savedPosts: List<Post> = emptyList(),
@@ -20,6 +21,7 @@ data class SavedUiState(
 class SavedViewModel : ViewModel() {
     private val userRepository = UserRepository()
     private val feedRepository = FeedRepository()
+    private val auth = FirebaseAuth.getInstance()
     
     private val _uiState = MutableStateFlow(SavedUiState())
     val uiState: StateFlow<SavedUiState> = _uiState.asStateFlow()
@@ -28,10 +30,15 @@ class SavedViewModel : ViewModel() {
         loadSavedPosts()
     }
 
-    private fun currentUserId(): String = "u001"
+    private fun currentUserId(): String? = auth.currentUser?.uid
 
     private fun loadSavedPosts() {
         val userId = currentUserId()
+        if (userId == null) {
+            _uiState.value = SavedUiState(isLoading = false)
+            return
+        }
+
         viewModelScope.launch {
             combine(
                 userRepository.getSavedPostIdsFlow(userId),
@@ -51,7 +58,7 @@ class SavedViewModel : ViewModel() {
     }
 
     fun toggleSave(postId: String) {
-        val userId = currentUserId()
+        val userId = currentUserId() ?: return
         val currentIds = _uiState.value.savedPostIds
         viewModelScope.launch {
             if (currentIds.contains(postId)) {

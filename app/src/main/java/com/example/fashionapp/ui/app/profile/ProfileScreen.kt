@@ -2,6 +2,7 @@ package com.example.fashionapp.ui.app.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.home.HomeViewModel
@@ -84,7 +88,8 @@ fun ProfileScreen(
             item {
                 ProfileHeader(
                     user = uiState.user,
-                    postsCount = profilePosts.size
+                    postsCount = profilePosts.size,
+                    onAddPost = { navController.navigate(Screen.CreatePost.createRoute()) }
                 )
             }
 
@@ -125,17 +130,26 @@ fun ProfileScreen(
 @Composable
 private fun ProfileHeader(
     user: com.example.fashionapp.model.User?,
-    postsCount: Int
+    postsCount: Int,
+    onAddPost: () -> Unit
 ) {
     val name = user?.name?.takeIf { it.isNotBlank() } ?: "User"
     val avatar = user?.avatarUrl.orEmpty()
+    val context = LocalContext.current
     val followers = user?.followersCount ?: 0
     val following = user?.followingCount ?: 0
+
+    val avatarRequest = remember(context, avatar) {
+        ImageRequest.Builder(context)
+            .data(avatar.takeIf { it.isNotBlank() })
+            .crossfade(true)
+            .build()
+    }
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
-                model = avatar.ifBlank { null },
+                model = avatarRequest,
                 contentDescription = name,
                 modifier = Modifier
                     .size(72.dp)
@@ -145,7 +159,8 @@ private fun ProfileHeader(
                     .clip(CircleShape)
                     .background(Color(0xFFECECEC)),
                 contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_profile)
+                error = painterResource(R.drawable.ic_profile),
+                fallback = painterResource(R.drawable.ic_profile)
             )
             Spacer(Modifier.weight(1f))
             ProfileMetric(postsCount.toString(), "Posts")
@@ -182,7 +197,9 @@ private fun ProfileHeader(
                     imageVector = Icons.Outlined.AddCircleOutline,
                     contentDescription = "Add Post",
                     tint = Color.Black,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable { onAddPost() }
                 )
             }
         }
@@ -190,6 +207,7 @@ private fun ProfileHeader(
 }
 
 // ── Profile Metric ────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun ProfileMetric(value: String, label: String) {

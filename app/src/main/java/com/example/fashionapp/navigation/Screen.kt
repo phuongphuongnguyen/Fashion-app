@@ -15,7 +15,10 @@ sealed class Screen(val route: String) {
 
     // ── Main tabs ─────────────────────────────────────────────────────────────
     object Home    : Screen("home")
-    object Shopping    : Screen("shoping")
+    object Shopping: Screen("shopping")
+    object Shop    : Screen("shop/{shopId}") {
+        fun createRoute(shopId: String) = "shop/$shopId"
+    }
     object Saved   : Screen("saved")
     object Profile : Screen("profile")
 
@@ -23,6 +26,15 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object Chatbot  : Screen("chatbot")
     object Messages : Screen("messages")
+    object CreatePost : Screen("create_post?authorId={authorId}") {
+        fun createRoute(authorId: String? = null): String {
+            return if (authorId.isNullOrBlank()) {
+                "create_post"
+            } else {
+                "create_post?authorId=$authorId"
+            }
+        }
+    }
 
     object ShopDetail : Screen("shop_detail/{shopId}") {
         fun createRoute(shopId: String) = "shop_detail/$shopId"
@@ -74,7 +86,7 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem(Screen.Home,    "Home",    R.drawable.ic_home),
-    BottomNavItem(Screen.Shopping,    "Shopping",    R.drawable.ic_shopping),
+    BottomNavItem(Screen.Shopping,"Shop",    R.drawable.ic_shopping),
     BottomNavItem(Screen.Saved,   "Saved",   R.drawable.ic_saved),
     BottomNavItem(Screen.Profile, "Profile", R.drawable.ic_profile)
 )

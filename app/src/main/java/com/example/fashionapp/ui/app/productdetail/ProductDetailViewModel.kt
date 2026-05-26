@@ -3,6 +3,7 @@ package com.example.fashionapp.ui.app.productdetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.example.fashionapp.data.product.ProductRepository
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
@@ -24,10 +25,15 @@ data class ProductDetailUiState(
     val selectedImageIndex: Int = 0,
     val isWishlisted: Boolean = false,
     val isAddedToCart: Boolean = false,
+    val cartError: String? = null,
     val error: String? = null,
 )
 
 class ProductDetailViewModel(private val productId: String) : ViewModel() {
+    private companion object {
+        const val TAG = "ProductDetailViewModel"
+    }
+
     private val auth = FirebaseAuth.getInstance()
 
     private val _uiState = MutableStateFlow(ProductDetailUiState())
@@ -68,10 +74,18 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
         )
     }
 
-    fun addToCart(quantity: Int = 1) {
-        val product = _uiState.value.product ?: return
-        val variant = _uiState.value.selectedVariant
-        val userId = auth.currentUser?.uid ?: return
+    fun addToCart(variant: ProductVariant? = _uiState.value.selectedVariant, quantity: Int = 1) {
+        val product = _uiState.value.product
+        if (product == null) {
+            _uiState.value = _uiState.value.copy(cartError = "Product is not available")
+            return
+        }
+
+        val userId = auth.currentUser?.uid
+        if (userId.isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(cartError = "Please sign in before adding to cart")
+            return
+        }
 
         val cartItem = CartItem(
             id = "${product.id}_${System.currentTimeMillis()}",
@@ -82,9 +96,22 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
         )
 
         viewModelScope.launch {
-            ShopRepository.addToCart(userId, cartItem)
-            _uiState.value = _uiState.value.copy(isAddedToCart = true)
+            try {
+                ShopRepository.addToCart(userId, cartItem)
+                Log.d(TAG, "Added cart item ${cartItem.id} for user $userId")
+                _uiState.value = _uiState.value.copy(isAddedToCart = true, cartError = null)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to add cart item ${cartItem.id} for user $userId", e)
+                _uiState.value = _uiState.value.copy(
+                    isAddedToCart = false,
+                    cartError = e.message ?: "Failed to add to cart"
+                )
+            }
         }
+    }
+
+    fun consumeCartResult() {
+        _uiState.value = _uiState.value.copy(isAddedToCart = false, cartError = null)
     }
 }
 

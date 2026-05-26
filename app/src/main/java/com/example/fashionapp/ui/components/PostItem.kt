@@ -107,7 +107,8 @@ fun PostHeader(
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().clip(CircleShape),
                 contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_profile)
+                error = painterResource(R.drawable.ic_profile),
+                fallback = painterResource(R.drawable.ic_profile)
             )
         }
         Spacer(Modifier.width(10.dp))
@@ -144,7 +145,8 @@ fun PostImagesRow(imageUrls: List<String>) {
                     contentDescription = null,
                     modifier = Modifier.fillParentMaxWidth().fillMaxHeight().background(Color(0xFFF9F9F9)),
                     contentScale = ContentScale.Fit,
-                    error = painterResource(R.drawable.ic_launcher_foreground)
+                    error = painterResource(R.drawable.ic_shopping),
+                    fallback = painterResource(R.drawable.ic_shopping)
                 )
             }
         }
@@ -265,7 +267,8 @@ fun CommentBottomSheet(
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
-                        error = painterResource(R.drawable.ic_profile)
+                        error = painterResource(R.drawable.ic_profile),
+                        fallback = painterResource(R.drawable.ic_profile)
                     )
                 }
                 TextField(
@@ -287,7 +290,14 @@ fun CommentBottomSheet(
 fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Boolean = false) {
     Row(verticalAlignment = Alignment.Top) {
         Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
-            AsyncImage(model = avatarUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop, error = painterResource(R.drawable.ic_profile))
+            AsyncImage(
+                model = avatarUrl.ifBlank { null },
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                error = painterResource(R.drawable.ic_profile),
+                fallback = painterResource(R.drawable.ic_profile)
+            )
         }
         Spacer(Modifier.width(12.dp))
         Column {

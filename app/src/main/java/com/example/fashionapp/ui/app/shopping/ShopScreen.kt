@@ -35,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.fashionapp.R
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.home.HomeViewModel
@@ -71,11 +73,12 @@ fun ShopScreen(
     val homeState by homeViewModel.uiState.collectAsState()
     val shopState by shopViewModel.uiState.collectAsState()
     val savedUiState by savedViewModel.uiState.collectAsState()
-    
-    val sourcePosts = homeState.posts
-    val shopPosts = remember(sourcePosts, shopId) {
-        sourcePosts.filter { it.authorId == shopId }
+
+    LaunchedEffect(shopId) {
+        shopViewModel.loadShopUser(shopId)
     }
+
+    val shopPosts = shopState.posts
     
     val shopProducts = remember(shopState.products, shopId) {
         shopState.products.filter { it.shopId == shopId }
@@ -113,13 +116,24 @@ fun ShopScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            val shopName = shopPosts.firstOrNull()?.authorName ?: "Shop"
+            val shopName = shopState.shopUser?.name
+                ?: shopPosts.firstOrNull()?.authorName
+                ?: "Shop"
+
+            // Ưu tiên logo shop chuyên dụng, sau đó đến avatar của user quản lý shop, cuối cùng mới lấy từ bài đăng
+            val shopAvatarUrl = shopState.shopLogoUrl.ifBlank {
+                shopState.shopUser?.avatarUrl.orEmpty().ifBlank {
+                    shopPosts.firstOrNull()?.authorAvt.orEmpty()
+                }
+            }
             
             ShopHeader(
                 shopName = shopName,
+                avatarUrl = shopAvatarUrl,
                 selectedTab = selectedTab,
                 postCount = shopPosts.size,
-                onTabSelected = { selectedTab = it }
+                onTabSelected = { selectedTab = it },
+                onAddPost = { navController.navigate(Screen.CreatePost.createRoute(shopId)) }
             )
 
             if (selectedTab == "Posts") {
@@ -176,9 +190,11 @@ fun ShopScreen(
 @Composable
 private fun ShopHeader(
     shopName: String,
+    avatarUrl: String,
     selectedTab: String,
     postCount: Int,
-    onTabSelected: (String) -> Unit
+    onTabSelected: (String) -> Unit,
+    onAddPost: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -190,7 +206,18 @@ private fun ShopHeader(
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
-                Text(shopName.uppercase(), fontWeight = FontWeight.Black, fontSize = 13.sp)
+                if (avatarUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = avatarUrl.ifBlank { null },
+                        contentDescription = shopName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        error = androidx.compose.ui.res.painterResource(R.drawable.ic_profile),
+                        fallback = androidx.compose.ui.res.painterResource(R.drawable.ic_profile)
+                    )
+                } else {
+                    Text(shopName.uppercase(), fontWeight = FontWeight.Black, fontSize = 13.sp)
+                }
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -258,7 +285,9 @@ private fun ShopHeader(
                 imageVector = Icons.Outlined.AddCircleOutline,
                 contentDescription = "Add",
                 tint = Color.Black,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable { onAddPost() }
             )
         }
 

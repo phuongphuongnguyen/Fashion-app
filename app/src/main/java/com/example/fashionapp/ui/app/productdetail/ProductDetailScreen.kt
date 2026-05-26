@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,6 +74,23 @@ fun ProductDetailScreen(
     )
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(state.isAddedToCart, state.cartError) {
+        when {
+            state.isAddedToCart -> {
+                android.widget.Toast.makeText(context, "Added to cart", android.widget.Toast.LENGTH_SHORT).show()
+                viewModel.consumeCartResult()
+                navController.navigate(Screen.Cart.route) {
+                    launchSingleTop = true
+                }
+            }
+            state.cartError != null -> {
+                android.widget.Toast.makeText(context, state.cartError, android.widget.Toast.LENGTH_SHORT).show()
+                viewModel.consumeCartResult()
+            }
+        }
+    }
 
     if (state.isLoading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -98,7 +116,9 @@ fun ProductDetailScreen(
             product   = product,
             isBuyNow  = false,
             onDismiss = { showAddToCart = false },
-            onConfirm = { _, _ -> /* TODO: thêm vào cart */ }
+            onConfirm = { variant, quantity ->
+                viewModel.addToCart(variant = variant, quantity = quantity)
+            }
         )
     }
     if (showBuyNow) {

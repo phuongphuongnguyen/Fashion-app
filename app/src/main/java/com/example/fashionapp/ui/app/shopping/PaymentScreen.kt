@@ -16,6 +16,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +44,7 @@ fun PaymentScreen(
     val uiState by viewModel.uiState.collectAsState()
     val items = uiState.cartItems
     val total = items.sumOf { it.totalPrice }
+    var selectedPaymentMethod by remember { mutableStateOf("visa") }
 
     Scaffold(
         topBar = {
@@ -172,31 +176,78 @@ fun PaymentScreen(
             // Payment Method
             item {
                 SectionHeader("Payment Method")
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFF7F8FB), RoundedCornerShape(12.dp))
-                        .padding(16.dp)
-                ) {
-                    Surface(
-                        modifier = Modifier.size(45.dp, 28.dp),
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFE5EDFF),
-                        border = BorderStroke(1.dp, Color(0xFF0056FF))
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("VISA", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFF0056FF))
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("**** **** **** 4567", modifier = Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Icon(Icons.Default.Edit, null, tint = Color(0xFF0056FF), modifier = Modifier.size(18.dp).clickable { })
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PaymentMethodOption(
+                        id = "visa",
+                        selectedId = selectedPaymentMethod,
+                        badgeText = "VISA",
+                        badgeColor = Color(0xFFE5EDFF),
+                        badgeTextColor = Color(0xFF0056FF),
+                        title = "Visa",
+                        subtitle = "**** **** **** 4567",
+                        onSelected = { selectedPaymentMethod = it }
+                    )
+                    PaymentMethodOption(
+                        id = "momo",
+                        selectedId = selectedPaymentMethod,
+                        badgeText = "MoMo",
+                        badgeColor = Color(0xFFA50064),
+                        badgeTextColor = Color.White,
+                        title = "MoMo",
+                        subtitle = "Pay with MoMo e-wallet",
+                        onSelected = { selectedPaymentMethod = it }
+                    )
                 }
             }
 
             item { Spacer(modifier = Modifier.height(20.dp)) }
         }
+    }
+}
+
+@Composable
+private fun PaymentMethodOption(
+    id: String,
+    selectedId: String,
+    badgeText: String,
+    badgeColor: Color,
+    badgeTextColor: Color,
+    title: String,
+    subtitle: String,
+    onSelected: (String) -> Unit
+) {
+    val selected = id == selectedId
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) Color(0xFFF0F7FF) else Color(0xFFF7F8FB))
+            .border(1.dp, if (selected) Color(0xFF0056FF) else Color.Transparent, RoundedCornerShape(12.dp))
+            .clickable { onSelected(id) }
+            .padding(16.dp)
+    ) {
+        Surface(
+            modifier = Modifier.size(52.dp, 32.dp),
+            shape = RoundedCornerShape(6.dp),
+            color = badgeColor,
+            border = if (selected) BorderStroke(1.dp, Color(0xFF0056FF)) else null
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(badgeText, fontSize = 10.sp, fontWeight = FontWeight.Black, color = badgeTextColor)
+            }
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, fontSize = 12.sp, color = Color.Gray)
+        }
+        Icon(
+            imageVector = if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = if (selected) Color(0xFF0056FF) else Color.LightGray,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 

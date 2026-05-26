@@ -1,9 +1,11 @@
 package com.example.fashionapp.data.user
 
+import com.example.fashionapp.data.StorageUrlResolver
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class UserRepository {
@@ -26,15 +28,17 @@ class UserRepository {
                     return@addSnapshotListener
                 }
                 
-                val user = com.example.fashionapp.model.User(
-                    id = snapshot.id,
-                    name = snapshot.getString("name") ?: "",
-                    avatarUrl = snapshot.getString("avatarUrl") ?: "",
-                    email = snapshot.getString("email") ?: "",
-                    followersCount = snapshot.getLong("followersCount")?.toInt() ?: 0,
-                    followingCount = snapshot.getLong("followingCount")?.toInt() ?: 0
-                )
-                trySend(user)
+                launch {
+                    val user = com.example.fashionapp.model.User(
+                        id = snapshot.id,
+                        name = snapshot.getString("name") ?: "",
+                        avatarUrl = StorageUrlResolver.resolve(snapshot.getString("avatarUrl") ?: ""),
+                        email = snapshot.getString("email") ?: "",
+                        followersCount = snapshot.getLong("followersCount")?.toInt() ?: 0,
+                        followingCount = snapshot.getLong("followingCount")?.toInt() ?: 0
+                    )
+                    trySend(user)
+                }
             }
         awaitClose { listener.remove() }
     }
@@ -47,7 +51,7 @@ class UserRepository {
             com.example.fashionapp.model.User(
                 id = snapshot.id,
                 name = snapshot.getString("name") ?: "",
-                avatarUrl = snapshot.getString("avatarUrl") ?: "",
+                avatarUrl = StorageUrlResolver.resolve(snapshot.getString("avatarUrl") ?: ""),
                 email = snapshot.getString("email") ?: "",
                 followersCount = snapshot.getLong("followersCount")?.toInt() ?: 0,
                 followingCount = snapshot.getLong("followingCount")?.toInt() ?: 0

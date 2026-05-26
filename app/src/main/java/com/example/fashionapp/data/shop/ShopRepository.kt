@@ -27,6 +27,7 @@ object ShopRepository {
     private var newItemsCache: List<Product>? = null
     private var mostPopularCache: List<Product>? = null
     private var forYouCache: List<Product>? = null
+    private val shopLogoCache = mutableMapOf<String, String?>()
 
     private fun safeDouble(value: Any?): Double = (value as? Number)?.toDouble() ?: 0.0
     private fun safeInt(value: Any?): Int = (value as? Number)?.toInt() ?: 0
@@ -64,7 +65,7 @@ object ShopRepository {
                 val name = doc.getString("name") ?: return@mapNotNull null
                 @Suppress("UNCHECKED_CAST")
                 val previewPaths = (doc.get("previewImages") as? List<String>) ?: emptyList()
-                val urls = previewPaths.map { StorageUrlResolver.resolve(it) }
+                val urls = StorageUrlResolver.resolveAll(previewPaths)
                 Category(id, name, urls)
             }
             categoriesCache = result
@@ -104,6 +105,32 @@ object ShopRepository {
             val snap = query.get().await()
             snap.documents.mapNotNull { it.toProduct() }
         } catch (_: Exception) { emptyList() }
+    }
+
+    fun getShopLogoUrlFlow(shopId: String): Flow<String> = callbackFlow {
+        if (shopId.isBlank()) {
+            trySend("")
+            close()
+            return@callbackFlow
+        }
+
+        val listener = db.collection("shops").document(shopId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null || !snapshot.exists()) {
+                    trySend(shopLogoCache[shopId] ?: "")
+                    return@addSnapshotListener
+                }
+
+                launch {
+                    val logoRef = snapshot.getString("logoRef").orEmpty()
+                    val logoUrl = StorageUrlResolver.resolve(logoRef).takeIf { it.isNotBlank() }
+                    shopLogoCache[shopId] = logoUrl
+                    trySend(logoUrl.orEmpty())
+                }
+            }
+        awaitClose { listener.remove() }
+    }.onStart {
+        shopLogoCache[shopId]?.let { emit(it) }
     }
 
     fun getCartItemsFlow(userId: String): Flow<List<CartItem>> = callbackFlow {
@@ -244,5 +271,6 @@ object ShopRepository {
         newItemsCache = null
         mostPopularCache = null
         forYouCache = null
+        shopLogoCache.clear()
     }
 }
