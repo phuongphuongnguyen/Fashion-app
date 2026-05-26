@@ -243,7 +243,14 @@ object ShopRepository {
         cachedOrders?.let { emit(it) }
     }
 
-    suspend fun placeOrder(userId: String, orders: List<ReviewOrder>) {
+    suspend fun placeOrder(
+        userId: String,
+        orders: List<ReviewOrder>,
+        paymentMethod: String,
+        shippingMethod: String,
+        shippingFee: Double,
+        shippingAddress: String
+    ) {
         if (userId.isBlank()) return
         val batch = db.batch()
         val ordersRef = db.collection("users").document(userId).collection("orders")
@@ -256,7 +263,11 @@ object ShopRepository {
                     "imageUrl" to order.product.imageUrl
                 ),
                 "status" to order.status,
-                "orderDate" to order.orderDate
+                "orderDate" to order.orderDate,
+                "paymentMethod" to paymentMethod,
+                "shippingMethod" to shippingMethod,
+                "shippingFee" to shippingFee,
+                "shippingAddress" to shippingAddress
             )
             batch.set(ordersRef.document(), data)
         }

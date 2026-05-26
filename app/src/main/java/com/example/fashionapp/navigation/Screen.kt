@@ -52,7 +52,15 @@ sealed class Screen(val route: String) {
 
     // ── Shopping flow ─────────────────────────────────────────────────────────
     object Cart       : Screen("cart")
-    object Payment    : Screen("payment")
+    object Payment    : Screen("payment?cartItemIds={cartItemIds}") {
+        fun createRoute(cartItemIds: Collection<String> = emptyList()): String {
+            return if (cartItemIds.isEmpty()) {
+                "payment"
+            } else {
+                "payment?cartItemIds=${cartItemIds.joinToString(",")}"
+            }
+        }
+    }
     object History    : Screen("history")
 
     object Review : Screen("review/{orderId}") {

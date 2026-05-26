@@ -28,8 +28,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
@@ -39,12 +39,24 @@ import com.example.fashionapp.ui.components.FashionTopBar
 @Composable
 fun PaymentScreen(
     navController: NavController,
+    selectedCartItemIds: Set<String> = emptySet(),
     viewModel: ShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val items = uiState.cartItems
-    val total = items.sumOf { it.totalPrice }
+    val checkoutItems = remember(items, selectedCartItemIds) {
+        if (selectedCartItemIds.isEmpty()) {
+            items
+        } else {
+            items.filter { it.id in selectedCartItemIds }
+        }
+    }
+    val itemsTotal = checkoutItems.sumOf { it.totalPrice }
     var selectedPaymentMethod by remember { mutableStateOf("visa") }
+    var selectedShippingMethod by remember { mutableStateOf("standard") }
+    val shippingFee = if (selectedShippingMethod == "express") 50000.0 else 0.0
+    val total = itemsTotal + shippingFee
+    val shippingAddress = "Danang Bul, Fashion Store, Da Nang City"
 
     Scaffold(
         topBar = {
@@ -76,7 +88,13 @@ fun PaymentScreen(
                     }
                     Button(
                         onClick = {
-                            viewModel.placeOrderFromCart()
+                            viewModel.placeOrderFromCart(
+                                cartItems = checkoutItems,
+                                paymentMethod = selectedPaymentMethod,
+                                shippingMethod = selectedShippingMethod,
+                                shippingFee = shippingFee,
+                                shippingAddress = shippingAddress
+                            )
                             navController.navigate(Screen.History.route) {
                                 popUpTo(Screen.Payment.route) { inclusive = true }
                                 launchSingleTop = true
@@ -85,7 +103,7 @@ fun PaymentScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF)),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(52.dp),
-                        enabled = items.isNotEmpty()
+                        enabled = checkoutItems.isNotEmpty()
                     ) {
                         Text("Place Order", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
@@ -115,7 +133,7 @@ fun PaymentScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Bonnie Green", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Spacer(Modifier.height(4.dp))
-                        Text("Danang Bul, Fashion Store, Da Nang City", color = Color.Gray, fontSize = 13.sp)
+                        Text(shippingAddress, color = Color.Gray, fontSize = 13.sp)
                     }
                     Box(
                         modifier = Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE5EDFF)).clickable { },
@@ -137,12 +155,12 @@ fun PaymentScreen(
                         modifier = Modifier.size(22.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text("${items.size}", color = Color(0xFF0056FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("${checkoutItems.size}", color = Color(0xFF0056FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                items.forEach { item ->
+                checkoutItems.forEach { item ->
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -168,8 +186,22 @@ fun PaymentScreen(
             item {
                 SectionHeader("Shipping Options")
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ShippingOption("Standard Delivery", "Arrival in 3-5 days", "FREE", true)
-                    ShippingOption("Express Delivery", "Arrival in 1-2 days", "₫50.000", false)
+                    ShippingOption(
+                        id = "standard",
+                        selectedId = selectedShippingMethod,
+                        title = "Standard Delivery",
+                        time = "Arrival in 3-5 days",
+                        price = "FREE",
+                        onSelected = { selectedShippingMethod = it }
+                    )
+                    ShippingOption(
+                        id = "express",
+                        selectedId = selectedShippingMethod,
+                        title = "Express Delivery",
+                        time = "Arrival in 1-2 days",
+                        price = "₫50.000",
+                        onSelected = { selectedShippingMethod = it }
+                    )
                 }
             }
 
@@ -263,14 +295,22 @@ private fun SectionHeader(title: String) {
 }
 
 @Composable
-private fun ShippingOption(title: String, time: String, price: String, selected: Boolean) {
+private fun ShippingOption(
+    id: String,
+    selectedId: String,
+    title: String,
+    time: String,
+    price: String,
+    onSelected: (String) -> Unit
+) {
+    val selected = id == selectedId
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(if (selected) Color(0xFFF0F7FF) else Color(0xFFF7F8FB))
             .border(1.dp, if (selected) Color(0xFF0056FF) else Color.Transparent, RoundedCornerShape(12.dp))
-            .clickable { }
+            .clickable { onSelected(id) }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

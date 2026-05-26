@@ -125,9 +125,15 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    fun placeOrderFromCart() {
+    fun placeOrderFromCart(
+        cartItems: List<CartItem> = _uiState.value.cartItems,
+        paymentMethod: String = "visa",
+        shippingMethod: String = "standard",
+        shippingFee: Double = 0.0,
+        shippingAddress: String = ""
+    ) {
         val userId = auth.currentUser?.uid ?: return
-        val items = _uiState.value.cartItems
+        val items = cartItems
         if (items.isEmpty()) return
 
         val dateFormat = SimpleDateFormat("MMMM yyyy", Locale.US)
@@ -143,7 +149,14 @@ class ShopViewModel : ViewModel() {
         }
 
         viewModelScope.launch {
-            repository.placeOrder(userId, orders)
+            repository.placeOrder(
+                userId = userId,
+                orders = orders,
+                paymentMethod = paymentMethod,
+                shippingMethod = shippingMethod,
+                shippingFee = shippingFee,
+                shippingAddress = shippingAddress
+            )
             repository.clearCart(userId, items)
         }
     }

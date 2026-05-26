@@ -32,8 +32,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,7 +64,25 @@ fun CartScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val items = uiState.cartItems
-    val total = items.sumOf { it.totalPrice }
+    val existingItemIds = items.map { it.id }.toSet()
+    var selectedItemIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var hasInitializedSelection by remember { mutableStateOf(false) }
+
+    LaunchedEffect(existingItemIds) {
+        selectedItemIds = if (existingItemIds.isEmpty()) {
+            hasInitializedSelection = false
+            emptySet()
+        } else if (!hasInitializedSelection) {
+            hasInitializedSelection = true
+            existingItemIds
+        } else {
+            selectedItemIds.intersect(existingItemIds)
+        }
+    }
+
+    val selectedItems = items.filter { it.id in selectedItemIds }
+    val total = selectedItems.sumOf { it.totalPrice }
+    val allSelected = items.isNotEmpty() && selectedItemIds.containsAll(existingItemIds)
 
     Scaffold(
         topBar = {
@@ -86,11 +108,12 @@ fun CartScreen(
                 ) {
                     Column {
                         Text("Total", color = Color.Gray, fontSize = 12.sp)
+                        Text("${selectedItems.size} item(s) selected", color = Color.Gray, fontSize = 11.sp)
                         Text("₫${formatPrice(total)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                     Button(
                         onClick = {
-                            navController.navigate(Screen.Payment.route) {
+                            navController.navigate(Screen.Payment.createRoute(selectedItemIds)) {
                                 launchSingleTop = true
                             }
                         },
@@ -99,7 +122,7 @@ fun CartScreen(
                         modifier = Modifier
                             .width(140.dp)
                             .height(48.dp),
-                        enabled = items.isNotEmpty()
+                        enabled = selectedItems.isNotEmpty()
                     ) {
                         Text("Checkout", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
@@ -136,9 +159,50 @@ fun CartScreen(
                         }
                     )
                 }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF7F8FB))
+                            .clickable {
+                                selectedItemIds = if (allSelected) emptySet() else existingItemIds
+                            }
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = allSelected,
+                            onCheckedChange = { checked ->
+                                selectedItemIds = if (checked) existingItemIds else emptySet()
+                            },
+                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF0057FF)),
+                            modifier = Modifier.size(34.dp)
+                        )
+                        Text(
+                            "Select all",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            "${selectedItems.size}/${items.size}",
+                            color = Color.Gray,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
                 items(items, key = { it.id }) { item ->
                     CartItemRow(
                         item = item,
+                        selected = item.id in selectedItemIds,
+                        onSelectedChange = { checked ->
+                            selectedItemIds = if (checked) {
+                                selectedItemIds + item.id
+                            } else {
+                                selectedItemIds - item.id
+                            }
+                        },
                         onUpdateQuantity = { newQty ->
                             viewModel.updateCartQuantity(item.id, newQty)
                         }
@@ -150,7 +214,12 @@ fun CartScreen(
 }
 
 @Composable
-private fun CartItemRow(item: CartItem, onUpdateQuantity: (Int) -> Unit) {
+private fun CartItemRow(
+    item: CartItem,
+    selected: Boolean,
+    onSelectedChange: (Boolean) -> Unit,
+    onUpdateQuantity: (Int) -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -161,8 +230,8 @@ private fun CartItemRow(item: CartItem, onUpdateQuantity: (Int) -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Checkbox(
-            checked = true,
-            onCheckedChange = {},
+            checked = selected,
+            onCheckedChange = onSelectedChange,
             colors = CheckboxDefaults.colors(checkedColor = Color(0xFF0057FF)),
             modifier = Modifier.size(34.dp)
         )

@@ -295,8 +295,19 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 composable(Screen.Cart.route) {
                     CartScreen(navController = navController)
                 }
-                composable(Screen.Payment.route) {
-                    PaymentScreen(navController = navController)
+                composable(
+                    route = Screen.Payment.route,
+                    arguments = listOf(
+                        navArgument("cartItemIds") { nullable = true; defaultValue = null; type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val selectedIds = backStackEntry.arguments
+                        ?.getString("cartItemIds")
+                        ?.split(",")
+                        ?.filter { it.isNotBlank() }
+                        ?.toSet()
+                        .orEmpty()
+                    PaymentScreen(navController = navController, selectedCartItemIds = selectedIds)
                 }
                 composable(Screen.History.route) {
                     HistoryScreen(navController = navController)
