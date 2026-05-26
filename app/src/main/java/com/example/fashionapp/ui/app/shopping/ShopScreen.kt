@@ -149,7 +149,7 @@ fun ShopScreen(
                             },
                             onHeaderClick = {
                                 if (post.authorId != shopId) {
-                                    navController.navigate(Screen.Shop.createRoute(post.authorId))
+                                    navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
                                 }
                             }
                         )

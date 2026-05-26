@@ -104,7 +104,7 @@ fun HomeScreen(
                             },
                             onHeaderClick = {
                                 if (post.authorId.isNotBlank()) {
-                                    navController.navigate(Screen.Shop.createRoute(post.authorId))
+                                    navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
                                 }
                             }
                         )

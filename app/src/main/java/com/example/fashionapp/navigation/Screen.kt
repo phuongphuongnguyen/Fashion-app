@@ -15,9 +15,7 @@ sealed class Screen(val route: String) {
 
     // ── Main tabs ─────────────────────────────────────────────────────────────
     object Home    : Screen("home")
-    object Shop    : Screen("shop/{shopId}") {
-        fun createRoute(shopId: String) = "shop/$shopId"
-    }
+    object Shopping    : Screen("shoping")
     object Saved   : Screen("saved")
     object Profile : Screen("profile")
 
@@ -26,6 +24,9 @@ sealed class Screen(val route: String) {
     object Chatbot  : Screen("chatbot")
     object Messages : Screen("messages")
 
+    object ShopDetail : Screen("shop_detail/{shopId}") {
+        fun createRoute(shopId: String) = "shop_detail/$shopId"
+    }
     object Search : Screen("search?query={query}&categoryId={categoryId}") {
         fun createRoute(query: String = "", categoryId: String? = null): String {
             val q = "search?query=$query"
@@ -73,7 +74,7 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem(Screen.Home,    "Home",    R.drawable.ic_home),
-    BottomNavItem(Screen.Shop,    "Shop",    R.drawable.ic_shopping),
+    BottomNavItem(Screen.Shopping,    "Shopping",    R.drawable.ic_shopping),
     BottomNavItem(Screen.Saved,   "Saved",   R.drawable.ic_saved),
     BottomNavItem(Screen.Profile, "Profile", R.drawable.ic_profile)
 )

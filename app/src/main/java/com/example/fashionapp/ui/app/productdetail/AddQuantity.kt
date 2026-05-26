@@ -16,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -76,119 +75,87 @@ fun AddQuantity(
         onDismissRequest = onDismiss,
         sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor   = Color.White,
-        dragHandle       = null,
+        dragHandle       = { BottomSheetDefaults.DragHandle() },
         shape            = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 20.dp)
+        ) {
+            Spacer(Modifier.height(8.dp))
 
-            // ── Ảnh mờ blur ──────────────────────────────────────────────
-            HeaderBlurImage(imageUrl = product.imageUrl)
+            // Thumbnail + giá + tag hiện tại
+            SummaryRow(product = product, selectedVariant = selectedVariant)
 
-            // ── Sheet body nổi lên ────────────────────────────────────────
-            Column(
+            Spacer(Modifier.height(24.dp))
+
+            // Color Options — chỉ hiện khi có > 1 màu
+            if (colorList.size > 1) {
+                SectionLabel("Color Options")
+                Spacer(Modifier.height(12.dp))
+                ColorOptionsRow(
+                    product       = product,
+                    colorList     = colorList,
+                    selectedColor = selectedColor,
+                    onSelect      = { selectedColor = it }
+                )
+                Spacer(Modifier.height(24.dp))
+            }
+
+            // Size
+            SectionLabel("Size")
+            Spacer(Modifier.height(12.dp))
+            SizeRow(
+                sizes           = colorGroups[selectedColor] ?: emptyList(),
+                selectedVariant = selectedVariant,
+                onSelect        = {
+                    selectedVariant = it
+                    quantity = 1
+                }
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            // Quantity
+            QuantityRow(
+                quantity   = quantity,
+                maxStock   = selectedVariant?.stock ?: 0,
+                onDecrease = { if (quantity > 1) quantity-- },
+                onIncrease = { if (quantity < (selectedVariant?.stock ?: 0)) quantity++ }
+            )
+
+            Spacer(Modifier.height(28.dp))
+
+            // CTA
+            Button(
+                onClick  = {
+                    selectedVariant?.let { onConfirm(it, quantity) }
+                    onDismiss()
+                },
+                enabled  = selectedVariant != null && (selectedVariant?.stock ?: 0) > 0,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(y = (-28).dp)
-                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .background(Color.White)
-                    .padding(horizontal = 20.dp)
+                    .height(54.dp),
+                shape  = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor         = Color(0xFF1A1A1A),
+                    disabledContainerColor = DisabledBg
+                )
             ) {
-                Spacer(Modifier.height(20.dp))
-
-                // Thumbnail + giá + tag hiện tại
-                SummaryRow(product = product, selectedVariant = selectedVariant)
-
-                Spacer(Modifier.height(24.dp))
-
-                // Color Options — chỉ hiện khi có > 1 màu
-                if (colorList.size > 1) {
-                    SectionLabel("Color Options")
-                    Spacer(Modifier.height(12.dp))
-                    ColorOptionsRow(
-                        product       = product,
-                        colorList     = colorList,
-                        selectedColor = selectedColor,
-                        onSelect      = { selectedColor = it }
-                    )
-                    Spacer(Modifier.height(24.dp))
-                }
-
-                // Size
-                SectionLabel("Size")
-                Spacer(Modifier.height(12.dp))
-                SizeRow(
-                    sizes           = colorGroups[selectedColor] ?: emptyList(),
-                    selectedVariant = selectedVariant,
-                    onSelect        = {
-                        selectedVariant = it
-                        quantity = 1
-                    }
+                Text(
+                    text       = if (isBuyNow) "Buy Now" else "Add to cart",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize   = 16.sp,
+                    color      = if (selectedVariant != null && (selectedVariant?.stock ?: 0) > 0)
+                        Color.White else DisabledText
                 )
-
-                Spacer(Modifier.height(24.dp))
-
-                // Quantity
-                QuantityRow(
-                    quantity   = quantity,
-                    maxStock   = selectedVariant?.stock ?: 0,
-                    onDecrease = { if (quantity > 1) quantity-- },
-                    onIncrease = { if (quantity < (selectedVariant?.stock ?: 0)) quantity++ }
-                )
-
-                Spacer(Modifier.height(28.dp))
-
-                // CTA
-                Button(
-                    onClick  = {
-                        selectedVariant?.let { onConfirm(it, quantity) }
-                        onDismiss()
-                    },
-                    enabled  = selectedVariant != null && (selectedVariant?.stock ?: 0) > 0,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                    shape  = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor         = Color(0xFF1A1A1A),
-                        disabledContainerColor = DisabledBg
-                    )
-                ) {
-                    Text(
-                        text       = if (isBuyNow) "Buy Now" else "Add to cart",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize   = 16.sp,
-                        color      = if (selectedVariant != null && (selectedVariant?.stock ?: 0) > 0)
-                            Color.White else DisabledText
-                    )
-                }
-
-                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
-                Spacer(Modifier.height(8.dp))
             }
+
+            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+            Spacer(Modifier.height(8.dp))
         }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  BLUR HEADER
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun HeaderBlurImage(imageUrl: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(250.dp)
-    ) {
-        AsyncImage(
-            model              = imageUrl.ifBlank { null },
-            contentDescription = null,
-            modifier           = Modifier.fillMaxSize().blur(8.dp),
-            contentScale       = ContentScale.Crop,
-            error              = painterResource(R.drawable.ic_launcher_foreground)
-        )
-        // Overlay tối nhẹ
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.10f)))
     }
 }
 
