@@ -61,6 +61,11 @@ sealed class Screen(val route: String) {
             }
         }
     }
+
+    // them momo
+    object MomoPayment : Screen("momo_payment/{amount}") {
+        fun createRoute(amount: Long) = "momo_payment/$amount"
+    }
     object History    : Screen("history")
 
     object Review : Screen("review/{orderId}") {

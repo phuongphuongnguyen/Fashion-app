@@ -51,7 +51,8 @@ import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
 import com.example.fashionapp.ui.app.search.SearchScreen
 import com.example.fashionapp.ui.app.productdetail.ProductDetailScreen
 import com.example.fashionapp.ui.app.post.CreatePostScreen
-
+import com.example.fashionapp.ui.app.shopping.MomoPaymentScreen
+import com.example.fashionapp.ui.app.shopping.ShopViewModel
 
 @Composable
 fun AppNavigation(startDestination: String = Screen.Start.route) {
@@ -308,6 +309,19 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                         ?.toSet()
                         .orEmpty()
                     PaymentScreen(navController = navController, selectedCartItemIds = selectedIds)
+                }
+                //add mommo
+                composable(
+                    route = Screen.MomoPayment.route,
+                    arguments = listOf(navArgument("amount") { type = NavType.LongType })
+                ) { backStackEntry ->
+                    val amount = backStackEntry.arguments?.getLong("amount") ?: 0L
+                    val shopViewModel: ShopViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                    MomoPaymentScreen(
+                        amount = amount,
+                        navController = navController,
+                        viewModel = shopViewModel
+                    )
                 }
                 composable(Screen.History.route) {
                     HistoryScreen(navController = navController)
