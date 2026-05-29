@@ -90,7 +90,12 @@ fun PaymentScreen(
                         //ấn place order chuyenr qua momo
                         onClick = {
                             if (selectedPaymentMethod == "momo") {
-                                navController.navigate(Screen.MomoPayment.createRoute(total.toLong()))
+                                navController.navigate(
+                                    Screen.MomoPayment.createRoute(
+                                        amount = total.toLong(),
+                                        cartItemIds = checkoutItems.map { it.id }
+                                    )
+                                )
                             } else {
                                 viewModel.placeOrderFromCart(
                                     cartItems = checkoutItems,

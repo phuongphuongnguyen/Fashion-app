@@ -65,8 +65,14 @@ sealed class Screen(val route: String) {
         fun createRoute(tab: String = "Ongoing") = "history?tab=$tab"
     }
 
-    object MomoPayment : Screen("momo_payment/{amount}") {
-        fun createRoute(amount: Long) = "momo_payment/$amount"
+    object MomoPayment : Screen("momo_payment/{amount}?cartItemIds={cartItemIds}") {
+        fun createRoute(amount: Long, cartItemIds: Collection<String> = emptyList()): String {
+            return if (cartItemIds.isEmpty()) {
+                "momo_payment/$amount"
+            } else {
+                "momo_payment/$amount?cartItemIds=${cartItemIds.joinToString(",")}"
+            }
+        }
     }
 
     object Review : Screen("review/{orderId}") {

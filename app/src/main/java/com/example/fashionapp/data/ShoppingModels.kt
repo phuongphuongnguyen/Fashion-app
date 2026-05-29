@@ -20,6 +20,18 @@ data class ReviewOrder(
     val placedAtMillis: Long = 0L
 )
 
+data class ProductReview(
+    val id: String = "",
+    val orderId: String = "",
+    val productId: String = "",
+    val userId: String = "",
+    val rating: Int = 0,
+    val comment: String = "",
+    val editCount: Int = 0,
+    val createdAtMillis: Long = 0L,
+    val updatedAtMillis: Long = 0L
+)
+
 data class ShopProfile(
     val id: String = "",
     val ownerUserId: String = "",

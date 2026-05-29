@@ -4,12 +4,15 @@ import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
 import com.example.fashionapp.model.Category
 import com.example.fashionapp.data.CartItem
+import com.example.fashionapp.data.ProductReview
 import com.example.fashionapp.data.ReviewOrder
 import com.example.fashionapp.data.StorageUrlResolver
 import com.example.fashionapp.data.product.toProduct
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -19,6 +22,7 @@ import kotlinx.coroutines.tasks.await
 
 object ShopRepository {
     private val db = FirebaseFirestore.getInstance()
+    private const val REVIEW_EDIT_WINDOW_MILLIS = 7L * 24 * 60 * 60 * 1000
 
     // ── In-Memory Cache ──────────────────────────────────────────────────────
     private var cachedProducts: List<Product>? = null
@@ -245,6 +249,78 @@ object ShopRepository {
         cachedOrders?.let { emit(it) }
     }
 
+    fun getProductReviewsFlow(userId: String): Flow<Map<String, ProductReview>> = callbackFlow {
+        if (userId.isBlank()) {
+            trySend(emptyMap())
+            close()
+            return@callbackFlow
+        }
+
+        val listener = db.collectionGroup("reviews")
+            .whereEqualTo("userId", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    trySend(emptyMap())
+                    return@addSnapshotListener
+                }
+
+                val reviews = snapshot.documents.mapNotNull { doc ->
+                    val orderId = doc.getString("orderId").orEmpty()
+                    if (orderId.isBlank()) {
+                        null
+                    } else {
+                        ProductReview(
+                            id = doc.id,
+                            orderId = orderId,
+                            productId = doc.getString("productId").orEmpty(),
+                            userId = doc.getString("userId").orEmpty(),
+                            rating = (doc.get("rating") as? Number)?.toInt() ?: 0,
+                            comment = doc.getString("comment").orEmpty(),
+                            editCount = (doc.get("editCount") as? Number)?.toInt() ?: 0,
+                            createdAtMillis = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
+                            updatedAtMillis = doc.getTimestamp("updatedAt")?.toDate()?.time ?: 0L
+                        )
+                    }
+                }.associateBy { it.orderId }
+
+                trySend(reviews)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun getReviewsForOrders(orders: List<ReviewOrder>): Map<String, ProductReview> {
+        return orders.mapNotNull { order ->
+            if (order.product.id.isBlank()) return@mapNotNull null
+
+            val review = runCatching {
+                val doc = db.collection("products")
+                    .document(order.product.id)
+                    .collection("reviews")
+                    .document(order.id)
+                    .get()
+                    .await()
+
+                if (!doc.exists()) {
+                    null
+                } else {
+                    ProductReview(
+                        id = doc.id,
+                        orderId = doc.getString("orderId").orEmpty().ifBlank { order.id },
+                        productId = doc.getString("productId").orEmpty().ifBlank { order.product.id },
+                        userId = doc.getString("userId").orEmpty(),
+                        rating = (doc.get("rating") as? Number)?.toInt() ?: 0,
+                        comment = doc.getString("comment").orEmpty(),
+                        editCount = (doc.get("editCount") as? Number)?.toInt() ?: 0,
+                        createdAtMillis = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
+                        updatedAtMillis = doc.getTimestamp("updatedAt")?.toDate()?.time ?: 0L
+                    )
+                }
+            }.getOrNull()
+
+            review?.let { it.orderId to it }
+        }.toMap()
+    }
+
     suspend fun placeOrder(
         userId: String,
         orders: List<ReviewOrder>,
@@ -298,6 +374,19 @@ object ShopRepository {
             val currentRating = (productSnapshot.get("rating") as? Number)?.toDouble() ?: 0.0
             val currentReviewCount = (productSnapshot.get("reviewCount") as? Number)?.toInt() ?: 0
             val oldRating = (reviewSnapshot.get("rating") as? Number)?.toDouble()
+            val currentEditCount = (reviewSnapshot.get("editCount") as? Number)?.toInt() ?: 0
+            val now = Timestamp.now()
+            val createdAt = reviewSnapshot.getTimestamp("createdAt")
+
+            if (reviewSnapshot.exists()) {
+                val createdAtMillis = createdAt?.toDate()?.time ?: 0L
+                if (createdAtMillis <= 0L || now.toDate().time - createdAtMillis > REVIEW_EDIT_WINDOW_MILLIS) {
+                    throw IllegalStateException("Review edit window expired")
+                }
+                if (currentEditCount >= 1) {
+                    throw IllegalStateException("Review can only be edited once")
+                }
+            }
 
             val newReviewCount = if (reviewSnapshot.exists()) {
                 currentReviewCount.coerceAtLeast(1)
@@ -311,7 +400,7 @@ object ShopRepository {
                 ((currentRating * currentReviewCount) + safeRating) / newReviewCount
             }
 
-            val reviewData = hashMapOf(
+            val reviewData = hashMapOf<String, Any>(
                 "id" to order.id,
                 "orderId" to order.id,
                 "productId" to order.product.id,
@@ -320,11 +409,15 @@ object ShopRepository {
                 "userAvatarUrl" to userAvatarUrl,
                 "rating" to safeRating,
                 "comment" to comment.trim(),
-                "createdAt" to FieldValue.serverTimestamp(),
+                "editCount" to if (reviewSnapshot.exists()) currentEditCount + 1 else 0,
                 "updatedAt" to FieldValue.serverTimestamp()
             )
 
-            transaction.set(reviewRef, reviewData)
+            if (!reviewSnapshot.exists()) {
+                reviewData["createdAt"] = FieldValue.serverTimestamp()
+            }
+
+            transaction.set(reviewRef, reviewData, SetOptions.merge())
             transaction.update(
                 productRef,
                 mapOf(

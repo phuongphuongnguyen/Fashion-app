@@ -60,6 +60,7 @@ import com.example.fashionapp.ui.components.FashionTopBar
 import kotlinx.coroutines.delay
 
 private const val ONGOING_DURATION_MILLIS = 10 * 60 * 1000L
+private const val REVIEW_EDIT_WINDOW_MILLIS = 7L * 24 * 60 * 60 * 1000
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,21 +168,57 @@ fun HistoryScreen(
                             Text(order.orderDate, color = Color(0xFF0057FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
                         if (selectedTab == "History") {
-                            Button(
-                                onClick = {
-                                    navController.navigate(Screen.Review.createRoute(order.id)) {
-                                        launchSingleTop = true
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFE5EDFF),
-                                    contentColor = Color(0xFF0057FF)
-                                ),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                                modifier = Modifier.height(32.dp),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Text("Review", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            val review = uiState.reviewsByOrderId[order.id]
+                            val canEditReview = review?.let {
+                                canEditReview(it, nowMillis)
+                            } ?: true
+                            val reviewActionText = when {
+                                review == null -> "Review"
+                                canEditReview -> "Edit Review"
+                                else -> "Reviewed"
+                            }
+                            val reviewStatusText = when {
+                                review == null -> "Not reviewed"
+                                canEditReview -> "Reviewed - 1 edit left"
+                                review.editCount >= 1 -> "Reviewed - edit used"
+                                else -> "Reviewed - edit expired"
+                            }
+                            val reviewActionColor = if (review == null || canEditReview) {
+                                Color(0xFF0057FF)
+                            } else {
+                                Color.Gray
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Button(
+                                    onClick = {
+                                        navController.navigate(Screen.Review.createRoute(order.id)) {
+                                            launchSingleTop = true
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFE5EDFF),
+                                        contentColor = Color(0xFF0057FF),
+                                        disabledContainerColor = Color(0xFFF1F1F1),
+                                        disabledContentColor = Color.Gray
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                    modifier = Modifier.height(34.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    enabled = canEditReview
+                                ) {
+                                    Text(
+                                        reviewActionText,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    reviewStatusText,
+                                    color = reviewActionColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         } else {
                             Text("Ongoing", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
@@ -243,14 +280,32 @@ fun ReviewScreen(
     val uiState by viewModel.uiState.collectAsState()
     val orderToReview = uiState.orders.firstOrNull { it.id == orderId }
     val productToReview = orderToReview?.product
+    val existingReview = uiState.reviewsByOrderId[orderId]
+    val nowMillis = remember { System.currentTimeMillis() }
+    val canEditReview = existingReview?.let {
+        canEditReview(it, nowMillis)
+    } ?: true
+    val isEditingReview = existingReview != null && canEditReview
+    val isLockedReview = existingReview != null && !canEditReview
     var rating by remember { mutableIntStateOf(5) }
     var comment by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
 
+    LaunchedEffect(existingReview?.id, existingReview?.rating, existingReview?.comment) {
+        existingReview?.let {
+            rating = it.rating.coerceIn(1, 5)
+            comment = it.comment
+        }
+    }
+
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Write a Review",
+                title = when {
+                    existingReview == null -> "Write a Review"
+                    isEditingReview -> "Edit Review"
+                    else -> "Review Submitted"
+                },
                 onBackClick = { navController.popBackStack() }
             )
         },
@@ -267,7 +322,15 @@ fun ReviewScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Review Product", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(
+                        when {
+                            existingReview == null -> "Review Product"
+                            isEditingReview -> "Edit Product Review"
+                            else -> "Your Product Review"
+                        },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
                     Spacer(Modifier.height(16.dp))
                     
                     if (productToReview != null) {
@@ -301,9 +364,32 @@ fun ReviewScreen(
                                 tint = if (starIndex <= rating) Color(0xFFFFB300) else Color.Gray,
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .clickable { rating = starIndex }
+                                    .clickable(enabled = canEditReview) { rating = starIndex }
                             )
                         }
+                    }
+
+                    if (isEditingReview) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "You can edit this review once within 7 days.",
+                            color = Color(0xFF0057FF),
+                            fontSize = 13.sp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    if (isLockedReview) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            when {
+                                existingReview?.editCount ?: 0 >= 1 -> "Review can only be edited once."
+                                else -> "Review can only be edited within 7 days."
+                            },
+                            color = Color.Gray,
+                            fontSize = 13.sp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     Spacer(Modifier.height(24.dp))
@@ -313,6 +399,7 @@ fun ReviewScreen(
                         onValueChange = { comment = it },
                         modifier = Modifier.fillMaxWidth().height(120.dp),
                         placeholder = { Text("Share your thoughts about this product...", color = Color.Gray, fontSize = 14.sp) },
+                        enabled = canEditReview,
                         shape = RoundedCornerShape(16.dp),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color(0xFFF5F5F5),
@@ -343,14 +430,32 @@ fun ReviewScreen(
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF)),
                         shape = RoundedCornerShape(25.dp),
-                        enabled = productToReview != null && !isSubmitting
+                        enabled = productToReview != null && canEditReview && !isSubmitting
                     ) {
-                        Text(if (isSubmitting) "Submitting..." else "Submit Review", fontWeight = FontWeight.Bold)
+                        Text(
+                            when {
+                                isSubmitting -> "Submitting..."
+                                existingReview == null -> "Submit Review"
+                                isEditingReview -> "Save Edit"
+                                else -> "Reviewed"
+                            },
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
         }
     }
+}
+
+private fun canEditReview(
+    review: com.example.fashionapp.data.ProductReview,
+    nowMillis: Long
+): Boolean {
+    val reviewCreatedAt = review.createdAtMillis.takeIf { it > 0L } ?: review.updatedAtMillis
+    return review.editCount < 1 &&
+        reviewCreatedAt > 0L &&
+        nowMillis - reviewCreatedAt <= REVIEW_EDIT_WINDOW_MILLIS
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -3,6 +3,7 @@ package com.example.fashionapp.ui.app.shopping
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.CartItem
+import com.example.fashionapp.data.ProductReview
 import com.example.fashionapp.data.ReviewOrder
 import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.data.shop.ShopRepository
@@ -25,6 +26,7 @@ data class ShopUiState(
     val products: List<Product> = emptyList(),
     val cartItems: List<CartItem> = emptyList(),
     val orders: List<ReviewOrder> = emptyList(),
+    val reviewsByOrderId: Map<String, ProductReview> = emptyMap(),
     val shopUser: User? = null,
     val shopLogoUrl: String = "",
     val isLoadingProducts: Boolean = true,
@@ -101,7 +103,15 @@ class ShopViewModel : ViewModel() {
                     orders = orders,
                     isLoadingOrders = false
                 )
+                refreshReviews(orders)
             }
+        }
+    }
+
+    private fun refreshReviews(orders: List<ReviewOrder> = _uiState.value.orders) {
+        viewModelScope.launch {
+            val reviews = repository.getReviewsForOrders(orders)
+            _uiState.value = _uiState.value.copy(reviewsByOrderId = reviews)
         }
     }
 
@@ -194,6 +204,9 @@ class ShopViewModel : ViewModel() {
                     },
                     userAvatarUrl = currentUser?.avatarUrl.orEmpty()
                 )
+            }
+            if (result.isSuccess) {
+                refreshReviews()
             }
             onComplete(result.isSuccess)
         }

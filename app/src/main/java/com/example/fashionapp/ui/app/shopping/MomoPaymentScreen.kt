@@ -57,11 +57,20 @@ private const val IPN_URL        = "https://webhook.site/momo-ipn"
 fun MomoPaymentScreen(
     amount: Long,
     navController: NavController,
+    selectedCartItemIds: Set<String> = emptySet(),
     viewModel: ShopViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ){
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val db  = FirebaseFirestore.getInstance()
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val checkoutItems = remember(uiState.cartItems, selectedCartItemIds) {
+        if (selectedCartItemIds.isEmpty()) {
+            uiState.cartItems
+        } else {
+            uiState.cartItems.filter { it.id in selectedCartItemIds }
+        }
+    }
 
     var qrCodeUrl        by remember { mutableStateOf<String?>(null) }
     var momoOrderId      by remember { mutableStateOf<String?>(null) }
@@ -123,7 +132,10 @@ fun MomoPaymentScreen(
                 if (code == 0) {
                     isPaid    = true
                     isPolling = false
-                    viewModel.placeOrderFromCart(paymentMethod = "MoMo")
+                    viewModel.placeOrderFromCart(
+                        cartItems = checkoutItems,
+                        paymentMethod = "MoMo"
+                    )
                     // Update Firestore
                     firestoreOrderId?.let { docId ->
                         db.collection("orders").document(docId)
@@ -135,6 +147,10 @@ fun MomoPaymentScreen(
 
                     // Bắn notification
                     showPaymentNotification(context, amount)
+                    navController.navigate(Screen.History.createRoute("Ongoing")) {
+                        popUpTo(Screen.Cart.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("MoMo", "Polling lỗi: ${e.message}")
@@ -206,7 +222,7 @@ fun MomoPaymentScreen(
                         Button(
                             onClick = {
                                 // Navigate về History, xóa stack về Cart
-                                navController.navigate(Screen.Cart.route) {
+                                navController.navigate(Screen.History.createRoute("Ongoing")) {
                                     popUpTo(Screen.Cart.route) { inclusive = false }
                                     launchSingleTop = true
                                 }

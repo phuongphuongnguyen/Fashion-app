@@ -312,13 +312,23 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 }
                 composable(
                     route = Screen.MomoPayment.route,
-                    arguments = listOf(navArgument("amount") { type = NavType.LongType })
+                    arguments = listOf(
+                        navArgument("amount") { type = NavType.LongType },
+                        navArgument("cartItemIds") { nullable = true; defaultValue = null; type = NavType.StringType }
+                    )
                 ) { backStackEntry ->
                     val amount = backStackEntry.arguments?.getLong("amount") ?: 0L
+                    val selectedIds = backStackEntry.arguments
+                        ?.getString("cartItemIds")
+                        ?.split(",")
+                        ?.filter { it.isNotBlank() }
+                        ?.toSet()
+                        .orEmpty()
                     val shopViewModel: ShopViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                     MomoPaymentScreen(
                         amount = amount,
                         navController = navController,
+                        selectedCartItemIds = selectedIds,
                         viewModel = shopViewModel
                     )
                 }
