@@ -87,17 +87,22 @@ fun PaymentScreen(
                         )
                     }
                     Button(
+                        //ấn place order chuyenr qua momo
                         onClick = {
-                            viewModel.placeOrderFromCart(
-                                cartItems = checkoutItems,
-                                paymentMethod = selectedPaymentMethod,
-                                shippingMethod = selectedShippingMethod,
-                                shippingFee = shippingFee,
-                                shippingAddress = shippingAddress
-                            )
-                            navController.navigate(Screen.History.createRoute("Ongoing")) {
-                                popUpTo(Screen.Payment.route) { inclusive = true }
-                                launchSingleTop = true
+                            if (selectedPaymentMethod == "momo") {
+                                navController.navigate(Screen.MomoPayment.createRoute(total.toLong()))
+                            } else {
+                                viewModel.placeOrderFromCart(
+                                    cartItems = checkoutItems,
+                                    paymentMethod = selectedPaymentMethod,
+                                    shippingMethod = selectedShippingMethod,
+                                    shippingFee = shippingFee,
+                                    shippingAddress = shippingAddress
+                                )
+                                navController.navigate(Screen.History.createRoute("Ongoing")) {
+                                    popUpTo(Screen.Payment.route) { inclusive = true }
+                                    launchSingleTop = true
+                                }
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF)),

@@ -65,6 +65,10 @@ sealed class Screen(val route: String) {
         fun createRoute(tab: String = "Ongoing") = "history?tab=$tab"
     }
 
+    object MomoPayment : Screen("momo_payment/{amount}") {
+        fun createRoute(amount: Long) = "momo_payment/$amount"
+    }
+
     object Review : Screen("review/{orderId}") {
         fun createRoute(orderId: String) = "review/$orderId"
     }
