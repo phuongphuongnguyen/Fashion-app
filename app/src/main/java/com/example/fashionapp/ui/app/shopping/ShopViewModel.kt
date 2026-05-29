@@ -6,6 +6,7 @@ import com.example.fashionapp.data.CartItem
 import com.example.fashionapp.data.ReviewOrder
 import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.data.shop.ShopRepository
+import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.data.user.UserRepository
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.Product
@@ -138,13 +139,15 @@ class ShopViewModel : ViewModel() {
 
         val dateFormat = SimpleDateFormat("MMMM yyyy", Locale.US)
         val currentDate = dateFormat.format(Date())
+        val placedAtMillis = System.currentTimeMillis()
 
         val orders = items.map {
             ReviewOrder(
                 id = "order_${System.currentTimeMillis()}_${it.id}",
                 product = it.product,
-                status = "Paid",
-                orderDate = currentDate
+                status = "Ongoing",
+                orderDate = currentDate,
+                placedAtMillis = placedAtMillis
             )
         }
 
@@ -158,6 +161,41 @@ class ShopViewModel : ViewModel() {
                 shippingAddress = shippingAddress
             )
             repository.clearCart(userId, items)
+        }
+    }
+
+    fun submitReview(
+        orderId: String,
+        rating: Int,
+        comment: String,
+        onComplete: (Boolean) -> Unit
+    ) {
+        val userId = auth.currentUser?.uid ?: run {
+            onComplete(false)
+            return
+        }
+        val order = _uiState.value.orders.firstOrNull { it.id == orderId } ?: run {
+            onComplete(false)
+            return
+        }
+        val currentUser = UserSession.currentUser.value
+
+        viewModelScope.launch {
+            val result = runCatching {
+                repository.submitProductReview(
+                    userId = userId,
+                    order = order,
+                    rating = rating,
+                    comment = comment,
+                    userName = currentUser?.name.orEmpty().ifBlank {
+                        auth.currentUser?.displayName.orEmpty().ifBlank {
+                            auth.currentUser?.email.orEmpty()
+                        }
+                    },
+                    userAvatarUrl = currentUser?.avatarUrl.orEmpty()
+                )
+            }
+            onComplete(result.isSuccess)
         }
     }
 }

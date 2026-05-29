@@ -152,8 +152,13 @@ fun CartScreen(
                     CartHistoryTabs(
                         selected = "Cart",
                         onCart = {},
+                        onOngoing = {
+                            navController.navigate(Screen.History.createRoute("Ongoing")) {
+                                launchSingleTop = true
+                            }
+                        },
                         onHistory = {
-                            navController.navigate(Screen.History.route) {
+                            navController.navigate(Screen.History.createRoute("History")) {
                                 launchSingleTop = true
                             }
                         }

@@ -8,6 +8,7 @@ import com.example.fashionapp.data.ReviewOrder
 import com.example.fashionapp.data.StorageUrlResolver
 import com.example.fashionapp.data.product.toProduct
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -230,7 +231,8 @@ object ShopRepository {
                                 id = doc.id,
                                 product = product,
                                 status = doc.getString("status") ?: "Paid",
-                                orderDate = doc.getString("orderDate") ?: ""
+                                orderDate = doc.getString("orderDate") ?: "",
+                                placedAtMillis = (doc.get("placedAtMillis") as? Number)?.toLong() ?: 0L
                             )
                         } catch (e: Exception) { null }
                     }
@@ -264,6 +266,7 @@ object ShopRepository {
                 ),
                 "status" to order.status,
                 "orderDate" to order.orderDate,
+                "placedAtMillis" to order.placedAtMillis,
                 "paymentMethod" to paymentMethod,
                 "shippingMethod" to shippingMethod,
                 "shippingFee" to shippingFee,
@@ -272,6 +275,64 @@ object ShopRepository {
             batch.set(ordersRef.document(), data)
         }
         batch.commit().await()
+    }
+
+    suspend fun submitProductReview(
+        userId: String,
+        order: ReviewOrder,
+        rating: Int,
+        comment: String,
+        userName: String,
+        userAvatarUrl: String
+    ) {
+        if (userId.isBlank() || order.product.id.isBlank()) return
+
+        val safeRating = rating.coerceIn(1, 5)
+        val productRef = db.collection("products").document(order.product.id)
+        val reviewRef = productRef.collection("reviews").document(order.id)
+
+        db.runTransaction { transaction ->
+            val productSnapshot = transaction.get(productRef)
+            val reviewSnapshot = transaction.get(reviewRef)
+
+            val currentRating = (productSnapshot.get("rating") as? Number)?.toDouble() ?: 0.0
+            val currentReviewCount = (productSnapshot.get("reviewCount") as? Number)?.toInt() ?: 0
+            val oldRating = (reviewSnapshot.get("rating") as? Number)?.toDouble()
+
+            val newReviewCount = if (reviewSnapshot.exists()) {
+                currentReviewCount.coerceAtLeast(1)
+            } else {
+                currentReviewCount + 1
+            }
+
+            val newAverage = if (reviewSnapshot.exists() && oldRating != null) {
+                ((currentRating * newReviewCount) - oldRating + safeRating) / newReviewCount
+            } else {
+                ((currentRating * currentReviewCount) + safeRating) / newReviewCount
+            }
+
+            val reviewData = hashMapOf(
+                "id" to order.id,
+                "orderId" to order.id,
+                "productId" to order.product.id,
+                "userId" to userId,
+                "userName" to userName,
+                "userAvatarUrl" to userAvatarUrl,
+                "rating" to safeRating,
+                "comment" to comment.trim(),
+                "createdAt" to FieldValue.serverTimestamp(),
+                "updatedAt" to FieldValue.serverTimestamp()
+            )
+
+            transaction.set(reviewRef, reviewData)
+            transaction.update(
+                productRef,
+                mapOf(
+                    "rating" to newAverage.toFloat(),
+                    "reviewCount" to newReviewCount
+                )
+            )
+        }.await()
     }
 
     fun clearCache() {

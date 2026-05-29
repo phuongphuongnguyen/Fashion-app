@@ -61,7 +61,9 @@ sealed class Screen(val route: String) {
             }
         }
     }
-    object History    : Screen("history")
+    object History    : Screen("history?tab={tab}") {
+        fun createRoute(tab: String = "Ongoing") = "history?tab=$tab"
+    }
 
     object Review : Screen("review/{orderId}") {
         fun createRoute(orderId: String) = "review/$orderId"

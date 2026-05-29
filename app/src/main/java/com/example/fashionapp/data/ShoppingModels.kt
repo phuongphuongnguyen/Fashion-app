@@ -16,7 +16,8 @@ data class ReviewOrder(
     val id: String,
     val product: Product,
     val status: String,
-    val orderDate: String
+    val orderDate: String,
+    val placedAtMillis: Long = 0L
 )
 
 data class ShopProfile(

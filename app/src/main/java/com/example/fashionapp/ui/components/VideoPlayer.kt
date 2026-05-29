@@ -1,5 +1,3 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
-
 package com.example.fashionapp.ui.components
 
 import android.net.Uri
@@ -11,10 +9,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(uri: Uri) {
 

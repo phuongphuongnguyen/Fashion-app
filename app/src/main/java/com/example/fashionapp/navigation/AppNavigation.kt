@@ -309,8 +309,14 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                         .orEmpty()
                     PaymentScreen(navController = navController, selectedCartItemIds = selectedIds)
                 }
-                composable(Screen.History.route) {
-                    HistoryScreen(navController = navController)
+                composable(
+                    route = Screen.History.route,
+                    arguments = listOf(navArgument("tab") { defaultValue = "Ongoing"; type = NavType.StringType })
+                ) { backStackEntry ->
+                    HistoryScreen(
+                        navController = navController,
+                        initialTab = backStackEntry.arguments?.getString("tab") ?: "Ongoing"
+                    )
                 }
                 composable(
                     route = Screen.Review.route,

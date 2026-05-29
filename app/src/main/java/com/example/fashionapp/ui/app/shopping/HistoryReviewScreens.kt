@@ -37,6 +37,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,52 +59,83 @@ import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 import kotlinx.coroutines.delay
 
+private const val ONGOING_DURATION_MILLIS = 10 * 60 * 1000L
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     navController: NavController,
+    initialTab: String = "Ongoing",
     viewModel: ShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val orders = uiState.orders
+    var selectedTab by remember(initialTab) {
+        mutableStateOf(if (initialTab == "History") "History" else "Ongoing")
+    }
+    var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000)
+            nowMillis = System.currentTimeMillis()
+        }
+    }
+
+    val displayedOrders = remember(orders, selectedTab, nowMillis) {
+        orders.filter { order ->
+            val isOngoing = order.status == "Ongoing" &&
+                order.placedAtMillis > 0L &&
+                nowMillis - order.placedAtMillis < ONGOING_DURATION_MILLIS
+
+            if (selectedTab == "Ongoing") isOngoing else !isOngoing
+        }
+    }
 
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Order History",
+                title = if (selectedTab == "Ongoing") "Ongoing Orders" else "Order History",
                 onBackClick = { navController.popBackStack() }
             )
         },
         containerColor = Color.White
     ) { padding ->
-        if (orders.isEmpty() && !uiState.isLoadingOrders) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No order history", color = Color.Gray)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                CartHistoryTabs(
+                    selected = selectedTab,
+                    onCart = {
+                        navController.navigate(Screen.Cart.route) {
+                            popUpTo(Screen.Cart.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                    onOngoing = { selectedTab = "Ongoing" },
+                    onHistory = { selectedTab = "History" }
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+
+            if (displayedOrders.isEmpty() && !uiState.isLoadingOrders) {
                 item {
-                    CartHistoryTabs(
-                        selected = "History",
-                        onCart = {
-                            navController.navigate(Screen.Cart.route) {
-                                popUpTo(Screen.Cart.route) { inclusive = false }
-                                launchSingleTop = true
-                            }
-                        },
-                        onHistory = {}
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 160.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            if (selectedTab == "Ongoing") "No ongoing orders" else "No order history",
+                            color = Color.Gray
+                        )
+                    }
                 }
-                items(orders, key = { it.id }) { order ->
+            } else {
+                items(displayedOrders, key = { it.id }) { order ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -133,21 +166,25 @@ fun HistoryScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(order.orderDate, color = Color(0xFF0057FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
-                        Button(
-                            onClick = {
-                                navController.navigate(Screen.Review.createRoute(order.id)) {
-                                    launchSingleTop = true
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFE5EDFF),
-                                contentColor = Color(0xFF0057FF)
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                            modifier = Modifier.height(32.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Text("Review", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        if (selectedTab == "History") {
+                            Button(
+                                onClick = {
+                                    navController.navigate(Screen.Review.createRoute(order.id)) {
+                                        launchSingleTop = true
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFE5EDFF),
+                                    contentColor = Color(0xFF0057FF)
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                modifier = Modifier.height(32.dp),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text("Review", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            Text("Ongoing", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -160,6 +197,7 @@ fun HistoryScreen(
 fun CartHistoryTabs(
     selected: String,
     onCart: () -> Unit,
+    onOngoing: () -> Unit,
     onHistory: () -> Unit
 ) {
     Row(
@@ -171,7 +209,7 @@ fun CartHistoryTabs(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         SegmentPill("Cart", selected == "Cart", onClick = onCart, modifier = Modifier.weight(1f))
-        SegmentPill("Ongoing", selected == "Ongoing", onClick = {}, modifier = Modifier.weight(1f))
+        SegmentPill("Ongoing", selected == "Ongoing", onClick = onOngoing, modifier = Modifier.weight(1f))
         SegmentPill("History", selected == "History", onClick = onHistory, modifier = Modifier.weight(1f))
     }
 }
@@ -205,8 +243,9 @@ fun ReviewScreen(
     val uiState by viewModel.uiState.collectAsState()
     val orderToReview = uiState.orders.firstOrNull { it.id == orderId }
     val productToReview = orderToReview?.product
-    var rating by remember { mutableStateOf(5) }
+    var rating by remember { mutableIntStateOf(5) }
     var comment by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -287,15 +326,26 @@ fun ReviewScreen(
                     
                     Button(
                         onClick = {
-                            navController.navigate(Screen.ReviewDone.route) {
-                                popUpTo(Screen.Review.route) { inclusive = true }
+                            isSubmitting = true
+                            viewModel.submitReview(
+                                orderId = orderId,
+                                rating = rating,
+                                comment = comment
+                            ) { success ->
+                                isSubmitting = false
+                                if (success) {
+                                    navController.navigate(Screen.ReviewDone.route) {
+                                        popUpTo(Screen.Review.route) { inclusive = true }
+                                    }
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF)),
-                        shape = RoundedCornerShape(25.dp)
+                        shape = RoundedCornerShape(25.dp),
+                        enabled = productToReview != null && !isSubmitting
                     ) {
-                        Text("Submit Review", fontWeight = FontWeight.Bold)
+                        Text(if (isSubmitting) "Submitting..." else "Submit Review", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -308,7 +358,7 @@ fun ReviewScreen(
 fun ReviewDoneScreen(navController: NavController) {
     LaunchedEffect(Unit) {
         delay(1500)
-        navController.navigate(Screen.History.route) {
+        navController.navigate(Screen.History.createRoute("History")) {
             popUpTo(Screen.History.route) { inclusive = true }
         }
     }

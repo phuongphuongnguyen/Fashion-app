@@ -11,13 +11,14 @@ object StorageUrlResolver {
     private val cache   = ConcurrentHashMap<String, String>()
 
     suspend fun resolve(path: String): String {
-        if (path.isBlank()) return ""
-        if (path.startsWith("http")) return path
-        if (path.startsWith("gs://")) {
-            return resolveStorageUrl(path)
+        val normalizedPath = path.trim()
+        if (normalizedPath.isBlank()) return ""
+        if (normalizedPath.startsWith("http")) return normalizedPath
+        if (normalizedPath.startsWith("gs://")) {
+            return resolveStorageUrl(normalizedPath)
         }
         
-        val sanitizedPath = path.removePrefix("/")
+        val sanitizedPath = normalizedPath.removePrefix("/").trim()
         
         if (cache.containsKey(sanitizedPath)) {
             return cache[sanitizedPath] ?: ""

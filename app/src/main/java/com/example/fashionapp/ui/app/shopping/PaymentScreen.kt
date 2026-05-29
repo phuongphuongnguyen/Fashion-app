@@ -95,7 +95,7 @@ fun PaymentScreen(
                                 shippingFee = shippingFee,
                                 shippingAddress = shippingAddress
                             )
-                            navController.navigate(Screen.History.route) {
+                            navController.navigate(Screen.History.createRoute("Ongoing")) {
                                 popUpTo(Screen.Payment.route) { inclusive = true }
                                 launchSingleTop = true
                             }
