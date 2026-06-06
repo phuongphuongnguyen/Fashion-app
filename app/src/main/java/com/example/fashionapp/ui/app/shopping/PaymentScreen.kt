@@ -180,7 +180,7 @@ fun PaymentScreen(
                             contentDescription = null,
                             modifier = Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF5F5F5)),
                             contentScale = ContentScale.Crop,
-                            error = painterResource(R.drawable.ic_launcher_foreground)
+                            error = painterResource(R.drawable.ic_shopping)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {

@@ -181,7 +181,7 @@ private fun SummaryRow(product: Product, selectedVariant: ProductVariant?) {
                 contentDescription = null,
                 modifier           = Modifier.fillMaxSize(),
                 contentScale       = ContentScale.Crop,
-                error              = painterResource(R.drawable.ic_launcher_foreground)
+                error              = painterResource(R.drawable.ic_shopping)
             )
         }
 
@@ -275,7 +275,7 @@ private fun ColorOptionsRow(
                     contentDescription = color,
                     modifier           = Modifier.fillMaxSize(),
                     contentScale       = ContentScale.Crop,
-                    error              = painterResource(R.drawable.ic_launcher_foreground)
+                    error              = painterResource(R.drawable.ic_shopping)
                 )
                 // Tick xanh góc dưới trái khi được chọn
                 if (isSelected) {

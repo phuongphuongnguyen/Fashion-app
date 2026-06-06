@@ -1,6 +1,7 @@
 package com.example.fashionapp.data.search
 
 import com.example.fashionapp.model.Product
+import com.example.fashionapp.model.User
 import com.example.fashionapp.data.product.toProduct
 import com.example.fashionapp.data.StorageUrlResolver
 import com.google.firebase.firestore.FirebaseFirestore
@@ -23,6 +24,7 @@ object SearchRepository {
     // ── In-Memory Cache ──────────────────────────────────────────────────────
     private var cachedProducts: List<Product>? = null
     private var cachedSubCategories: List<SubCategory>? = null
+    private var cachedUsers: List<User>? = null
 
     suspend fun getAllProducts(): List<Product> = coroutineScope {
         cachedProducts?.let { return@coroutineScope it }
@@ -59,6 +61,46 @@ object SearchRepository {
         }
     }
 
+    suspend fun getAllUsers(): List<User> = coroutineScope {
+        cachedUsers?.let { return@coroutineScope it }
+
+        try {
+            val snap = db.collection("users")
+                .limit(200)
+                .get().await()
+
+            val users = snap.documents.map { doc ->
+                async {
+                    val name = doc.getString("name").orEmpty()
+                    if (name.isBlank()) return@async null
+                    User(
+                        id = doc.id,
+                        name = name,
+                        avatarUrl = StorageUrlResolver.resolve(doc.getString("avatarUrl").orEmpty()),
+                        email = doc.getString("email").orEmpty(),
+                        followersCount = doc.getLong("followersCount")?.toInt() ?: 0,
+                        followingCount = doc.getLong("followingCount")?.toInt() ?: 0,
+                    )
+                }
+            }.awaitAll().filterNotNull()
+
+            cachedUsers = users
+            users
+        } catch (_: Exception) { emptyList() }
+    }
+
+    // Tìm user theo tên (bỏ dấu). Query rỗng → không trả user (user chỉ tìm theo từ khoá).
+    suspend fun searchUsers(query: String): List<User> {
+        val tokens = normalize(query).split(WHITESPACE).filter { it.isNotBlank() }
+        if (tokens.isEmpty()) return emptyList()
+
+        val all = getAllUsers()
+        return all.filter { user ->
+            val haystack = normalize(user.name)
+            tokens.all { haystack.contains(it) }
+        }
+    }
+
     private fun buildSearchHaystack(product: Product): String {
         val parts = buildList {
             add(product.name)
@@ -86,6 +128,7 @@ object SearchRepository {
     fun clearCache() {
         cachedProducts = null
         cachedSubCategories = null
+        cachedUsers = null
     }
 
     suspend fun getSubCategories(): List<SubCategory> {

@@ -153,7 +153,7 @@ fun HistoryScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(Color(0xFFF1F1F1)),
                             contentScale = ContentScale.Crop,
-                            error = painterResource(R.drawable.ic_launcher_foreground)
+                            error = painterResource(R.drawable.ic_shopping)
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -340,7 +340,7 @@ fun ReviewScreen(
                                 contentDescription = null,
                                 modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)),
                                 contentScale = ContentScale.Crop,
-                                error = painterResource(R.drawable.ic_launcher_foreground)
+                                error = painterResource(R.drawable.ic_shopping)
                             )
                             Spacer(Modifier.width(12.dp))
                             Column {

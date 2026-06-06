@@ -132,7 +132,7 @@ fun PostImagesRow(imageUrls: List<String>) {
             contentDescription = null,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f).background(Color(0xFFF9F9F9)),
             contentScale = ContentScale.Fit,
-            error = painterResource(R.drawable.ic_launcher_foreground)
+            error = painterResource(R.drawable.ic_shopping)
         )
     } else {
         LazyRow(
@@ -165,7 +165,7 @@ fun ProductTagsRow(tags: List<ProductTag>) {
                 contentDescription = null,
                 modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFF0F0F0)),
                 contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_launcher_foreground)
+                error = painterResource(R.drawable.ic_shopping)
             )
         }
     }

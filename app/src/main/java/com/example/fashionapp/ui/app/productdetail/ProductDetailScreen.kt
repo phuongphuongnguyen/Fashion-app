@@ -92,6 +92,15 @@ fun ProductDetailScreen(
         }
     }
 
+    LaunchedEffect(state.buyNowCartItemId) {
+        state.buyNowCartItemId?.let { cartItemId ->
+            viewModel.consumeBuyNow()
+            navController.navigate(Screen.Payment.createRoute(setOf(cartItemId))) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     if (state.isLoading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = PrimaryBlue)
@@ -126,7 +135,9 @@ fun ProductDetailScreen(
             product   = product,
             isBuyNow  = true,
             onDismiss = { showBuyNow = false },
-            onConfirm = { _, _ -> /* TODO: navigate tới checkout */ }
+            onConfirm = { variant, quantity ->
+                viewModel.buyNow(variant = variant, quantity = quantity)
+            }
         )
     }
 
@@ -255,7 +266,7 @@ private fun ImageSection(
                     contentDescription = null,
                     modifier           = Modifier.fillMaxSize(),
                     contentScale       = ContentScale.Crop,
-                    error              = painterResource(R.drawable.ic_launcher_foreground)
+                    error              = painterResource(R.drawable.ic_shopping)
                 )
             }
         }
@@ -809,7 +820,7 @@ private fun PopularProductCard(product: Product, onClick: () -> Unit) {
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_launcher_foreground)
+                error = painterResource(R.drawable.ic_shopping)
             )
             // Badge
             Row(
@@ -841,7 +852,7 @@ private fun GridProductCard(product: Product, modifier: Modifier, onClick: () ->
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_launcher_foreground)
+                error = painterResource(R.drawable.ic_shopping)
             )
         }
         Spacer(Modifier.height(6.dp))

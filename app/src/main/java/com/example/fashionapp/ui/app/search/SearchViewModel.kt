@@ -8,6 +8,8 @@ import com.example.fashionapp.data.search.SearchHistoryRepository
 import com.example.fashionapp.data.search.SearchRepository
 import com.example.fashionapp.data.search.SubCategory
 import com.example.fashionapp.model.Product
+import com.example.fashionapp.model.User
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,11 +19,12 @@ import kotlinx.coroutines.launch
 data class SearchUiState(
     val isLoadingInitial: Boolean = false,
     val isSearching: Boolean = false,
-    val query: String = "",                // text đang gõ trong ô search
-    val submittedQuery: String = "",       // query đã thật sự gửi đi search
+    val query: String = "",
+    val submittedQuery: String = "",
     val subCategories: List<SubCategory> = emptyList(),
     val selectedCategoryId: String? = null,
     val products: List<Product> = emptyList(),
+    val users: List<User> = emptyList(),
     val history: List<String> = emptyList(),
     val popular: List<String> = emptyList(),
 ) {
@@ -60,12 +63,17 @@ class SearchViewModel(
     private fun runSearch(query: String, categoryId: String?) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSearching = true) }
-            val results = SearchRepository.search(query, categoryId)
+            // Tìm sản phẩm + user song song
+            val productsDeferred = async { SearchRepository.search(query, categoryId) }
+            val usersDeferred = async { SearchRepository.searchUsers(query) }
+            val products = productsDeferred.await()
+            val users = usersDeferred.await()
             _uiState.update {
                 it.copy(
                     isLoadingInitial = false,
                     isSearching      = false,
-                    products         = results,
+                    products         = products,
+                    users            = users,
                     submittedQuery   = query,
                 )
             }
@@ -151,6 +159,7 @@ class SearchViewModel(
             it.copy(
                 submittedQuery = "",
                 products       = emptyList(),
+                users          = emptyList(),
                 isSearching    = false,
             )
         }

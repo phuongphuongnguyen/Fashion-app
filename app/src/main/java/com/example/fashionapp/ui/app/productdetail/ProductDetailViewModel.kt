@@ -26,6 +26,8 @@ data class ProductDetailUiState(
     val isWishlisted: Boolean = false,
     val isAddedToCart: Boolean = false,
     val cartError: String? = null,
+    // Khi != null → đã thêm món "Buy Now" vào giỏ, sẵn sàng sang checkout
+    val buyNowCartItemId: String? = null,
     val error: String? = null,
 )
 
@@ -87,13 +89,7 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
             return
         }
 
-        val cartItem = CartItem(
-            id = "${product.id}_${System.currentTimeMillis()}",
-            product = product,
-            color = variant?.color ?: "Default",
-            size = variant?.size ?: "Default",
-            quantity = quantity
-        )
+        val cartItem = createCartItem(product, variant, quantity)
 
         viewModelScope.launch {
             try {
@@ -110,8 +106,50 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
         }
     }
 
+    fun buyNow(variant: ProductVariant? = _uiState.value.selectedVariant, quantity: Int = 1) {
+        val product = _uiState.value.product
+        if (product == null) {
+            _uiState.value = _uiState.value.copy(cartError = "Product is not available")
+            return
+        }
+
+        val userId = auth.currentUser?.uid
+        if (userId.isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(cartError = "Please sign in before checkout")
+            return
+        }
+
+        val cartItem = createCartItem(product, variant, quantity)
+
+        viewModelScope.launch {
+            try {
+                ShopRepository.addToCart(userId, cartItem)
+                Log.d(TAG, "Buy now: added cart item ${cartItem.id} for user $userId")
+                _uiState.value = _uiState.value.copy(buyNowCartItemId = cartItem.id, cartError = null)
+            } catch (e: Exception) {
+                Log.e(TAG, "Buy now failed for ${cartItem.id} (user $userId)", e)
+                _uiState.value = _uiState.value.copy(
+                    cartError = e.message ?: "Failed to checkout"
+                )
+            }
+        }
+    }
+
+    private fun createCartItem(product: Product, variant: ProductVariant?, quantity: Int) =
+        CartItem(
+            id = "${product.id}_${System.currentTimeMillis()}",
+            product = product,
+            color = variant?.color ?: "Default",
+            size = variant?.size ?: "Default",
+            quantity = quantity
+        )
+
     fun consumeCartResult() {
         _uiState.value = _uiState.value.copy(isAddedToCart = false, cartError = null)
+    }
+
+    fun consumeBuyNow() {
+        _uiState.value = _uiState.value.copy(buyNowCartItemId = null)
     }
 }
 

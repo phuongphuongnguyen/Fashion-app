@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -49,6 +51,7 @@ import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.data.search.SubCategory
 import com.example.fashionapp.model.Product
+import com.example.fashionapp.model.User
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue  = Color(0xFF3669C9)
@@ -150,20 +153,25 @@ fun SearchScreen(
                         onClearAll    = viewModel::clearHistory,
                     )
                 }
-                // Có query hoặc category → tiêu đề kết quả + grid
+                // Có query hoặc category → user (trên) + sản phẩm (dưới)
                 else -> {
-                    ResultsHeader(
-                        query              = state.submittedQuery,
-                        selectedCategoryId = state.selectedCategoryId,
-                        subCategories      = state.subCategories,
-                        resultCount        = state.products.size,
-                    )
-                    if (state.products.isEmpty()) {
+                    if (state.users.isEmpty() && state.products.isEmpty()) {
+                        ResultsHeader(
+                            query              = state.submittedQuery,
+                            selectedCategoryId = state.selectedCategoryId,
+                            subCategories      = state.subCategories,
+                            resultCount        = 0,
+                        )
                         EmptyState(query = state.submittedQuery)
                     } else {
-                        ProductGrid(
-                            products      = state.products,
-                            onProductClick = { product ->
+                        SearchResults(
+                            users              = state.users,
+                            products           = state.products,
+                            query              = state.submittedQuery,
+                            selectedCategoryId = state.selectedCategoryId,
+                            subCategories      = state.subCategories,
+                            onUserClick        = { /* TODO: mở trang cá nhân user */ },
+                            onProductClick     = { product ->
                                 navController.navigate("product_detail/${product.id}")
                             }
                         )
@@ -218,15 +226,7 @@ private fun SearchTopBar(
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(focusRequester),
-            placeholder = { Text("Tìm kiếm sản phẩm...", fontSize = 14.sp) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.ic_search),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = PrimaryBlue
-                )
-            },
+            placeholder = { Text("Tìm kiếm", fontSize = 14.sp) },
             trailingIcon = {
                 if (textState.isNotEmpty()) {
                     IconButton(onClick = {
@@ -523,30 +523,126 @@ private fun SubCategoryItem(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  PRODUCT GRID
+//  SEARCH RESULTS (user trên · sản phẩm dưới)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ProductGrid(
+private fun SearchResults(
+    users: List<User>,
     products: List<Product>,
+    query: String,
+    selectedCategoryId: String?,
+    subCategories: List<SubCategory>,
+    onUserClick: (User) -> Unit,
     onProductClick: (Product) -> Unit,
 ) {
     LazyVerticalGrid(
-        columns             = GridCells.Fixed(2),
-        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        columns               = GridCells.Fixed(2),
+        contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement   = Arrangement.spacedBy(16.dp),
-        modifier            = Modifier.fillMaxSize()
+        modifier              = Modifier.fillMaxSize()
     ) {
-        itemsIndexed(products, key = { _, p -> p.id }) { index, product ->
-            ProductGridCard(
-                product  = product,
-                tallCard = index % 2 == 1,
-                onClick  = { onProductClick(product) }
+        // ── Người dùng ───────────────────────────────────────────────────
+        if (users.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle("Người dùng", "${users.size} người dùng")
+            }
+            items(
+                users,
+                span = { GridItemSpan(maxLineSpan) },
+                key  = { "user_${it.id}" }
+            ) { user ->
+                UserResultRow(user = user, onClick = { onUserClick(user) })
+            }
+        }
+
+        // ── Sản phẩm ─────────────────────────────────────────────────────
+        if (products.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                val title = when {
+                    query.isNotBlank()         -> "Sản phẩm"
+                    selectedCategoryId != null ->
+                        subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: "Sản phẩm"
+                    else                       -> "Sản phẩm"
+                }
+                SectionTitle(title, "${products.size} sản phẩm")
+            }
+            itemsIndexed(products, key = { _, p -> p.id }) { index, product ->
+                ProductGridCard(
+                    product  = product,
+                    tallCard = index % 2 == 1,
+                    onClick  = { onProductClick(product) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(title: String, subtitle: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text       = title,
+            fontWeight = FontWeight.Bold,
+            fontSize   = 18.sp,
+            color      = TextDark
+        )
+        Text(
+            text     = subtitle,
+            fontSize = 12.sp,
+            color    = TextGray,
+        )
+    }
+}
+
+@Composable
+private fun UserResultRow(user: User, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFEEEEEE))
+        ) {
+            AsyncImage(
+                model              = user.avatarUrl.ifBlank { null },
+                contentDescription = user.name,
+                modifier           = Modifier.fillMaxSize(),
+                contentScale       = ContentScale.Crop,
+                error              = painterResource(R.drawable.ic_profile),
+                fallback           = painterResource(R.drawable.ic_profile)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text       = user.name,
+                fontWeight = FontWeight.SemiBold,
+                fontSize   = 15.sp,
+                color      = TextDark,
+                maxLines   = 1,
+                overflow   = TextOverflow.Ellipsis
+            )
+            Text(
+                text     = "${user.followersCount} followers",
+                fontSize = 12.sp,
+                color    = TextGray,
             )
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PRODUCT CARD
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ProductGridCard(
@@ -573,7 +669,7 @@ private fun ProductGridCard(
                 contentDescription = product.name,
                 modifier           = Modifier.fillMaxSize(),
                 contentScale       = ContentScale.Crop,
-                error              = painterResource(R.drawable.ic_launcher_foreground)
+                error              = painterResource(R.drawable.ic_shopping)
             )
 
             if (product.discountPercent > 0) {
@@ -644,7 +740,6 @@ private fun EmptyState(query: String) {
             .padding(top = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("🔍", fontSize = 56.sp)
         Spacer(Modifier.height(16.dp))
         if (query.isBlank()) {
             Text("Không có sản phẩm nào", color = TextGray, fontSize = 15.sp)

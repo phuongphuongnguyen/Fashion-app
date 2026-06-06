@@ -418,7 +418,7 @@ private fun ProductCardVertical(
                     contentDescription = product.name,
                     modifier           = Modifier.fillMaxSize(),
                     contentScale       = ContentScale.Crop,
-                    error              = painterResource(R.drawable.ic_launcher_foreground)
+                    error              = painterResource(R.drawable.ic_shopping)
                 )
                 // Badge: sold count + label
                 if (showBadge) {
@@ -543,7 +543,7 @@ private fun ProductCardGrid(
                     contentDescription = product.name,
                     modifier           = Modifier.fillMaxSize(),
                     contentScale       = ContentScale.Crop,
-                    error              = painterResource(R.drawable.ic_launcher_foreground)
+                    error              = painterResource(R.drawable.ic_shopping)
                 )
             }
             Spacer(Modifier.height(8.dp))

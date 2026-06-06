@@ -249,7 +249,7 @@ private fun CartItemRow(
                     .clip(RoundedCornerShape(10.dp))
                     .background(Color(0xFFF5F5F5)),
                 contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_launcher_foreground)
+                error = painterResource(R.drawable.ic_shopping)
             )
         }
         Spacer(Modifier.width(12.dp))
