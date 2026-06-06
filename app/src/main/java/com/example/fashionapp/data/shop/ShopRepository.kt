@@ -13,7 +13,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.onStart
@@ -56,23 +59,26 @@ object ShopRepository {
         cachedProducts?.let { emit(it) }
     }
 
-    suspend fun getCategories(): List<Category> {
-        categoriesCache?.let { return it }
+    suspend fun getCategories(): List<Category> = coroutineScope {
+        categoriesCache?.let { return@coroutineScope it }
         val targetIds = listOf("cat001a", "cat002", "cat003", "cat004", "cat005", "cat006")
-        return try {
+        try {
             val snap = db.collection("categories")
                 .whereIn(com.google.firebase.firestore.FieldPath.documentId(), targetIds)
                 .get().await()
 
             val docsMap = snap.documents.associateBy { it.id }
-            val result = targetIds.mapNotNull { id ->
-                val doc = docsMap[id] ?: return@mapNotNull null
-                val name = doc.getString("name") ?: return@mapNotNull null
-                @Suppress("UNCHECKED_CAST")
-                val previewPaths = (doc.get("previewImages") as? List<String>) ?: emptyList()
-                val urls = StorageUrlResolver.resolveAll(previewPaths)
-                Category(id, name, urls)
-            }
+            // Parse + resolve URLs của tất cả category song song
+            val result = targetIds.map { id ->
+                async {
+                    val doc = docsMap[id] ?: return@async null
+                    val name = doc.getString("name") ?: return@async null
+                    @Suppress("UNCHECKED_CAST")
+                    val previewPaths = (doc.get("previewImages") as? List<String>) ?: emptyList()
+                    val urls = StorageUrlResolver.resolveAll(previewPaths)
+                    Category(id, name, urls)
+                }
+            }.awaitAll().filterNotNull()
             categoriesCache = result
             result
         } catch (_: Exception) { emptyList() }
@@ -105,10 +111,13 @@ object ShopRepository {
         return result
     }
 
-    private suspend fun fetchProducts(query: Query): List<Product> {
-        return try {
+    private suspend fun fetchProducts(query: Query): List<Product> = coroutineScope {
+        try {
             val snap = query.get().await()
-            snap.documents.mapNotNull { it.toProduct() }
+            // Parse + resolve URLs của các product song song
+            snap.documents.map { async { it.toProduct() } }
+                .awaitAll()
+                .filterNotNull()
         } catch (_: Exception) { emptyList() }
     }
 

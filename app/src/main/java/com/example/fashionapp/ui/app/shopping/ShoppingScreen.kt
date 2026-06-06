@@ -109,7 +109,7 @@ fun ShoppingScreen(
                 CategoriesGrid(
                     categories = cats,
                     onCategoryClick = { cat ->
-                        navController.navigate(Screen.Search.createRoute(categoryId = cat.id))
+                        navController.navigate(Screen.Search.createRoute(query = cat.name))
                     }
                 )
             }

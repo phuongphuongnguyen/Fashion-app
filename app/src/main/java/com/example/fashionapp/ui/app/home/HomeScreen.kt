@@ -16,6 +16,7 @@ import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
+import com.example.fashionapp.ui.components.FeedPostSkeleton
 import com.example.fashionapp.ui.components.HomeTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,11 +69,14 @@ fun HomeScreen(
 
         when {
             uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center
+                LazyColumn(
+                    modifier = Modifier.padding(innerPadding),
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    CircularProgressIndicator()
+                    items(3) {
+                        FeedPostSkeleton()
+                        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+                    }
                 }
             }
 

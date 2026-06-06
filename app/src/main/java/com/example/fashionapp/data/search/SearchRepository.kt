@@ -4,7 +4,11 @@ import com.example.fashionapp.model.Product
 import com.example.fashionapp.data.product.toProduct
 import com.example.fashionapp.data.StorageUrlResolver
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
+import java.text.Normalizer
 
 data class SubCategory(
     val id: String,
@@ -20,15 +24,18 @@ object SearchRepository {
     private var cachedProducts: List<Product>? = null
     private var cachedSubCategories: List<SubCategory>? = null
 
-    suspend fun getAllProducts(): List<Product> {
-        cachedProducts?.let { return it }
+    suspend fun getAllProducts(): List<Product> = coroutineScope {
+        cachedProducts?.let { return@coroutineScope it }
 
-        return try {
+        try {
             val snap = db.collection("products")
                 .limit(200)
                 .get().await()
 
-            val products = snap.documents.mapNotNull { it.toProduct() }
+            // Parse + resolve URLs song song trên toàn bộ tài liệu
+            val products = snap.documents.map { async { it.toProduct() } }
+                .awaitAll()
+                .filterNotNull()
 
             cachedProducts = products
             products
@@ -37,19 +44,44 @@ object SearchRepository {
 
     suspend fun search(query: String, categoryId: String? = null): List<Product> {
         val all = getAllProducts()
-        val q   = query.trim().lowercase()
+        val tokens = normalize(query).split(WHITESPACE).filter { it.isNotBlank() }
 
         return all.filter { product ->
-            val matchCategory = categoryId.isNullOrBlank() || product.categoryId == categoryId
-            val matchQuery = q.isEmpty()
-                || product.name.lowercase().contains(q)
-                || product.tags.any { it.lowercase().contains(q) }
-                || product.description.lowercase().contains(q)
-                || product.variants.any { it.color.lowercase().contains(q) }
+            val matchCategory = categoryId.isNullOrBlank() ||
+                product.categoryId == categoryId ||
+                product.categoryId.startsWith(categoryId)
+
+            // Mọi token đều phải xuất hiện trong tên/tag/desc/màu (AND logic, đã bỏ dấu)
+            val haystack = buildSearchHaystack(product)
+            val matchQuery = tokens.isEmpty() || tokens.all { haystack.contains(it) }
 
             matchCategory && matchQuery
         }
     }
+
+    private fun buildSearchHaystack(product: Product): String {
+        val parts = buildList {
+            add(product.name)
+            add(product.description)
+            addAll(product.tags)
+            product.variants.forEach { add(it.color) }
+        }
+        return normalize(parts.joinToString(" "))
+    }
+
+    // Bỏ dấu tiếng Việt + lowercase. Đảm bảo "ao so mi" match được "Áo sơ mi".
+    private fun normalize(input: String): String {
+        if (input.isBlank()) return ""
+        val decomposed = Normalizer.normalize(input, Normalizer.Form.NFD)
+        return decomposed
+            .replace(COMBINING_MARKS, "")
+            .replace('đ', 'd').replace('Đ', 'd')
+            .lowercase()
+            .trim()
+    }
+
+    private val WHITESPACE = "\\s+".toRegex()
+    private val COMBINING_MARKS = "\\p{Mn}+".toRegex()
 
     fun clearCache() {
         cachedProducts = null

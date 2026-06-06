@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.SvgDecoder
+import com.example.fashionapp.data.StorageUrlResolver
 import com.example.fashionapp.data.onboarding.OnboardingPreferences
 import com.example.fashionapp.navigation.AppNavigation
 import com.example.fashionapp.navigation.Screen
@@ -22,6 +23,7 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        StorageUrlResolver.init(applicationContext)
         setContent {
             val settingsViewModel: AppSettingsViewModel = viewModel(
                 factory = AppSettingsViewModelFactory(applicationContext)

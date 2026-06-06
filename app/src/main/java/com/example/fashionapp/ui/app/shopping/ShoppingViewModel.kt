@@ -5,10 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.fashionapp.data.shop.ShopRepository
 import com.example.fashionapp.model.Category
 import com.example.fashionapp.model.Product
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ShoppingUiState(
@@ -27,19 +27,25 @@ class ShoppingViewModel : ViewModel() {
     init { loadAll() }
 
     private fun loadAll() {
+        // Progressive load: mỗi section update vào state độc lập ngay khi xong,
+        // không đợi cả 4 query hoàn tất. UI thấy section đầu tiên xuất hiện sớm.
         viewModelScope.launch {
-            val catDeferred     = async { ShopRepository.getCategories() }
-            val newDeferred     = async { ShopRepository.getNewItems() }
-            val popularDeferred = async { ShopRepository.getMostPopular() }
-            val forYouDeferred  = async { ShopRepository.getForYou() }
-
-            _uiState.value = ShoppingUiState(
-                isLoading   = false,
-                categories  = catDeferred.await(),
-                newItems    = newDeferred.await(),
-                mostPopular = popularDeferred.await(),
-                forYou      = forYouDeferred.await(),
-            )
+            launch {
+                val cats = ShopRepository.getCategories()
+                _uiState.update { it.copy(categories = cats, isLoading = false) }
+            }
+            launch {
+                val items = ShopRepository.getNewItems()
+                _uiState.update { it.copy(newItems = items, isLoading = false) }
+            }
+            launch {
+                val popular = ShopRepository.getMostPopular()
+                _uiState.update { it.copy(mostPopular = popular, isLoading = false) }
+            }
+            launch {
+                val forYou = ShopRepository.getForYou()
+                _uiState.update { it.copy(forYou = forYou, isLoading = false) }
+            }
         }
     }
 }

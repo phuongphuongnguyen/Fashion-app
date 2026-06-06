@@ -1,25 +1,27 @@
 package com.example.fashionapp.ui.app.search
 
-import androidx.compose.animation.*
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,16 +32,17 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -52,6 +55,7 @@ private val PrimaryBlue  = Color(0xFF3669C9)
 private val SearchBg     = Color(0xFFEBEEF8)
 private val TextDark     = Color(0xFF1A1A1A)
 private val TextGray     = Color(0xFF888888)
+private val ChipBg       = Color(0xFFF3F5FA)
 private val StarYellow   = Color(0xFFFFC107)
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,13 +68,13 @@ fun SearchScreen(
     initialQuery: String = "",
     initialCategoryId: String? = null,
     viewModel: SearchViewModel = viewModel(
-        factory = SearchViewModelFactory(initialQuery, initialCategoryId)
+        factory = SearchViewModelFactory(initialQuery, initialCategoryId, LocalContext.current)
     )
 ) {
     val state        by viewModel.uiState.collectAsState()
     val focusManager =  LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
-    var showSortSheet by remember { mutableStateOf(false) }
+    val context      = LocalContext.current
 
     // Auto-focus search bar khi mở màn hình
     LaunchedEffect(Unit) {
@@ -81,7 +85,7 @@ fun SearchScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .statusBarsPadding() // Thêm khoảng đệm cho Status Bar
+            .statusBarsPadding()
     ) {
         // ── Top Search Bar ───────────────────────────────────────────────
         SearchTopBar(
@@ -90,11 +94,25 @@ fun SearchScreen(
             onClear        = viewModel::clearQuery,
             onBack         = { navController.popBackStack() },
             focusRequester = focusRequester,
-            onSearch       = { focusManager.clearFocus() },
-            onTuneClick    = { showSortSheet = true }
+            onSearch       = {
+                viewModel.onSearchSubmit()
+                focusManager.clearFocus()
+            },
+            onCameraClick  = {
+                Toast.makeText(context, "Tìm bằng hình ảnh đang được phát triển", Toast.LENGTH_SHORT).show()
+            }
         )
 
-        // ── Nội dung cuộn ───────────────────────────────────────────────
+        // Thanh tiến trình khi đang search
+        if (state.isSearching && !state.isLoadingInitial) {
+            LinearProgressIndicator(
+                modifier  = Modifier.fillMaxWidth(),
+                color     = PrimaryBlue,
+                trackColor = SearchBg
+            )
+        }
+
+        // ── Nội dung ────────────────────────────────────────────────────
         Column(modifier = Modifier.fillMaxSize()) {
 
             // SubCategories (circles)
@@ -103,55 +121,56 @@ fun SearchScreen(
                 SubCategoriesRow(
                     subCategories      = state.subCategories,
                     selectedCategoryId = state.selectedCategoryId,
-                    onSelect           = viewModel::onCategorySelected
+                    onSelect           = { id ->
+                        viewModel.onCategorySelected(id)
+                        focusManager.clearFocus()
+                    }
                 )
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Hiển thị "Kết quả cho..." chỉ khi có query
-            if (state.query.isNotBlank()) {
-                Text(
-                    text = "Kết quả cho \"${state.query}\"",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = TextDark,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
-
-            // Product grid
             when {
+                // Lần đầu fetch Firestore
                 state.isLoadingInitial -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = PrimaryBlue)
                     }
                 }
-                state.products.isEmpty() -> {
-                    EmptyState(query = state.query)
-                }
-                else -> {
-                    ProductGrid(
-                        products      = state.products,
-                        onProductClick = { product ->
-                            navController.navigate("product_detail/${product.id}")
-                        }
+                // Gợi ý khi chưa nhập gì và chưa chọn category
+                state.showSuggestions -> {
+                    SuggestionsContent(
+                        history       = state.history,
+                        popular       = state.popular,
+                        onPick        = { keyword ->
+                            viewModel.onPickSuggestion(keyword)
+                            focusManager.clearFocus()
+                        },
+                        onRemoveItem  = viewModel::removeHistoryItem,
+                        onClearAll    = viewModel::clearHistory,
                     )
+                }
+                // Có query hoặc category → tiêu đề kết quả + grid
+                else -> {
+                    ResultsHeader(
+                        query              = state.submittedQuery,
+                        selectedCategoryId = state.selectedCategoryId,
+                        subCategories      = state.subCategories,
+                        resultCount        = state.products.size,
+                    )
+                    if (state.products.isEmpty()) {
+                        EmptyState(query = state.submittedQuery)
+                    } else {
+                        ProductGrid(
+                            products      = state.products,
+                            onProductClick = { product ->
+                                navController.navigate("product_detail/${product.id}")
+                            }
+                        )
+                    }
                 }
             }
         }
-    }
-
-    // ── Sort Bottom Sheet ────────────────────────────────────────────────────
-    if (showSortSheet) {
-        SortBottomSheet(
-            currentOption = state.sortOption,
-            onSelect      = { option ->
-                viewModel.onSortSelected(option)
-                showSortSheet = false
-            },
-            onDismiss     = { showSortSheet = false }
-        )
     }
 }
 
@@ -167,7 +186,7 @@ private fun SearchTopBar(
     onBack: () -> Unit,
     focusRequester: FocusRequester,
     onSearch: () -> Unit,
-    onTuneClick: () -> Unit
+    onCameraClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -186,70 +205,56 @@ private fun SearchTopBar(
             )
         }
 
-        // Search field
-        Box(
+        // Search field — dùng String đơn giản cho ô nhập liệu để tránh lỗi IME tiếng Việt với TextFieldValue
+        var textState by remember { mutableStateOf(query) }
+
+        // Thanh nhập liệu chính
+        OutlinedTextField(
+            value = textState,
+            onValueChange = { 
+                textState = it
+                onQueryChange(it)
+            },
             modifier = Modifier
                 .weight(1f)
-                .height(44.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(SearchBg)
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (query.isEmpty()) {
-                Text("Tìm kiếm sản phẩm...", color = Color(0xFFAAAAAA), fontSize = 14.sp)
-            }
-
-            Row(
-                modifier          = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                BasicTextField(
-                    value         = query,
-                    onValueChange = onQueryChange,
-                    modifier      = Modifier
-                        .weight(1f)
-                        .focusRequester(focusRequester),
-                    textStyle     = TextStyle(
-                        fontSize  = 14.sp,
-                        color     = PrimaryBlue,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    cursorBrush   = SolidColor(PrimaryBlue),
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { onSearch() })
+                .focusRequester(focusRequester),
+            placeholder = { Text("Tìm kiếm sản phẩm...", fontSize = 14.sp) },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_search),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = PrimaryBlue
                 )
-
-                // Clear button
-                if (query.isNotEmpty()) {
-                    IconButton(
-                        onClick  = onClear,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Clear",
-                            tint     = TextGray,
-                            modifier = Modifier.size(16.dp)
-                        )
+            },
+            trailingIcon = {
+                if (textState.isNotEmpty()) {
+                    IconButton(onClick = {
+                        textState = ""
+                        onClear()
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
                     }
                 }
-            }
-        }
-
-        // Tune icon
-        IconButton(onClick = onTuneClick, modifier = Modifier.size(40.dp)) {
-            Icon(
-                Icons.Default.Tune,
-                contentDescription = "Sort",
-                tint = TextDark,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(22.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = SearchBg,
+                unfocusedContainerColor = SearchBg,
+                disabledContainerColor = SearchBg,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedTextColor = TextDark,
+                unfocusedTextColor = TextDark
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            textStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        )
 
         // Camera icon
-        IconButton(onClick = { }, modifier = Modifier.size(40.dp)) {
+        IconButton(onClick = onCameraClick, modifier = Modifier.size(40.dp)) {
             Icon(
                 painter            = painterResource(R.drawable.ic_camera),
                 contentDescription = "Camera search",
@@ -257,6 +262,180 @@ private fun SearchTopBar(
                 modifier           = Modifier.size(24.dp)
             )
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  RESULTS HEADER
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ResultsHeader(
+    query: String,
+    selectedCategoryId: String?,
+    subCategories: List<SubCategory>,
+    resultCount: Int,
+) {
+    val title = when {
+        query.isNotBlank() -> "Kết quả cho \"$query\""
+        selectedCategoryId != null -> {
+            val name = subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: "Danh mục"
+            "Danh mục: $name"
+        }
+        else -> "Tất cả sản phẩm"
+    }
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text(
+            text       = title,
+            fontWeight = FontWeight.Bold,
+            fontSize   = 18.sp,
+            color      = TextDark
+        )
+        Text(
+            text     = "$resultCount sản phẩm",
+            fontSize = 12.sp,
+            color    = TextGray,
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SUGGESTIONS (history + popular)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SuggestionsContent(
+    history: List<String>,
+    popular: List<String>,
+    onPick: (String) -> Unit,
+    onRemoveItem: (String) -> Unit,
+    onClearAll: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 24.dp)
+    ) {
+        if (history.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Tìm kiếm gần đây",
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 15.sp,
+                    color      = TextDark
+                )
+                Text(
+                    "Xoá tất cả",
+                    fontSize = 13.sp,
+                    color    = PrimaryBlue,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onClearAll() }
+                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            history.forEach { item ->
+                HistoryRow(
+                    text     = item,
+                    onClick  = { onPick(item) },
+                    onRemove = { onRemoveItem(item) }
+                )
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+
+        if (popular.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.TrendingUp,
+                    contentDescription = null,
+                    tint     = PrimaryBlue,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    "Tìm kiếm phổ biến",
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 15.sp,
+                    color      = TextDark
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            LazyRow(
+                contentPadding        = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(popular, key = { it }) { keyword ->
+                    KeywordChip(text = keyword, onClick = { onPick(keyword) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryRow(
+    text: String,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.History,
+            contentDescription = null,
+            tint     = TextGray,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text       = text,
+            fontSize   = 14.sp,
+            color      = TextDark,
+            maxLines   = 1,
+            overflow   = TextOverflow.Ellipsis,
+            modifier   = Modifier.weight(1f)
+        )
+        IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Xoá",
+                tint     = TextGray,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeywordChip(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(ChipBg)
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, fontSize = 13.sp, color = TextDark)
     }
 }
 
@@ -296,7 +475,6 @@ private fun SubCategoryItem(
             .clickable { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Circle ảnh
         Box(
             modifier = Modifier
                 .size(68.dp)
@@ -315,7 +493,6 @@ private fun SubCategoryItem(
                     contentScale       = ContentScale.Crop
                 )
             } else {
-                // Fallback emoji từ tên category
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text     = categoryEmoji(sub.name),
@@ -324,7 +501,6 @@ private fun SubCategoryItem(
                 }
             }
 
-            // Viền trắng ngoài cùng (shadow effect)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -347,7 +523,7 @@ private fun SubCategoryItem(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  PRODUCT GRID  (2 cột, staggered height)
+//  PRODUCT GRID
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -362,11 +538,10 @@ private fun ProductGrid(
         verticalArrangement   = Arrangement.spacedBy(16.dp),
         modifier            = Modifier.fillMaxSize()
     ) {
-        items(products, key = { it.id }) { product ->
+        itemsIndexed(products, key = { _, p -> p.id }) { index, product ->
             ProductGridCard(
                 product  = product,
-                // Card chẵn cao hơn để tạo hiệu ứng staggered
-                tallCard = products.indexOf(product) % 2 == 1,
+                tallCard = index % 2 == 1,
                 onClick  = { onProductClick(product) }
             )
         }
@@ -386,7 +561,6 @@ private fun ProductGridCard(
             .fillMaxWidth()
             .clickable { onClick() }
     ) {
-        // Ảnh
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -402,7 +576,6 @@ private fun ProductGridCard(
                 error              = painterResource(R.drawable.ic_launcher_foreground)
             )
 
-            // Discount badge
             if (product.discountPercent > 0) {
                 Surface(
                     modifier = Modifier
@@ -424,7 +597,6 @@ private fun ProductGridCard(
 
         Spacer(Modifier.height(8.dp))
 
-        // Tên sản phẩm
         Text(
             text      = product.name,
             fontSize  = 13.sp,
@@ -436,7 +608,6 @@ private fun ProductGridCard(
 
         Spacer(Modifier.height(4.dp))
 
-        // Giá
         Text(
             text       = "₫${formatPrice(product.price)}",
             fontWeight = FontWeight.Bold,
@@ -444,7 +615,6 @@ private fun ProductGridCard(
             color      = TextDark
         )
 
-        // Rating nhỏ
         if (product.rating > 0) {
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -477,7 +647,7 @@ private fun EmptyState(query: String) {
         Text("🔍", fontSize = 56.sp)
         Spacer(Modifier.height(16.dp))
         if (query.isBlank()) {
-            Text("Tìm kiếm sản phẩm bạn thích", color = TextGray, fontSize = 15.sp)
+            Text("Không có sản phẩm nào", color = TextGray, fontSize = 15.sp)
         } else {
             Text(
                 "Không tìm thấy kết quả cho",
@@ -493,66 +663,6 @@ private fun EmptyState(query: String) {
             )
             Spacer(Modifier.height(8.dp))
             Text("Thử tìm với từ khoá khác", color = TextGray, fontSize = 13.sp)
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  SORT BOTTOM SHEET
-// ─────────────────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SortBottomSheet(
-    currentOption: SortOption,
-    onSelect: (SortOption) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor   = Color.White,
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text(
-                "Sắp xếp theo",
-                fontWeight = FontWeight.Bold,
-                fontSize   = 18.sp,
-                modifier   = Modifier.padding(bottom = 16.dp)
-            )
-
-            SortOption.values().forEach { option ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(option) }
-                        .padding(vertical = 14.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        option.label,
-                        fontSize   = 15.sp,
-                        fontWeight = if (option == currentOption) FontWeight.SemiBold else FontWeight.Normal,
-                        color      = if (option == currentOption) PrimaryBlue else TextDark
-                    )
-                    if (option == currentOption) {
-                        Box(
-                            modifier         = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                                .background(PrimaryBlue),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("✓", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-                if (option != SortOption.values().last()) {
-                    HorizontalDivider(color = Color(0xFFEEEEEE))
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
         }
     }
 }

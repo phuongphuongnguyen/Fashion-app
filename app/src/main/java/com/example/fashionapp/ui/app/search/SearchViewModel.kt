@@ -1,136 +1,165 @@
 package com.example.fashionapp.ui.app.search
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.fashionapp.data.search.SearchHistoryRepository
 import com.example.fashionapp.data.search.SearchRepository
 import com.example.fashionapp.data.search.SubCategory
 import com.example.fashionapp.model.Product
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class SearchUiState(
-    val isLoadingInitial: Boolean = true,  // lần đầu fetch Firestore
-    val isSearching: Boolean = false,       // đang filter (debounce)
-    val query: String = "",
+    val isLoadingInitial: Boolean = false,
+    val isSearching: Boolean = false,
+    val query: String = "",                // text đang gõ trong ô search
+    val submittedQuery: String = "",       // query đã thật sự gửi đi search
     val subCategories: List<SubCategory> = emptyList(),
     val selectedCategoryId: String? = null,
     val products: List<Product> = emptyList(),
-    val sortOption: SortOption = SortOption.DEFAULT,
-)
-
-enum class SortOption(val label: String) {
-    DEFAULT("Mặc định"),
-    PRICE_ASC("Giá tăng dần"),
-    PRICE_DESC("Giá giảm dần"),
-    POPULAR("Bán chạy nhất"),
-    RATING("Đánh giá cao nhất"),
+    val history: List<String> = emptyList(),
+    val popular: List<String> = emptyList(),
+) {
+    val showSuggestions: Boolean
+        get() = submittedQuery.isBlank() && selectedCategoryId.isNullOrBlank()
 }
 
-@OptIn(FlowPreview::class)
 class SearchViewModel(
-    private val initialQuery: String = "",
-    private val initialCategoryId: String? = null,
+    initialQuery: String = "",
+    initialCategoryId: String? = null,
+    private val historyRepo: SearchHistoryRepository,
 ) : ViewModel() {
+
+    private val hasInitialCriteria = initialQuery.isNotBlank() || initialCategoryId != null
 
     private val _uiState = MutableStateFlow(
         SearchUiState(
             query              = initialQuery,
+            submittedQuery     = if (hasInitialCriteria) initialQuery else "",
             selectedCategoryId = initialCategoryId,
+            popular            = SearchHistoryRepository.POPULAR_KEYWORDS,
+            history            = historyRepo.getHistory(),
+            isLoadingInitial   = hasInitialCriteria,
         )
     )
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
-    // Flow nội bộ để debounce input — tách khỏi uiState
-    private val _searchTrigger = MutableStateFlow(
-        Pair(initialQuery, initialCategoryId)
-    )
-
     init {
         loadSubCategories()
-        setupSearchPipeline()
-        // Fetch Firestore lần đầu ngay khi init
-        triggerSearch(initialQuery, initialCategoryId)
-    }
-
-    // ── Pipeline: debounce → search ───────────────────────────────────────
-    private fun setupSearchPipeline() {
-        viewModelScope.launch {
-            _searchTrigger
-                .debounce(350L)           // chờ user ngừng gõ 350ms
-                .distinctUntilChanged()   // bỏ qua nếu giống lần trước
-                .collect { (query, categoryId) ->
-                    performSearch(query, categoryId)
-                }
+        // Chỉ search nếu được mở với query/category sẵn (vd. từ Shopping → click category)
+        if (hasInitialCriteria) {
+            runSearch(initialQuery, initialCategoryId)
         }
     }
 
-    private fun triggerSearch(query: String, categoryId: String?) {
-        _searchTrigger.value = Pair(query, categoryId)
-    }
-
-    private suspend fun performSearch(query: String, categoryId: String?) {
-        _uiState.update { it.copy(isSearching = true) }
-
-        // search() dùng cache từ Singleton SearchRepository
-        val results = SearchRepository.search(query, categoryId)
-        val sorted  = applySorting(results, _uiState.value.sortOption)
-
-        _uiState.update {
-            it.copy(
-                isLoadingInitial = false,
-                isSearching      = false,
-                products         = sorted,
-            )
+    private fun runSearch(query: String, categoryId: String?) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSearching = true) }
+            val results = SearchRepository.search(query, categoryId)
+            _uiState.update {
+                it.copy(
+                    isLoadingInitial = false,
+                    isSearching      = false,
+                    products         = results,
+                    submittedQuery   = query,
+                )
+            }
         }
     }
 
     // ── Public actions ────────────────────────────────────────────────────
 
+    // Chỉ cập nhật text — KHÔNG search ngay
     fun onQueryChange(newQuery: String) {
         _uiState.update { it.copy(query = newQuery) }
-        triggerSearch(newQuery, _uiState.value.selectedCategoryId)
     }
 
+    // Bấm Enter trên bàn phím → search
+    fun onSearchSubmit() {
+        val q = _uiState.value.query.trim()
+        if (q.isNotBlank()) {
+            historyRepo.addQuery(q)
+            _uiState.update { it.copy(history = historyRepo.getHistory()) }
+        }
+        runSearch(q, _uiState.value.selectedCategoryId)
+    }
+
+    // Click category → search ngay
     fun onCategorySelected(categoryId: String?) {
-        // Click lại category đang chọn → bỏ chọn
         val newId = if (_uiState.value.selectedCategoryId == categoryId) null else categoryId
         _uiState.update { it.copy(selectedCategoryId = newId) }
-        triggerSearch(_uiState.value.query, newId)
-    }
-
-    fun onSortSelected(option: SortOption) {
-        val sorted = applySorting(_uiState.value.products, option)
-        _uiState.update { it.copy(sortOption = option, products = sorted) }
+        val q = _uiState.value.query.trim()
+        if (newId != null || q.isNotBlank()) {
+            runSearch(q, newId)
+        } else {
+            // Bỏ chọn category + không có query → về màn gợi ý
+            resetToSuggestions()
+        }
     }
 
     fun clearQuery() {
         _uiState.update { it.copy(query = "") }
-        triggerSearch("", _uiState.value.selectedCategoryId)
+        val cat = _uiState.value.selectedCategoryId
+        if (cat != null) {
+            runSearch("", cat)
+        } else {
+            resetToSuggestions()
+        }
+    }
+
+    // Click vào gợi ý/lịch sử → search ngay
+    fun onPickSuggestion(text: String) {
+        val trimmed = text.trim()
+        if (trimmed.isBlank()) return
+        historyRepo.addQuery(trimmed)
+        _uiState.update {
+            it.copy(
+                query   = trimmed,
+                history = historyRepo.getHistory(),
+            )
+        }
+        runSearch(trimmed, _uiState.value.selectedCategoryId)
+    }
+
+    fun removeHistoryItem(item: String) {
+        historyRepo.removeQuery(item)
+        _uiState.update { it.copy(history = historyRepo.getHistory()) }
+    }
+
+    fun clearHistory() {
+        historyRepo.clear()
+        _uiState.update { it.copy(history = emptyList()) }
     }
 
     fun refresh() {
         SearchRepository.clearCache()
-        triggerSearch(_uiState.value.query, _uiState.value.selectedCategoryId)
+        val s = _uiState.value
+        if (s.submittedQuery.isNotBlank() || s.selectedCategoryId != null) {
+            runSearch(s.submittedQuery, s.selectedCategoryId)
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
+
+    private fun resetToSuggestions() {
+        _uiState.update {
+            it.copy(
+                submittedQuery = "",
+                products       = emptyList(),
+                isSearching    = false,
+            )
+        }
+    }
 
     private fun loadSubCategories() {
         viewModelScope.launch {
             val subs = SearchRepository.getSubCategories()
             _uiState.update { it.copy(subCategories = subs) }
-        }
-    }
-
-    private fun applySorting(products: List<Product>, option: SortOption): List<Product> {
-        return when (option) {
-            SortOption.DEFAULT    -> products
-            SortOption.PRICE_ASC  -> products.sortedBy { it.price }
-            SortOption.PRICE_DESC -> products.sortedByDescending { it.price }
-            SortOption.POPULAR    -> products.sortedByDescending { it.soldCount }
-            SortOption.RATING     -> products.sortedByDescending { it.rating }
         }
     }
 }
@@ -139,9 +168,14 @@ class SearchViewModel(
 class SearchViewModelFactory(
     private val initialQuery: String,
     private val initialCategoryId: String?,
+    private val context: Context,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
-        return SearchViewModel(initialQuery, initialCategoryId) as T
+        return SearchViewModel(
+            initialQuery      = initialQuery,
+            initialCategoryId = initialCategoryId,
+            historyRepo       = SearchHistoryRepository(context),
+        ) as T
     }
 }
