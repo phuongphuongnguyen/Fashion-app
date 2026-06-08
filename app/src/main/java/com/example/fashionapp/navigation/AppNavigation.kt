@@ -32,6 +32,7 @@ import com.example.fashionapp.ui.app.home.MessagesScreen
 import com.example.fashionapp.ui.app.saved.SavedScreen
 import com.example.fashionapp.ui.app.saved.PostDetailScreen
 import com.example.fashionapp.ui.app.profile.ProfileScreen
+import com.example.fashionapp.ui.app.profile.ProfileRouterScreen
 import com.example.fashionapp.ui.app.shopping.CartScreen
 import com.example.fashionapp.ui.app.shopping.HistoryScreen
 import com.example.fashionapp.ui.app.shopping.PaymentScreen
@@ -285,8 +286,9 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     arguments = listOf(navArgument("shopId") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val shopId = backStackEntry.arguments?.getString("shopId").orEmpty()
-                    ShopScreen(
-                        shopId        = shopId,
+                    // Rẽ UI theo role: shop → ShopScreen, user thường → ProfileScreen
+                    ProfileRouterScreen(
+                        id            = shopId,
                         navController = navController
                     )
                 }

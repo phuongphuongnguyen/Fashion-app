@@ -6,11 +6,11 @@ data class User(
     val avatarUrl: String = "",
     val email: String = "",
     val followersCount: Int = 0,
-    val followingCount: Int = 0
+    val followingCount: Int = 0,
+    val role: String = "",
+    val shopId: String = "",
+    val username: String = ""
 ) {
-    val username: String
-        get() = name
-
     val image: String
         get() = avatarUrl
 }

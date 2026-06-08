@@ -61,9 +61,10 @@ class FeedRepository {
             return@callbackFlow
         }
 
+        // Chỉ lọc theo authorId (không orderBy để khỏi cần composite index),
+        // sắp xếp mới nhất trước ở client.
         val listener = db.collection("posts")
             .whereEqualTo("authorId", authorId)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) {
                     trySend(emptyList())
@@ -71,7 +72,9 @@ class FeedRepository {
                 }
 
                 launch {
-                    trySend(resolvePosts(snapshot.documents))
+                    val posts = resolvePosts(snapshot.documents)
+                        .sortedByDescending { it.createdAt?.toDate()?.time ?: 0L }
+                    trySend(posts)
                 }
             }
 
@@ -171,7 +174,7 @@ class FeedRepository {
             fallbackAuthorAvt = fallbackAuthorAvt
         )
         val imagePaths = imageUris.mapIndexed { index, uri ->
-            val path = "posts/$authorId/${postRef.id}/image_$index.jpg"
+            val path = "posts/${postRef.id}/image_$index.jpg"
             storage.reference.child(path).putFile(uri).await()
             path
         }
@@ -218,7 +221,7 @@ class FeedRepository {
         }.getOrNull()
         return PostAuthorInfo(
             name = userDoc?.getString("name").orEmpty().ifBlank { fallbackAuthorName.ifBlank { "User" } },
-            avatarRef = userDoc?.getString("avatarUrl").orEmpty().ifBlank { fallbackAuthorAvt },
+            avatarRef = userDoc?.getString("avatarRef").orEmpty().ifBlank { fallbackAuthorAvt },
             logoRef = ""
         )
     }

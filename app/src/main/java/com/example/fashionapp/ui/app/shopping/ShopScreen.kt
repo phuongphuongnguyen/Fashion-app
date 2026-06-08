@@ -79,9 +79,13 @@ fun ShopScreen(
     }
 
     val shopPosts = shopState.posts
-    
-    val shopProducts = remember(shopState.products, shopId) {
-        shopState.products.filter { it.shopId == shopId }
+
+    // id thật của chủ tài khoản (resolve trong ViewModel) — dùng cho follow / đăng bài
+    val ownerId = shopState.shopUser?.id ?: shopId
+
+    val shopProducts = remember(shopState.products, shopState.productShopId) {
+        val sid = shopState.productShopId.ifBlank { shopId }
+        shopState.products.filter { it.shopId == sid }
     }
 
     var selectedTab by remember { mutableStateOf("Posts") }
@@ -127,16 +131,26 @@ fun ShopScreen(
                 }
             }
             
+            // Chỉ tài khoản role = "shop" mới có tab Products; user thường chỉ có Posts.
+            val isShop = shopState.shopUser?.role == "shop"
+
             ShopHeader(
                 shopName = shopName,
                 avatarUrl = shopAvatarUrl,
                 selectedTab = selectedTab,
                 postCount = shopPosts.size,
+                followerCount = shopState.shopUser?.followersCount ?: 0,
+                followingCount = shopState.shopUser?.followingCount ?: 0,
+                rating = shopState.shopRating,
+                isOwnProfile = shopState.isOwnProfile,
+                isFollowing = shopState.isFollowing,
+                isShop = isShop,
+                onFollowClick = { shopViewModel.toggleFollow(ownerId) },
                 onTabSelected = { selectedTab = it },
-                onAddPost = { navController.navigate(Screen.CreatePost.createRoute(shopId)) }
+                onAddPost = { navController.navigate(Screen.CreatePost.createRoute(ownerId)) }
             )
 
-            if (selectedTab == "Posts") {
+            if (selectedTab == "Posts" || !isShop) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 12.dp)
@@ -193,6 +207,13 @@ private fun ShopHeader(
     avatarUrl: String,
     selectedTab: String,
     postCount: Int,
+    followerCount: Int,
+    followingCount: Int,
+    rating: Float,
+    isOwnProfile: Boolean,
+    isFollowing: Boolean,
+    isShop: Boolean,
+    onFollowClick: () -> Unit,
     onTabSelected: (String) -> Unit,
     onAddPost: () -> Unit
 ) {
@@ -229,26 +250,48 @@ private fun ShopHeader(
                     Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text(" Posts", fontSize = 12.sp, color = Color.Gray)
                     Spacer(Modifier.width(12.dp))
+                    Text(followerCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(" Followers", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.width(12.dp))
                     Icon(
                         Icons.Default.Star,
                         contentDescription = "Rating",
                         tint = Color(0xFFFFC107),
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(13.dp)
                     )
-                    Text(" 4.5", fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.width(12.dp))
-                    Text("800 ", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text("Followers", fontSize = 12.sp, color = Color.Gray)
+                    Text(
+                        " ${"%.1f".format(rating)}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
-            Button(
-                onClick = { },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
-                shape = RoundedCornerShape(16.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                modifier = Modifier.height(30.dp)
-            ) {
-                Text("Follow", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            if (!isOwnProfile) {
+                if (isFollowing) {
+                    // Đang theo dõi: chỉ chữ xanh, không button (vẫn bấm được để bỏ theo dõi)
+                    Text(
+                        "Following",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1769FF),
+                        modifier = Modifier.clickable { onFollowClick() }
+                    )
+                } else {
+                    Button(
+                        onClick = onFollowClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(
+                            "Follow",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
+                }
             }
         }
 
@@ -260,7 +303,8 @@ private fun ShopHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                listOf("Posts", "Products").forEach { tab ->
+                val tabs = if (isShop) listOf("Posts", "Products") else listOf("Posts")
+                tabs.forEach { tab ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable { onTabSelected(tab) }
@@ -281,14 +325,16 @@ private fun ShopHeader(
                     }
                 }
             }
-            Icon(
-                imageVector = Icons.Outlined.AddCircleOutline,
-                contentDescription = "Add",
-                tint = Color.Black,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable { onAddPost() }
-            )
+            if (isOwnProfile) {
+                Icon(
+                    imageVector = Icons.Outlined.AddCircleOutline,
+                    contentDescription = "Add",
+                    tint = Color.Black,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable { onAddPost() }
+                )
+            }
         }
 
         Spacer(Modifier.height(8.dp))

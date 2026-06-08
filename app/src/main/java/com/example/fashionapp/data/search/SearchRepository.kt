@@ -71,14 +71,20 @@ object SearchRepository {
 
             val users = snap.documents.map { doc ->
                 async {
-                    val name = doc.getString("name").orEmpty()
+                    // Tên hiển thị có thể nằm ở 'name', 'displayName' hoặc 'username' tuỳ doc
+                    val name = (doc.getString("name")
+                        ?: doc.getString("displayName")
+                        ?: doc.getString("username"))
+                        .orEmpty()
                     if (name.isBlank()) return@async null
                     User(
                         id = doc.id,
                         name = name,
-                        avatarUrl = StorageUrlResolver.resolve(doc.getString("avatarUrl").orEmpty()),
+                        avatarUrl = StorageUrlResolver.resolve(
+                            doc.getString("avatarRef").orEmpty()
+                        ),
                         email = doc.getString("email").orEmpty(),
-                        followersCount = doc.getLong("followersCount")?.toInt() ?: 0,
+                        followersCount = (doc.getLong("followersCount") ?: doc.getLong("followerCount"))?.toInt() ?: 0,
                         followingCount = doc.getLong("followingCount")?.toInt() ?: 0,
                     )
                 }
@@ -89,7 +95,8 @@ object SearchRepository {
         } catch (_: Exception) { emptyList() }
     }
 
-    // Tìm user theo tên (bỏ dấu). Query rỗng → không trả user (user chỉ tìm theo từ khoá).
+    // Tìm user theo tên (bỏ dấu): tên phải CHỨA từ khoá. Không gần đúng, không nhận gõ sai.
+    // Query rỗng → không trả user (user chỉ tìm theo từ khoá).
     suspend fun searchUsers(query: String): List<User> {
         val tokens = normalize(query).split(WHITESPACE).filter { it.isNotBlank() }
         if (tokens.isEmpty()) return emptyList()

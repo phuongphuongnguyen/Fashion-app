@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -32,6 +33,7 @@ import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.home.HomeViewModel
 import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
+import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.components.FeedPostItem
 import com.example.fashionapp.ui.components.ProfileTopBar
 
@@ -39,11 +41,16 @@ import com.example.fashionapp.ui.components.ProfileTopBar
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    profileViewModel: ProfileViewModel = viewModel(),
+    userId: String? = null,
+    profileViewModel: ProfileViewModel = viewModel(
+        key = "profile_${userId.orEmpty()}",
+        factory = ProfileViewModelFactory(userId)
+    ),
     homeViewModel: HomeViewModel = viewModel(),
     savedViewModel: SavedViewModel = viewModel()
 ) {
     val uiState by profileViewModel.uiState.collectAsState()
+    val isOwnProfile = uiState.isOwnProfile
     val homeState by homeViewModel.uiState.collectAsState()
     val savedUiState by savedViewModel.uiState.collectAsState()
     val profilePosts = uiState.posts
@@ -58,10 +65,19 @@ fun ProfileScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            ProfileTopBar(
-                scrollBehavior = scrollBehavior,
-                onSettingsClick = { navController.navigate(Screen.Settings.route) }
-            )
+            if (isOwnProfile) {
+                ProfileTopBar(
+                    scrollBehavior = scrollBehavior,
+                    onSettingsClick = { navController.navigate(Screen.Settings.route) }
+                )
+            } else {
+                FashionTopBar(
+                    title = uiState.user?.username?.takeIf { it.isNotBlank() }
+                        ?: uiState.user?.name?.takeIf { it.isNotBlank() }
+                        ?: "Profile",
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         },
         containerColor = Color.White,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -89,6 +105,9 @@ fun ProfileScreen(
                 ProfileHeader(
                     user = uiState.user,
                     postsCount = profilePosts.size,
+                    isOwnProfile = isOwnProfile,
+                    isFollowing = uiState.isFollowing,
+                    onFollowClick = { profileViewModel.toggleFollow() },
                     onAddPost = { navController.navigate(Screen.CreatePost.createRoute()) }
                 )
             }
@@ -131,6 +150,9 @@ fun ProfileScreen(
 private fun ProfileHeader(
     user: com.example.fashionapp.model.User?,
     postsCount: Int,
+    isOwnProfile: Boolean,
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
     onAddPost: () -> Unit
 ) {
     val name = user?.name?.takeIf { it.isNotBlank() } ?: "User"
@@ -147,12 +169,13 @@ private fun ProfileHeader(
     }
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        // ── Hàng thông tin (bố cục giống ShopScreen): avatar | name + stats | Follow ──
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
                 model = avatarRequest,
                 contentDescription = name,
                 modifier = Modifier
-                    .size(72.dp)
+                    .size(68.dp)
                     .clip(CircleShape)
                     .border(2.dp, Color(0xFFFF5F5F), CircleShape)
                     .padding(3.dp)
@@ -162,16 +185,66 @@ private fun ProfileHeader(
                 error = painterResource(R.drawable.ic_profile),
                 fallback = painterResource(R.drawable.ic_profile)
             )
-            Spacer(Modifier.weight(1f))
-            ProfileMetric(postsCount.toString(), "Posts")
-            ProfileMetric(followers.toString(), "Followers")
-            ProfileMetric(following.toString(), "Following")
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                // displayName + nút Follow cùng một hàng
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        name,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (!isOwnProfile) {
+                        Spacer(Modifier.width(8.dp))
+                        if (isFollowing) {
+                            // Đang theo dõi: chỉ chữ xanh, không button (vẫn bấm được để bỏ theo dõi)
+                            Text(
+                                "Following",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF1769FF),
+                                modifier = Modifier.clickable { onFollowClick() }
+                            )
+                        } else {
+                            Button(
+                                onClick = onFollowClick,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(
+                                    "Follow",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    Text(postsCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(" Posts", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.width(12.dp))
+                    Text(followers.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(" Followers", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.width(12.dp))
+                    Text(following.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(" Following", fontSize = 12.sp, color = Color.Gray)
+                }
+            }
         }
 
-        Spacer(Modifier.height(10.dp))
-        Text(name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         Spacer(Modifier.height(16.dp))
 
+        // ── Hàng "Posts" + nút thêm bài (chỉ trang của mình) ──
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -192,7 +265,7 @@ private fun ProfileHeader(
                         .background(Color.Black)
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (isOwnProfile) {
                 Icon(
                     imageVector = Icons.Outlined.AddCircleOutline,
                     contentDescription = "Add Post",
@@ -206,16 +279,3 @@ private fun ProfileHeader(
     }
 }
 
-// ── Profile Metric ────────────────────────────────────────────────────────────
-
-
-@Composable
-private fun ProfileMetric(value: String, label: String) {
-    Column(
-        modifier = Modifier.padding(horizontal = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Text(label, color = Color.Gray, fontSize = 11.sp)
-    }
-}

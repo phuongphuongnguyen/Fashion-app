@@ -29,6 +29,10 @@ data class ShopUiState(
     val reviewsByOrderId: Map<String, ProductReview> = emptyMap(),
     val shopUser: User? = null,
     val shopLogoUrl: String = "",
+    val shopRating: Float = 0f,
+    val productShopId: String = "",   // id collection 'shops' để lọc products
+    val isOwnProfile: Boolean = false,
+    val isFollowing: Boolean = false,
     val isLoadingProducts: Boolean = true,
     val isLoadingCart: Boolean = true,
     val isLoadingOrders: Boolean = true
@@ -49,26 +53,66 @@ class ShopViewModel : ViewModel() {
         loadOrders()
     }
 
-    fun loadShopUser(shopId: String) {
-        if (shopId.isBlank()) return
-        loadShopPosts(shopId)
+    // navId có thể là userId (vào từ feed/search) HOẶC shopId (vào từ product detail).
+    // Resolve về đúng chủ tài khoản để mọi lối vào đều ra cùng một trang.
+    fun loadShopUser(navId: String) {
+        if (navId.isBlank()) return
         viewModelScope.launch {
-            userRepository.getUserProfileFlow(shopId).collect { user ->
-                _uiState.value = _uiState.value.copy(shopUser = user)
+            // 1) navId là userId? thử đọc trực tiếp. 2) nếu không, navId là shopId → tìm chủ shop.
+            val owner = userRepository.getUserProfile(navId)
+                ?: userRepository.findUserByShopId(navId)
+            val ownerId = owner?.id ?: navId
+            // shopId để lọc products: ưu tiên field shopId của user, nếu không có thì chính navId
+            val productShopId = owner?.shopId?.takeIf { it.isNotBlank() } ?: navId
+
+            val currentUid = auth.currentUser?.uid.orEmpty()
+            val isOwn = currentUid.isNotBlank() && currentUid == ownerId
+            _uiState.value = _uiState.value.copy(
+                isOwnProfile = isOwn,
+                productShopId = productShopId
+            )
+
+            // Posts theo ownerId
+            launch {
+                feedRepository.getPostsByAuthorFlow(ownerId).collect { posts ->
+                    _uiState.value = _uiState.value.copy(posts = posts)
+                }
             }
-        }
-        viewModelScope.launch {
-            repository.getShopLogoUrlFlow(shopId).collect { logoUrl ->
-                _uiState.value = _uiState.value.copy(shopLogoUrl = logoUrl)
+            // Profile realtime theo ownerId
+            launch {
+                userRepository.getUserProfileFlow(ownerId).collect { user ->
+                    _uiState.value = _uiState.value.copy(shopUser = user)
+                }
+            }
+            // Logo shop theo productShopId (doc shops/{shopId})
+            launch {
+                repository.getShopLogoUrlFlow(productShopId).collect { logoUrl ->
+                    _uiState.value = _uiState.value.copy(shopLogoUrl = logoUrl)
+                }
+            }
+            // Rating shop
+            launch {
+                repository.getShopRatingFlow(productShopId).collect { rating ->
+                    _uiState.value = _uiState.value.copy(shopRating = rating)
+                }
+            }
+            // Trạng thái follow
+            if (!isOwn) {
+                launch {
+                    userRepository.isFollowingFlow(currentUid, ownerId).collect { following ->
+                        _uiState.value = _uiState.value.copy(isFollowing = following)
+                    }
+                }
             }
         }
     }
 
-    private fun loadShopPosts(shopId: String) {
+    fun toggleFollow(targetUid: String) {
+        val currentUid = auth.currentUser?.uid ?: return
+        if (currentUid == targetUid) return
+        val shouldFollow = !_uiState.value.isFollowing
         viewModelScope.launch {
-            feedRepository.getPostsByAuthorFlow(shopId).collect { posts ->
-                _uiState.value = _uiState.value.copy(posts = posts)
-            }
+            runCatching { userRepository.setFollowing(currentUid, targetUid, shouldFollow) }
         }
     }
 

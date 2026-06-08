@@ -52,6 +52,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.data.search.SubCategory
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.User
+import com.example.fashionapp.navigation.Screen
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue  = Color(0xFF3669C9)
@@ -170,7 +171,11 @@ fun SearchScreen(
                             query              = state.submittedQuery,
                             selectedCategoryId = state.selectedCategoryId,
                             subCategories      = state.subCategories,
-                            onUserClick        = { /* TODO: mở trang cá nhân user */ },
+                            onUserClick        = { user ->
+                                if (user.id.isNotBlank()) {
+                                    navController.navigate(Screen.ShopDetail.createRoute(user.id))
+                                }
+                            },
                             onProductClick     = { product ->
                                 navController.navigate("product_detail/${product.id}")
                             }

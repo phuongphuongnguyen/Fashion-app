@@ -147,6 +147,24 @@ object ShopRepository {
         shopLogoCache[shopId]?.let { emit(it) }
     }
 
+    // Điểm đánh giá của shop (shops/{shopId}.rating), realtime.
+    fun getShopRatingFlow(shopId: String): Flow<Float> = callbackFlow {
+        if (shopId.isBlank()) {
+            trySend(0f)
+            close()
+            return@callbackFlow
+        }
+        val listener = db.collection("shops").document(shopId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null || !snapshot.exists()) {
+                    trySend(0f)
+                    return@addSnapshotListener
+                }
+                trySend((snapshot.get("rating") as? Number)?.toFloat() ?: 0f)
+            }
+        awaitClose { listener.remove() }
+    }
+
     fun getCartItemsFlow(userId: String): Flow<List<CartItem>> = callbackFlow {
         if (userId.isBlank()) {
             trySend(emptyList()); close(); return@callbackFlow

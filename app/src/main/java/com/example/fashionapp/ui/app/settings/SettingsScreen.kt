@@ -585,22 +585,24 @@ private fun ProfileSubScreen(
                             val db = FirebaseFirestore.getInstance()
                             val storage = FirebaseStorage.getInstance()
 
-                            // 1. Upload ảnh mới lên Storage nếu user chọn ảnh mới
-                            val newAvatarUrl: String = if (pickedUri != null) {
-                                val storagePath = "avatars/$uid.jpg"
+                            // 1. Upload ảnh mới lên Storage nếu user chọn ảnh mới.
+                            //    Firestore chỉ lưu avatarRef = storage path; URL hiển thị resolve khi đọc.
+                            var newAvatarRef: String? = null
+                            var displayAvatarUrl: String = currentAvatarUrl
+                            if (pickedUri != null) {
+                                val storagePath = "avatar/$uid.jpg"
                                 val ref = storage.reference.child(storagePath)
                                 ref.putFile(pickedUri!!).await()
                                 // Xoá cache URL cũ để StorageUrlResolver lấy URL mới
                                 StorageUrlResolver.clearCache()
-                                ref.downloadUrl.await().toString()
-                            } else {
-                                currentAvatarUrl
+                                newAvatarRef = storagePath
+                                displayAvatarUrl = ref.downloadUrl.await().toString()
                             }
 
                             // 2. Cập nhật Firestore users/{uid}
                             val updates = mutableMapOf<String, Any>("name" to displayName)
-                            if (newAvatarUrl.isNotBlank()) {
-                                updates["avatarUrl"] = newAvatarUrl
+                            if (newAvatarRef != null) {
+                                updates["avatarRef"] = newAvatarRef
                             }
                             db.collection("users").document(uid)
                                 .update(updates as Map<String, Any>)
@@ -609,7 +611,7 @@ private fun ProfileSubScreen(
                             // 3. Cập nhật UserSession để các màn hình khác thấy ngay
                             val updatedUser = (sessionUser ?: User(id = uid)).copy(
                                 name = displayName,
-                                avatarUrl = newAvatarUrl.ifBlank { currentAvatarUrl }
+                                avatarUrl = displayAvatarUrl.ifBlank { currentAvatarUrl }
                             )
                             UserSession.updateCurrentUser(updatedUser)
 
