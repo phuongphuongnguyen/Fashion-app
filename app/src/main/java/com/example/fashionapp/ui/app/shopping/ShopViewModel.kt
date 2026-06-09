@@ -13,9 +13,11 @@ import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.User
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuth.AuthStateListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -43,14 +45,57 @@ class ShopViewModel : ViewModel() {
     private val feedRepository = FeedRepository()
     private val userRepository = UserRepository()
     private val auth = FirebaseAuth.getInstance()
+    private var observedUserId: String? = "__not_loaded__"
+    private var cartJob: Job? = null
+    private var ordersJob: Job? = null
+    private val authStateListener = AuthStateListener { firebaseAuth ->
+        loadUserShoppingData(firebaseAuth.currentUser?.uid)
+    }
 
     private val _uiState = MutableStateFlow(ShopUiState())
     val uiState: StateFlow<ShopUiState> = _uiState.asStateFlow()
 
     init {
         loadProducts()
-        loadCartItems()
-        loadOrders()
+        auth.addAuthStateListener(authStateListener)
+        refreshShoppingData()
+    }
+
+    override fun onCleared() {
+        auth.removeAuthStateListener(authStateListener)
+        super.onCleared()
+    }
+
+    fun refreshShoppingData() {
+        loadUserShoppingData(auth.currentUser?.uid, force = true)
+    }
+
+    private fun loadUserShoppingData(userId: String?, force: Boolean = false) {
+        if (!force && observedUserId == userId) return
+        observedUserId = userId
+        cartJob?.cancel()
+        ordersJob?.cancel()
+
+        if (userId.isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(
+                cartItems = emptyList(),
+                orders = emptyList(),
+                reviewsByOrderId = emptyMap(),
+                isLoadingCart = false,
+                isLoadingOrders = false
+            )
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            cartItems = emptyList(),
+            orders = emptyList(),
+            reviewsByOrderId = emptyMap(),
+            isLoadingCart = true,
+            isLoadingOrders = true
+        )
+        loadCartItems(userId)
+        loadOrders(userId)
     }
 
     // navId có thể là userId (vào từ feed/search) HOẶC shopId (vào từ product detail).
@@ -127,9 +172,8 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    private fun loadCartItems() {
-        val userId = auth.currentUser?.uid ?: return
-        viewModelScope.launch {
+    private fun loadCartItems(userId: String) {
+        cartJob = viewModelScope.launch {
             repository.getCartItemsFlow(userId).collect { items ->
                 _uiState.value = _uiState.value.copy(
                     cartItems = items,
@@ -139,9 +183,8 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    private fun loadOrders() {
-        val userId = auth.currentUser?.uid ?: return
-        viewModelScope.launch {
+    private fun loadOrders(userId: String) {
+        ordersJob = viewModelScope.launch {
             repository.getOrdersFlow(userId).collect { orders ->
                 _uiState.value = _uiState.value.copy(
                     orders = orders,
@@ -183,38 +226,43 @@ class ShopViewModel : ViewModel() {
     fun placeOrderFromCart(
         cartItems: List<CartItem> = _uiState.value.cartItems,
         paymentMethod: String = "visa",
+        paymentStatus: String = "PAID",
         shippingMethod: String = "standard",
         shippingFee: Double = 0.0,
-        shippingAddress: String = ""
+        shippingAddress: String = "",
+        momoOrderId: String = "",
+        onComplete: (String?) -> Unit = {}
     ) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = auth.currentUser?.uid ?: run {
+            onComplete(null)
+            return
+        }
         val items = cartItems
-        if (items.isEmpty()) return
+        if (items.isEmpty()) {
+            onComplete(null)
+            return
+        }
 
         val dateFormat = SimpleDateFormat("MMMM yyyy", Locale.US)
         val currentDate = dateFormat.format(Date())
         val placedAtMillis = System.currentTimeMillis()
 
-        val orders = items.map {
-            ReviewOrder(
-                id = "order_${System.currentTimeMillis()}_${it.id}",
-                product = it.product,
-                status = "Ongoing",
-                orderDate = currentDate,
-                placedAtMillis = placedAtMillis
-            )
-        }
-
         viewModelScope.launch {
-            repository.placeOrder(
-                userId = userId,
-                orders = orders,
-                paymentMethod = paymentMethod,
-                shippingMethod = shippingMethod,
-                shippingFee = shippingFee,
-                shippingAddress = shippingAddress
-            )
-            repository.clearCart(userId, items)
+            val result = runCatching {
+                repository.placeOrder(
+                    userId = userId,
+                    cartItems = items,
+                    orderDate = currentDate,
+                    placedAtMillis = placedAtMillis,
+                    paymentMethod = paymentMethod,
+                    paymentStatus = paymentStatus,
+                    shippingMethod = shippingMethod,
+                    shippingFee = shippingFee,
+                    shippingAddress = shippingAddress,
+                    momoOrderId = momoOrderId
+                )
+            }
+            onComplete(result.getOrNull()?.takeIf { it.isNotBlank() })
         }
     }
 

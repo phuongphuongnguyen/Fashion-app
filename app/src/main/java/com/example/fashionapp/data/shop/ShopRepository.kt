@@ -1,9 +1,11 @@
 package com.example.fashionapp.data.shop
 
+import android.util.Log
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
 import com.example.fashionapp.model.Category
 import com.example.fashionapp.data.CartItem
+import com.example.fashionapp.data.OrderItem
 import com.example.fashionapp.data.ProductReview
 import com.example.fashionapp.data.ReviewOrder
 import com.example.fashionapp.data.StorageUrlResolver
@@ -25,6 +27,7 @@ import kotlinx.coroutines.tasks.await
 
 object ShopRepository {
     private val db = FirebaseFirestore.getInstance()
+    private const val TAG = "ShopRepository"
     private const val REVIEW_EDIT_WINDOW_MILLIS = 7L * 24 * 60 * 60 * 1000
 
     // ── In-Memory Cache ──────────────────────────────────────────────────────
@@ -169,9 +172,10 @@ object ShopRepository {
         if (userId.isBlank()) {
             trySend(emptyList()); close(); return@callbackFlow
         }
-        val listener = db.collection("users").document(userId).collection("cart")
+        val listener = db.collection("carts").document(userId).collection("items")
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) {
+                    Log.e(TAG, "Failed to load cart items for user=$userId", error)
                     trySend(cachedCartItems ?: emptyList()); return@addSnapshotListener
                 }
                 launch {
@@ -193,7 +197,10 @@ object ShopRepository {
                                 size = doc.getString("size").orEmpty(),
                                 quantity = safeInt(doc.get("quantity"))
                             )
-                        } catch (e: Exception) { null }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to parse cart item ${doc.reference.path}", e)
+                            null
+                        }
                     }
                     cachedCartItems = items
                     trySend(items)
@@ -219,22 +226,33 @@ object ShopRepository {
             "size" to cartItem.size,
             "quantity" to cartItem.quantity
         )
-        db.collection("users").document(userId).collection("cart").document(cartItem.id).set(data).await()
+        val cartDoc = db.collection("carts").document(userId)
+        db.runBatch { batch ->
+            batch.set(
+                cartDoc,
+                mapOf(
+                    "userId" to userId,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                SetOptions.merge()
+            )
+            batch.set(cartDoc.collection("items").document(cartItem.id), data)
+        }.await()
     }
 
     suspend fun updateCartItemQuantity(userId: String, cartItemId: String, newQuantity: Int) {
         if (userId.isBlank()) return
         if (newQuantity <= 0) {
-            db.collection("users").document(userId).collection("cart").document(cartItemId).delete().await()
+            db.collection("carts").document(userId).collection("items").document(cartItemId).delete().await()
         } else {
-            db.collection("users").document(userId).collection("cart").document(cartItemId).update("quantity", newQuantity).await()
+            db.collection("carts").document(userId).collection("items").document(cartItemId).update("quantity", newQuantity).await()
         }
     }
 
     suspend fun clearCart(userId: String, cartItems: List<CartItem>) {
         if (userId.isBlank()) return
         val batch = db.batch()
-        val cartRef = db.collection("users").document(userId).collection("cart")
+        val cartRef = db.collection("carts").document(userId).collection("items")
         cartItems.forEach { item -> batch.delete(cartRef.document(item.id)) }
         batch.commit().await()
     }
@@ -243,7 +261,8 @@ object ShopRepository {
         if (userId.isBlank()) {
             trySend(emptyList()); close(); return@callbackFlow
         }
-        val listener = db.collection("users").document(userId).collection("orders")
+        val listener = db.collection("orders")
+            .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) {
                     trySend(cachedOrders ?: emptyList()); return@addSnapshotListener
@@ -251,22 +270,68 @@ object ShopRepository {
                 launch {
                     val orders = snapshot.documents.mapNotNull { doc ->
                         try {
-                            val productMap = doc.get("product") as? Map<String, Any> ?: return@mapNotNull null
-                            val product = Product(
-                                id = productMap["id"] as? String ?: "",
-                                name = productMap["name"] as? String ?: "",
-                                price = safeDouble(productMap["price"]),
-                                imageUrl = StorageUrlResolver.resolve(productMap["imageUrl"] as? String ?: "")
-                            )
+                            @Suppress("UNCHECKED_CAST")
+                            val rawItems = doc.get("items") as? List<Map<String, Any>> ?: emptyList()
+                            val orderItems = rawItems.mapNotNull { itemMap ->
+                                @Suppress("UNCHECKED_CAST")
+                                val productMap = itemMap["product"] as? Map<String, Any>
+                                val variantLabel = itemMap["variantLabel"] as? String ?: ""
+                                val variantParts = variantLabel.split("/").map { it.trim() }
+                                val product = Product(
+                                    id = productMap?.get("id") as? String
+                                        ?: itemMap["productId"] as? String
+                                        ?: "",
+                                    name = productMap?.get("name") as? String
+                                        ?: itemMap["productName"] as? String
+                                        ?: "",
+                                    price = safeDouble(productMap?.get("price") ?: itemMap["price"]),
+                                    imageUrl = StorageUrlResolver.resolve(
+                                        productMap?.get("imageUrl") as? String
+                                            ?: itemMap["productImage"] as? String
+                                            ?: ""
+                                    )
+                                )
+                                if (product.id.isBlank() && product.name.isBlank()) return@mapNotNull null
+                                OrderItem(
+                                    cartItemId = itemMap["cartItemId"] as? String ?: "",
+                                    product = product,
+                                    color = itemMap["color"] as? String ?: variantParts.getOrNull(1).orEmpty(),
+                                    size = itemMap["size"] as? String ?: variantParts.getOrNull(0).orEmpty(),
+                                    quantity = safeInt(itemMap["quantity"]),
+                                    lineTotal = safeDouble(itemMap["lineTotal"]).takeIf { it > 0.0 }
+                                        ?: product.price * safeInt(itemMap["quantity"]).coerceAtLeast(1)
+                                )
+                            }
+                            val product = orderItems.firstOrNull()?.product ?: run {
+                                @Suppress("UNCHECKED_CAST")
+                                val productMap = doc.get("product") as? Map<String, Any> ?: return@mapNotNull null
+                                Product(
+                                    id = productMap["id"] as? String ?: "",
+                                    name = productMap["name"] as? String ?: "",
+                                    price = safeDouble(productMap["price"]),
+                                    imageUrl = StorageUrlResolver.resolve(productMap["imageUrl"] as? String ?: "")
+                                )
+                            }
                             ReviewOrder(
                                 id = doc.id,
                                 product = product,
-                                status = doc.getString("status") ?: "Paid",
+                                status = doc.getString("orderStatus") ?: doc.getString("status") ?: "Ongoing",
                                 orderDate = doc.getString("orderDate") ?: "",
-                                placedAtMillis = (doc.get("placedAtMillis") as? Number)?.toLong() ?: 0L
+                                placedAtMillis = (doc.get("placedAtMillis") as? Number)?.toLong()
+                                    ?: doc.getTimestamp("createdAt")?.toDate()?.time
+                                    ?: 0L,
+                                items = orderItems,
+                                userId = doc.getString("userId").orEmpty(),
+                                paymentMethod = doc.getString("paymentMethod").orEmpty(),
+                                paymentStatus = doc.getString("paymentStatus").orEmpty(),
+                                shippingMethod = doc.getString("shippingMethod").orEmpty(),
+                                shippingFee = safeDouble(doc.get("shippingFee")),
+                                shippingAddress = doc.getString("shippingAddress").orEmpty(),
+                                totalPrice = safeDouble(doc.get("totalPrice")),
+                                momoOrderId = doc.getString("momoOrderId").orEmpty()
                             )
                         } catch (e: Exception) { null }
-                    }
+                    }.sortedByDescending { it.placedAtMillis }
                     cachedOrders = orders
                     trySend(orders)
                 }
@@ -350,34 +415,72 @@ object ShopRepository {
 
     suspend fun placeOrder(
         userId: String,
-        orders: List<ReviewOrder>,
+        cartItems: List<CartItem>,
+        orderDate: String,
+        placedAtMillis: Long,
         paymentMethod: String,
+        paymentStatus: String,
         shippingMethod: String,
         shippingFee: Double,
-        shippingAddress: String
-    ) {
-        if (userId.isBlank()) return
-        val batch = db.batch()
-        val ordersRef = db.collection("users").document(userId).collection("orders")
-        orders.forEach { order ->
-            val data = hashMapOf(
-                "product" to hashMapOf(
-                    "id" to order.product.id,
-                    "name" to order.product.name,
-                    "price" to order.product.price,
-                    "imageUrl" to order.product.imageUrl
-                ),
-                "status" to order.status,
-                "orderDate" to order.orderDate,
-                "placedAtMillis" to order.placedAtMillis,
-                "paymentMethod" to paymentMethod,
-                "shippingMethod" to shippingMethod,
-                "shippingFee" to shippingFee,
-                "shippingAddress" to shippingAddress
-            )
-            batch.set(ordersRef.document(), data)
+        shippingAddress: String,
+        momoOrderId: String = ""
+    ): String {
+        if (userId.isBlank() || cartItems.isEmpty()) return ""
+
+        val orderRef = db.collection("orders").document()
+        val subtotal = cartItems.sumOf { it.totalPrice }
+        val totalPrice = subtotal + shippingFee
+        val data = hashMapOf<String, Any>(
+            "userId" to userId,
+            "items" to cartItems.map { item ->
+                hashMapOf(
+                    "cartItemId" to item.id,
+                    "product" to hashMapOf(
+                        "id" to item.product.id,
+                        "name" to item.product.name,
+                        "price" to item.product.price,
+                        "imageUrl" to item.product.imageUrl
+                    ),
+                    "color" to item.color,
+                    "size" to item.size,
+                    "quantity" to item.quantity,
+                    "lineTotal" to item.totalPrice
+                )
+            },
+            "subtotal" to subtotal,
+            "shippingFee" to shippingFee,
+            "totalPrice" to totalPrice,
+            "orderStatus" to "Ongoing",
+            "orderDate" to orderDate,
+            "placedAtMillis" to placedAtMillis,
+            "paymentMethod" to paymentMethod,
+            "paymentStatus" to paymentStatus,
+            "shippingMethod" to shippingMethod,
+            "shippingAddress" to shippingAddress,
+            "createdAt" to FieldValue.serverTimestamp(),
+            "updatedAt" to FieldValue.serverTimestamp()
+        )
+        if (momoOrderId.isNotBlank()) {
+            data["momoOrderId"] = momoOrderId
         }
-        batch.commit().await()
+
+        db.runBatch { batch ->
+            batch.set(orderRef, data)
+            val cartRef = db.collection("carts").document(userId).collection("items")
+            cartItems.forEach { item ->
+                batch.delete(cartRef.document(item.id))
+                if (item.product.id.isNotBlank()) {
+                    batch.update(
+                        db.collection("products").document(item.product.id),
+                        mapOf(
+                            "soldCount" to FieldValue.increment(item.quantity.toLong()),
+                            "revenue" to FieldValue.increment(item.totalPrice)
+                        )
+                    )
+                }
+            }
+        }.await()
+        return orderRef.id
     }
 
     suspend fun submitProductReview(

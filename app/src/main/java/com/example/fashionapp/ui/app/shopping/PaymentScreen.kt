@@ -100,13 +100,17 @@ fun PaymentScreen(
                                 viewModel.placeOrderFromCart(
                                     cartItems = checkoutItems,
                                     paymentMethod = selectedPaymentMethod,
+                                    paymentStatus = "PAID",
                                     shippingMethod = selectedShippingMethod,
                                     shippingFee = shippingFee,
                                     shippingAddress = shippingAddress
-                                )
-                                navController.navigate(Screen.History.createRoute("Ongoing")) {
-                                    popUpTo(Screen.Payment.route) { inclusive = true }
-                                    launchSingleTop = true
+                                ) { orderId ->
+                                    if (orderId != null) {
+                                        navController.navigate(Screen.History.createRoute("Ongoing")) {
+                                            popUpTo(Screen.Payment.route) { inclusive = true }
+                                            launchSingleTop = true
+                                        }
+                                    }
                                 }
                             }
                         },

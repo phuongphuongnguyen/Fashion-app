@@ -28,7 +28,6 @@ import androidx.core.app.NotificationCompat
 import androidx.navigation.NavController
 import com.example.fashionapp.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +61,6 @@ fun MomoPaymentScreen(
 ){
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val db  = FirebaseFirestore.getInstance()
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val checkoutItems = remember(uiState.cartItems, selectedCartItemIds) {
         if (selectedCartItemIds.isEmpty()) {
@@ -74,7 +72,6 @@ fun MomoPaymentScreen(
 
     var qrCodeUrl        by remember { mutableStateOf<String?>(null) }
     var momoOrderId      by remember { mutableStateOf<String?>(null) }
-    var firestoreOrderId by remember { mutableStateOf<String?>(null) }
     var isLoading        by remember { mutableStateOf(true) }
     var errorMsg         by remember { mutableStateOf<String?>(null) }
     var isPaid           by remember { mutableStateOf(false) }
@@ -99,20 +96,6 @@ fun MomoPaymentScreen(
             momoOrderId = result.second
             isLoading   = false
 
-            // Tạo document order trong Firestore
-            val orderData = hashMapOf(
-                "userId"        to uid,
-                "totalPrice"    to amount,
-                "paymentMethod" to "MoMo",
-                "paymentStatus" to "UNPAID",
-                "momoOrderId"   to result.second,
-                "createdAt"     to com.google.firebase.Timestamp.now()
-            )
-            db.collection("orders").add(orderData)
-                .addOnSuccessListener { docRef ->
-                    firestoreOrderId = docRef.id
-                    Log.d("MoMo", "Tạo order: ${docRef.id}")
-                }
         } catch (e: Exception) {
             errorMsg = e.message
             isLoading = false
@@ -134,31 +117,24 @@ fun MomoPaymentScreen(
                     isPolling = false
                     viewModel.placeOrderFromCart(
                         cartItems = checkoutItems,
-                        paymentMethod = "MoMo"
-                    )
-                    // Update Firestore
-                    firestoreOrderId?.let { docId ->
-                        db.collection("orders").document(docId)
-                            .update("paymentStatus", "PAID")
-                            .addOnSuccessListener {
-                                Log.d("MoMo", "Update PAID: $docId")
-                            }
-                    }
+                        paymentMethod = "MoMo",
+                        paymentStatus = "PAID",
+                        momoOrderId = oid
+                    ) { orderId ->
+                        if (orderId == null) return@placeOrderFromCart
 
-                    // Bắn notification thanh toán thành công
-                    showPaymentNotification(context, amount)
+                        showPaymentNotification(context, amount)
+                        OrderTrackingScheduler.scheduleTracking(
+                            context = context,
+                            orderId = orderId,
+                            userId  = uid,
+                            amount  = amount
+                        )
 
-                    // Lên lịch 3 notification theo dõi đơn hàng
-                    OrderTrackingScheduler.scheduleTracking(
-                        context = context,
-                        orderId = momoOrderId ?: "",
-                        userId  = uid,
-                        amount  = amount
-                    )
-
-                    navController.navigate(Screen.History.createRoute("Ongoing")) {
-                        popUpTo(Screen.Cart.route) { inclusive = false }
-                        launchSingleTop = true
+                        navController.navigate(Screen.History.createRoute("Ongoing")) {
+                            popUpTo(Screen.Cart.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 }
             } catch (e: Exception) {

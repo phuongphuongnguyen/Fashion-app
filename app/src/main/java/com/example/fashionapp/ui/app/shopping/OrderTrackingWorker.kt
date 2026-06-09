@@ -14,11 +14,11 @@ import com.google.firebase.firestore.FirebaseFirestore
  *
  * Nhận inputData:
  *  - step (Int): 1 = đóng gói, 2 = đang giao 50%, 3 = giao thành công
- *  - orderId (String): MoMo orderId
+ *  - orderId (String): Firestore order document ID
  *  - userId (String): Firebase user ID
  *  - amount (Long): số tiền đơn hàng
  *
- * Step 3 sẽ cập nhật Firestore users/{userId}/orders/ → status = "Delivered"
+ * Step 3 sẽ cập nhật Firestore orders/{orderId} → orderStatus = "Delivered"
  * để đơn chuyển sang tab History.
  */
 class OrderTrackingWorker(
@@ -55,7 +55,7 @@ class OrderTrackingWorker(
 
         // ── Step 3: cập nhật Firestore status → "Delivered" ───────────
         if (step == 3) {
-            updateOrderStatusToDelivered(userId)
+            updateOrderStatusToDelivered(orderId)
         }
 
         return Result.success()
@@ -86,29 +86,22 @@ class OrderTrackingWorker(
     }
 
     // ── Cập nhật Firestore status ────────────────────────────────────────
-    // Update tất cả order documents của user có status="Ongoing" → "Delivered"
-    // Path: users/{userId}/orders/{docId}
-    private fun updateOrderStatusToDelivered(userId: String) {
+    // Path: orders/{orderId}
+    private fun updateOrderStatusToDelivered(orderId: String) {
         val db = FirebaseFirestore.getInstance()
 
-        db.collection("users").document(userId).collection("orders")
-            .whereEqualTo("status", "Ongoing")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val batch = db.batch()
-                for (doc in snapshot.documents) {
-                    batch.update(doc.reference, "status", "Delivered")
-                }
-                batch.commit()
-                    .addOnSuccessListener {
-                        Log.d(TAG, "Updated ${snapshot.size()} orders → Delivered for user $userId")
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e(TAG, "Batch update failed: ${e.message}")
-                    }
+        db.collection("orders").document(orderId)
+            .update(
+                mapOf(
+                    "orderStatus" to "Delivered",
+                    "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                )
+            )
+            .addOnSuccessListener {
+                Log.d(TAG, "Updated order $orderId to Delivered")
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Failed to query orders: ${e.message}")
+                Log.e(TAG, "Failed to update order $orderId: ${e.message}")
             }
     }
 

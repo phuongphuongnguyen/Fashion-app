@@ -25,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -67,6 +68,10 @@ fun CartScreen(
     val existingItemIds = items.map { it.id }.toSet()
     var selectedItemIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var hasInitializedSelection by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshShoppingData()
+    }
 
     LaunchedEffect(existingItemIds) {
         selectedItemIds = if (existingItemIds.isEmpty()) {
@@ -131,7 +136,16 @@ fun CartScreen(
         },
         containerColor = Color.White
     ) { padding ->
-        if (items.isEmpty() && !uiState.isLoadingCart) {
+        if (uiState.isLoadingCart) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF0057FF))
+            }
+        } else if (items.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
