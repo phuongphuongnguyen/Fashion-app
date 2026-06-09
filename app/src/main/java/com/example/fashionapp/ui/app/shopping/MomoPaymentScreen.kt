@@ -145,8 +145,17 @@ fun MomoPaymentScreen(
                             }
                     }
 
-                    // Bắn notification
+                    // Bắn notification thanh toán thành công
                     showPaymentNotification(context, amount)
+
+                    // Lên lịch 3 notification theo dõi đơn hàng
+                    OrderTrackingScheduler.scheduleTracking(
+                        context = context,
+                        orderId = momoOrderId ?: "",
+                        userId  = uid,
+                        amount  = amount
+                    )
+
                     navController.navigate(Screen.History.createRoute("Ongoing")) {
                         popUpTo(Screen.Cart.route) { inclusive = false }
                         launchSingleTop = true

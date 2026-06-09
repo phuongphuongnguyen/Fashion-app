@@ -85,6 +85,9 @@ fun HistoryScreen(
 
     val displayedOrders = remember(orders, selectedTab, nowMillis) {
         orders.filter { order ->
+            // Đơn đã giao (Delivered) → luôn thuộc History
+            // Đơn đang xử lý (Ongoing) + chưa quá timeout → thuộc Ongoing
+            // Còn lại → History
             val isOngoing = order.status == "Ongoing" &&
                 order.placedAtMillis > 0L &&
                 nowMillis - order.placedAtMillis < ONGOING_DURATION_MILLIS
