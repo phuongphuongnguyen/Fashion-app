@@ -132,7 +132,7 @@ fun ShopScreen(
             }
             
             // Chỉ tài khoản role = "shop" mới có tab Products; user thường chỉ có Posts.
-            val isShop = shopState.shopUser?.role == "shop"
+            val isShop = shopState.shopUser?.role?.equals("shop", ignoreCase = true) == true
 
             ShopHeader(
                 shopName = shopName,

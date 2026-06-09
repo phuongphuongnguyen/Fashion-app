@@ -57,11 +57,13 @@ private val DangerRed     = Color(0xFFE53935)
 @Composable
 fun SettingsScreen(navController: NavController) {
     val settings = LocalAppSettings.current
+    val sessionUser by UserSession.currentUser.collectAsState()
     val scrollState = rememberScrollState()
 
     // sub-screen routing inside Settings
     var currentSubScreen by remember { mutableStateOf<SubScreen?>(null) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
 
     // Dynamic Theme Colors
     val isDark = settings.isDarkMode
@@ -171,6 +173,25 @@ fun SettingsScreen(navController: NavController) {
                 dividerColor = dividerColor,
                 topBarBgColor = topBarBgColor
             )
+            SubScreen.REGISTER_SHOP -> RegisterShopScreen(
+                onBack = { currentSubScreen = null },
+                onRegistered = { currentSubScreen = null },
+                isDark = isDark,
+                bgColor = bgColor,
+                cardColor = cardColor,
+                textColor = textColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor
+            )
+            SubScreen.SELLER_CENTRE -> SellerCentreScreen(
+                onBack = { currentSubScreen = null },
+                isDark = isDark,
+                bgColor = bgColor,
+                cardColor = cardColor,
+                textColor = textColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor
+            )
             null -> {
                 // ── Main settings list ──
                 Scaffold(
@@ -248,6 +269,21 @@ fun SettingsScreen(navController: NavController) {
                             title = settings.t("Shop", "Cửa hàng", "Boutique", "ショップ", "쇼핑", "商店"),
                             textColor = textColor
                         )
+                        if (sessionUser?.role?.equals("shop", ignoreCase = true) == true) {
+                            FlatSettingRow(
+                                label = settings.t("Seller Centre", "Kênh Người Bán", "Centre Vendeur", "販売者センター", "판매자 센터", "卖家中心"),
+                                onClick = { currentSubScreen = SubScreen.SELLER_CENTRE },
+                                textColor = textColor, subTextColor = subTextColor,
+                                dividerColor = dividerColor
+                            )
+                        } else {
+                            FlatSettingRow(
+                                label = settings.t("Register as a Seller", "Đăng ký mở Cửa hàng", "S'inscrire comme vendeur", "販売者として登録", "판매자로 등록", "注册为卖家"),
+                                onClick = { currentSubScreen = SubScreen.REGISTER_SHOP },
+                                textColor = textColor, subTextColor = subTextColor,
+                                dividerColor = dividerColor
+                            )
+                        }
                         FlatSettingRow(
                             label = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"),
                             value = settings.country,
@@ -293,6 +329,14 @@ fun SettingsScreen(navController: NavController) {
                         FlatSettingRow(
                             label = settings.t("About app", "Về app", "À propos de app", "Appについて", "App 정보", "关于 App"),
                             onClick = { currentSubScreen = SubScreen.ABOUT },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Log out", "Đăng xuất", "Se déconnecter", "ログアウト", "로그아웃", "退出登录"),
+                            onClick = {
+                                showLogoutConfirmDialog = true
+                            },
                             textColor = textColor, subTextColor = subTextColor,
                             dividerColor = dividerColor
                         )
@@ -386,6 +430,59 @@ fun SettingsScreen(navController: NavController) {
                             containerColor = cardColor
                         )
                     }
+
+                    if (showLogoutConfirmDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showLogoutConfirmDialog = false },
+                            title = {
+                                Text(
+                                    text = settings.t("Log out?", "Đăng xuất?", "Se déconnecter?", "ログアウトしますか？", "로그아웃하시겠습니까?", "确定退出登录？"),
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor
+                                )
+                            },
+                            text = {
+                                Text(
+                                    text = settings.t(
+                                        "Are you sure you want to log out of your account?",
+                                        "Bạn có chắc chắn muốn đăng xuất khỏi tài khoản của mình không?",
+                                        "Êtes-vous sûr de vouloir vous déconnecter de votre compte?",
+                                        "アカウントからログアウトしてもよろしいですか？",
+                                        "계정에서 로그아웃하시겠습니까?",
+                                        "您确定要退出当前账户吗？"
+                                    ),
+                                    color = textColor
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showLogoutConfirmDialog = false
+                                        FirebaseAuth.getInstance().signOut()
+                                        UserSession.clear()
+                                        navController.navigate(Screen.Start.route) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        text = settings.t("Log out", "Đăng xuất", "Se déconnecter", "ログアウト", "로그아웃", "退出登录"),
+                                        color = DangerRed,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showLogoutConfirmDialog = false }) {
+                                    Text(
+                                        text = settings.t("Cancel", "Hủy", "Annuler", "キャンセル", "취소", "取消"),
+                                        color = subTextColor
+                                    )
+                                }
+                            },
+                            containerColor = cardColor
+                        )
+                    }
                 }
             }
         }
@@ -393,7 +490,7 @@ fun SettingsScreen(navController: NavController) {
 }
 
 // ── Sub-screen enum ──
-private enum class SubScreen { PROFILE, SHIPPING, PAYMENT, LANGUAGE, CURRENCY, SIZE, COUNTRY, NOTIFICATIONS, ABOUT }
+private enum class SubScreen { PROFILE, SHIPPING, PAYMENT, LANGUAGE, CURRENCY, SIZE, COUNTRY, NOTIFICATIONS, ABOUT, REGISTER_SHOP, SELLER_CENTRE }
 
 // ══════════════════════════════════════════
 // ── Sub Screens ──
@@ -1500,4 +1597,3 @@ private fun FlatInfoRow(
         )
     }
 }
-
