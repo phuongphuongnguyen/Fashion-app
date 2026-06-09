@@ -26,8 +26,8 @@ import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.launch
 
 // ── Colors ──
-private val PrimaryBlue = Color(0xFF3669C9)
-private val ChatBubbleBot = Color(0xFFEEF2FF)
+private val PrimaryBlue   = Color(0xFF3669C9)
+private val ChatBubbleBot  = Color(0xFFEEF2FF)
 private val ChatBubbleUser = Color(0xFF3669C9)
 
 // ── Data ──
@@ -42,8 +42,8 @@ data class ChatMessage(
 fun ChatbotScreen(navController: NavController) {
     val generativeModel = remember {
         GenerativeModel(
-            modelName = "models/gemini-2.0-flash",
-            apiKey = ""
+            modelName = "models/gemini-3.1-flash-lite",
+            apiKey    = ""
         )
     }
 
@@ -51,17 +51,32 @@ fun ChatbotScreen(navController: NavController) {
         mutableStateOf(
             listOf(
                 ChatMessage(
-                    text = "Xin chào! Tôi là trợ lý thời trang của bạn. Tôi có thể giúp gì cho bạn hôm nay?",
-                    isUser = false
+                    text    = "Xin chào! Tôi là trợ lý thời trang của bạn. Tôi có thể giúp gì cho bạn hôm nay?",
+                    isUser  = false
                 )
             )
         )
     }
-    var inputText by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
+    var inputText      by remember { mutableStateOf("") }
+    var isLoading      by remember { mutableStateOf(false) }
+
+    // Cache context sau lần fetch đầu tiên
+    var firestoreContext by remember { mutableStateOf<String?>(null) }
+    var isLoadingContext by remember { mutableStateOf(true) }
 
     val coroutineScope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val listState      = rememberLazyListState()
+
+    // Fetch Firestore context 1 lần khi mở chatbot
+    LaunchedEffect(Unit) {
+        try {
+            firestoreContext = FirestoreContextBuilder.buildContext()
+        } catch (_: Exception) {
+            firestoreContext = ""
+        } finally {
+            isLoadingContext = false
+        }
+    }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -70,19 +85,36 @@ fun ChatbotScreen(navController: NavController) {
     }
 
     fun sendToGemini(userMessage: String) {
-        messages = messages + ChatMessage(text = userMessage, isUser = true)
-        inputText = ""
-        isLoading = true
+        messages   = messages + ChatMessage(text = userMessage, isUser = true)
+        inputText  = ""
+        isLoading  = true
 
         coroutineScope.launch {
             try {
-                val prompt = "You are a friendly fashion assistant for a fashion e-commerce app. " +
-                        "Be helpful, concise, and professional. " +
-                        "\n\nCustomer: $userMessage"
+                // Tạo prompt với Firestore context
+                val context = firestoreContext ?: ""
+                val prompt = """
+Bạn là trợ lý thời trang thông minh của một app mua sắm thời trang Việt Nam.
+Bạn có thể trả lời dựa trên dữ liệu thực tế của app bên dưới.
+Hãy trả lời bằng tiếng Việt, thân thiện, ngắn gọn và hữu ích.
+Nếu câu hỏi liên quan đến sản phẩm, đơn hàng, voucher hoặc shop — hãy dùng dữ liệu bên dưới.
+Nếu không có thông tin liên quan — hãy trả lời dựa trên kiến thức thời trang chung.
+
+--- DỮ LIỆU APP ---
+$context
+--- HẾT DỮ LIỆU ---
+
+Khách hàng hỏi: $userMessage
+                """.trimIndent()
+
                 val response = generativeModel.generateContent(prompt)
-                val botReply = response.text ?: "Xin lỗi, tôi không thể xử lý yêu cầu của bạn. Vui lòng thử lại."
+                val botReply = response.text
+                    ?: "Xin lỗi, tôi không thể xử lý yêu cầu của bạn. Vui lòng thử lại."
                 messages = messages + ChatMessage(text = botReply, isUser = false)
             } catch (e: Exception) {
+                android.util.Log.e("CHATBOT_ERROR", "Class: ${e.javaClass.name}", e)
+                android.util.Log.e("CHATBOT_ERROR", "Message: ${e.message}")
+                android.util.Log.e("CHATBOT_ERROR", "Cause: ${e.cause}")
                 messages = messages + ChatMessage(
                     text = "Xin lỗi, có lỗi kết nối. Vui lòng kiểm tra internet và thử lại.",
                     isUser = false
@@ -93,21 +125,22 @@ fun ChatbotScreen(navController: NavController) {
         }
     }
 
-    Scaffold(
-        containerColor = Color(0xFFF5F7FB)
-    ) { innerPadding ->
+    Scaffold(containerColor = Color(0xFFF5F7FB)) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
             // ── Header ──
-            ChatHeader(onBack = { navController.popBackStack() })
+            ChatHeader(
+                onBack        = { navController.popBackStack() },
+                isLoadingData = isLoadingContext
+            )
 
             // ── Messages ──
             LazyColumn(
-                state = listState,
-                modifier = Modifier
+                state          = listState,
+                modifier       = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
@@ -124,61 +157,67 @@ fun ChatbotScreen(navController: NavController) {
 
             // ── Input Bar ──
             ChatInputBar(
-                value = inputText,
+                value         = inputText,
                 onValueChange = { inputText = it },
-                onSend = {
-                    if (inputText.isNotBlank()) {
+                onSend        = {
+                    if (inputText.isNotBlank() && !isLoadingContext) {
                         sendToGemini(inputText.trim())
                     }
                 },
-                isLoading = isLoading
+                isLoading     = isLoading || isLoadingContext,
+                placeholder   = if (isLoadingContext) "Đang tải dữ liệu..." else "Nhập tin nhắn..."
             )
         }
     }
 }
 
 // ── Chat Header ──
-
 @Composable
-private fun ChatHeader(onBack: () -> Unit) {
-    Surface(
-        color = Color.White,
-        shadowElevation = 2.dp
-    ) {
+private fun ChatHeader(onBack: () -> Unit, isLoadingData: Boolean = false) {
+    Surface(color = Color.White, shadowElevation = 2.dp) {
         Row(
-            modifier = Modifier
+            modifier          = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color(0xFF1A1A2E)
+                    tint               = Color(0xFF1A1A2E)
                 )
             }
 
             Icon(
-                painter = painterResource(R.drawable.ic_chatbot),
+                painter           = painterResource(R.drawable.ic_chatbot),
                 contentDescription = null,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(38.dp)
+                tint              = Color.Unspecified,
+                modifier          = Modifier.size(38.dp)
             )
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Fashion Assistant",
-                    fontSize = 17.sp,
+                    text       = "Fashion Assistant",
+                    fontSize   = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A1A2E)
+                    color      = Color(0xFF1A1A2E)
                 )
                 Text(
-                    text = "Trợ lý thời trang của bạn",
+                    text     = if (isLoadingData) "Đang tải dữ liệu app..." else "Trợ lý thời trang của bạn",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color    = if (isLoadingData) Color(0xFF3669C9) else Color.Gray
+                )
+            }
+
+            // Dot indicator khi đang load data
+            if (isLoadingData) {
+                CircularProgressIndicator(
+                    modifier    = Modifier.size(16.dp).padding(end = 8.dp),
+                    strokeWidth = 2.dp,
+                    color       = PrimaryBlue
                 )
             }
         }
@@ -186,19 +225,18 @@ private fun ChatHeader(onBack: () -> Unit) {
 }
 
 // ── Chat Bubble ──
-
 @Composable
 private fun ChatBubble(message: ChatMessage) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = if (message.isUser) Arrangement.End else Arrangement.Start
     ) {
         if (!message.isUser) {
             Icon(
-                painter = painterResource(R.drawable.ic_chatbot),
+                painter           = painterResource(R.drawable.ic_chatbot),
                 contentDescription = null,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(32.dp)
+                tint              = Color.Unspecified,
+                modifier          = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
         }
@@ -208,19 +246,19 @@ private fun ChatBubble(message: ChatMessage) {
                 .widthIn(max = 280.dp)
                 .clip(
                     RoundedCornerShape(
-                        topStart = 16.dp,
-                        topEnd = 16.dp,
+                        topStart    = 16.dp,
+                        topEnd      = 16.dp,
                         bottomStart = if (message.isUser) 16.dp else 4.dp,
-                        bottomEnd = if (message.isUser) 4.dp else 16.dp
+                        bottomEnd   = if (message.isUser) 4.dp else 16.dp
                     )
                 )
                 .background(if (message.isUser) ChatBubbleUser else ChatBubbleBot)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Text(
-                text = message.text,
-                color = if (message.isUser) Color.White else Color(0xFF1A1A2E),
-                fontSize = 14.sp,
+                text      = message.text,
+                color     = if (message.isUser) Color.White else Color(0xFF1A1A2E),
+                fontSize  = 14.sp,
                 lineHeight = 20.sp
             )
         }
@@ -228,19 +266,18 @@ private fun ChatBubble(message: ChatMessage) {
 }
 
 // ── Typing Indicator ──
-
 @Composable
 private fun TypingIndicator() {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment     = Alignment.CenterVertically
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_chatbot),
+            painter           = painterResource(R.drawable.ic_chatbot),
             contentDescription = null,
-            tint = Color.Unspecified,
-            modifier = Modifier.size(32.dp)
+            tint              = Color.Unspecified,
+            modifier          = Modifier.size(32.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
         Box(
@@ -255,49 +292,46 @@ private fun TypingIndicator() {
 }
 
 // ── Chat Input Bar ──
-
 @Composable
 private fun ChatInputBar(
     value: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
-    isLoading: Boolean
+    isLoading: Boolean,
+    placeholder: String = "Nhập tin nhắn..."
 ) {
-    Surface(
-        color = Color.White,
-        shadowElevation = 6.dp
-    ) {
+    Surface(color = Color.White, shadowElevation = 6.dp) {
         Row(
-            modifier = Modifier
+            modifier          = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
-                value = value,
+                value         = value,
                 onValueChange = onValueChange,
-                modifier = Modifier
+                modifier      = Modifier
                     .weight(1f)
                     .heightIn(min = 44.dp),
-                placeholder = {
-                    Text("Nhập tin nhắn...", color = Color.Gray, fontSize = 14.sp)
+                placeholder   = {
+                    Text(placeholder, color = Color.Gray, fontSize = 14.sp)
                 },
-                shape = RoundedCornerShape(24.dp),
+                shape  = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryBlue,
+                    focusedBorderColor   = PrimaryBlue,
                     unfocusedBorderColor = Color(0xFFE0E0E0),
-                    focusedContainerColor = Color.White,
+                    focusedContainerColor   = Color.White,
                     unfocusedContainerColor = Color(0xFFF5F5F5)
                 ),
                 singleLine = false,
-                maxLines = 4
+                maxLines   = 4
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
             IconButton(
-                onClick = onSend,
-                enabled = value.isNotBlank() && !isLoading,
+                onClick  = onSend,
+                enabled  = value.isNotBlank() && !isLoading,
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
@@ -307,10 +341,10 @@ private fun ChatInputBar(
                     )
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    imageVector        = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    tint               = Color.White,
+                    modifier           = Modifier.size(20.dp)
                 )
             }
         }
