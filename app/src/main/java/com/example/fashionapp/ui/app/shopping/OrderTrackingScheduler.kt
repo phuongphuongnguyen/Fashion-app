@@ -46,4 +46,26 @@ object OrderTrackingScheduler {
             Log.d(TAG, "Scheduled step $step with delay ${delay}s for order $orderId")
         }
     }
+
+    fun showPaymentNotification(context: Context, amount: Long) {
+        val channelId = "payment_channel"
+        val manager   = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                android.app.NotificationChannel(channelId, "Thanh toán", android.app.NotificationManager.IMPORTANCE_HIGH)
+            )
+        }
+
+        val formattedAmount = amount.toString().reversed().chunked(3).joinToString(".").reversed()
+        val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Thanh toán thành công 🎉")
+            .setContentText("Đơn hàng ₫$formattedAmount đã được thanh toán!")
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        manager.notify(System.currentTimeMillis().toInt(), notification)
+    }
 }

@@ -35,6 +35,11 @@ import com.example.fashionapp.R
 import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +71,16 @@ fun PaymentScreen(
     val selectedItemsMissing = selectedCartItemIds.isNotEmpty() &&
         !uiState.isLoadingCart &&
         checkoutItems.size < selectedCartItemIds.size
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -106,6 +121,7 @@ fun PaymentScreen(
                                     )
                                 )
                             } else {
+                                val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
                                 viewModel.placeOrderFromCart(
                                     cartItems = checkoutItems,
                                     paymentMethod = selectedPaymentMethod,
@@ -115,6 +131,13 @@ fun PaymentScreen(
                                     shippingAddress = shippingAddress
                                 ) { orderId ->
                                     if (orderId != null) {
+                                        OrderTrackingScheduler.showPaymentNotification(context, total.toLong())
+                                        OrderTrackingScheduler.scheduleTracking(
+                                            context = context,
+                                            orderId = orderId,
+                                            userId = uid,
+                                            amount = total.toLong()
+                                        )
                                         navController.navigate(Screen.History.createRoute("Ongoing")) {
                                             popUpTo(Screen.Payment.route) { inclusive = true }
                                             launchSingleTop = true
@@ -217,9 +240,7 @@ fun PaymentScreen(
                             .clip(CircleShape)
                             .background(Color(0xFFE5EDFF))
                             .clickable {
-                                navController.navigate(Screen.Profile.route) {
-                                    launchSingleTop = true
-                                }
+                                navController.navigate(Screen.Settings.createRoute("shipping"))
                             },
                         contentAlignment = Alignment.Center
                     ) {

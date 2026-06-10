@@ -234,8 +234,14 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
 
                 // ── App screens ───────────────────────────────────────────
 
-                composable(Screen.Settings.route) {
-                    SettingsScreen(navController = navController)
+                composable(
+                    route = Screen.Settings.route,
+                    arguments = listOf(
+                        navArgument("subScreen") { nullable = true; defaultValue = null; type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val subScreen = backStackEntry.arguments?.getString("subScreen")
+                    SettingsScreen(navController = navController, initialSubScreen = subScreen)
                 }
                 composable(Screen.Chatbot.route) {
                     ChatbotScreen(navController = navController)
