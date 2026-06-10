@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.navigation.NavController
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.data.user.UserSession
 import com.google.firebase.auth.FirebaseAuth
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -60,6 +61,7 @@ fun MomoPaymentScreen(
     viewModel: ShopViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ){
     val uiState by viewModel.uiState.collectAsState()
+    val currentUser by UserSession.currentUser.collectAsState()
     val context = LocalContext.current
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val checkoutItems = remember(uiState.cartItems, selectedCartItemIds) {
@@ -69,6 +71,12 @@ fun MomoPaymentScreen(
             uiState.cartItems.filter { it.id in selectedCartItemIds }
         }
     }
+    val checkoutUser = uiState.currentUserProfile ?: currentUser
+    val shippingAddress = checkoutUser?.address.orEmpty()
+    val hasShippingAddress = shippingAddress.isNotBlank()
+    val selectedItemsMissing = selectedCartItemIds.isNotEmpty() &&
+        !uiState.isLoadingCart &&
+        checkoutItems.size < selectedCartItemIds.size
 
     var qrCodeUrl        by remember { mutableStateOf<String?>(null) }
     var momoOrderId      by remember { mutableStateOf<String?>(null) }
@@ -89,7 +97,30 @@ fun MomoPaymentScreen(
     }
 
     // ── Bước 1: Tạo QR MoMo ─────────────────────────────────────────────────
-    LaunchedEffect(Unit) {
+    LaunchedEffect(amount, uiState.isLoadingCart, checkoutItems, hasShippingAddress, selectedItemsMissing) {
+        if (uiState.isLoadingCart) return@LaunchedEffect
+        when {
+            checkoutItems.isEmpty() -> {
+                errorMsg = "Không có sản phẩm để thanh toán"
+                isLoading = false
+                return@LaunchedEffect
+            }
+            selectedItemsMissing -> {
+                errorMsg = "Một số sản phẩm đã chọn không còn trong giỏ hàng"
+                isLoading = false
+                return@LaunchedEffect
+            }
+            !hasShippingAddress -> {
+                errorMsg = "Vui lòng cập nhật địa chỉ giao hàng trước khi thanh toán"
+                isLoading = false
+                return@LaunchedEffect
+            }
+            amount <= 0L -> {
+                errorMsg = "Số tiền thanh toán không hợp lệ"
+                isLoading = false
+                return@LaunchedEffect
+            }
+        }
         try {
             val result  = withContext(Dispatchers.IO) { createMomoQR(amount) }
             qrCodeUrl   = result.first
@@ -106,6 +137,7 @@ fun MomoPaymentScreen(
     // ── Bước 2: Polling MoMo 3s/lần ─────────────────────────────────────────
     LaunchedEffect(momoOrderId) {
         val oid = momoOrderId ?: return@LaunchedEffect
+        if (!hasShippingAddress || checkoutItems.isEmpty()) return@LaunchedEffect
         isPolling = true
         while (isActive && !isPaid) {
             delay(3000)
@@ -119,6 +151,7 @@ fun MomoPaymentScreen(
                         cartItems = checkoutItems,
                         paymentMethod = "MoMo",
                         paymentStatus = "PAID",
+                        shippingAddress = shippingAddress,
                         momoOrderId = oid
                     ) { orderId ->
                         if (orderId == null) return@placeOrderFromCart

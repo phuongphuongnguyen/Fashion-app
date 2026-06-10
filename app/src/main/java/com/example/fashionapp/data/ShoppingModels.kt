@@ -46,6 +46,8 @@ data class ProductReview(
     val userId: String = "",
     val userName: String = "",
     val userAvatarUrl: String = "",
+    val color: String = "",
+    val size: String = "",
     val rating: Int = 0,
     val comment: String = "",
     val editCount: Int = 0,

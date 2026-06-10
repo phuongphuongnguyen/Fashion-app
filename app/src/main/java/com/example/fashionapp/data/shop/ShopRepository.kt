@@ -291,6 +291,36 @@ object ShopRepository {
         }
     }
 
+    suspend fun restoreCartItem(userId: String, cartItem: CartItem) {
+        if (userId.isBlank() || cartItem.id.isBlank()) return
+        val data = hashMapOf(
+            "product" to hashMapOf(
+                "id" to cartItem.product.id,
+                "name" to cartItem.product.name,
+                "price" to cartItem.product.price,
+                "imageUrl" to cartItem.product.imageUrl,
+                "rating" to cartItem.product.rating,
+                "soldCount" to cartItem.product.soldCount,
+                "shopId" to cartItem.product.shopId
+            ),
+            "color" to cartItem.color,
+            "size" to cartItem.size,
+            "quantity" to cartItem.quantity
+        )
+        val cartDoc = db.collection("carts").document(userId)
+        db.runBatch { batch ->
+            batch.set(
+                cartDoc,
+                mapOf(
+                    "userId" to userId,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                SetOptions.merge()
+            )
+            batch.set(cartDoc.collection("items").document(cartItem.id), data, SetOptions.merge())
+        }.await()
+    }
+
     suspend fun clearCart(userId: String, cartItems: List<CartItem>) {
         if (userId.isBlank()) return
         val batch = db.batch()
@@ -636,6 +666,8 @@ object ShopRepository {
             userId = getString("userId").orEmpty(),
             userName = getString("userName").orEmpty(),
             userAvatarUrl = getString("userAvatarUrl").orEmpty(),
+            color = getString("color").orEmpty(),
+            size = getString("size").orEmpty(),
             rating = (get("rating") as? Number)?.toInt() ?: 0,
             comment = getString("comment").orEmpty(),
             editCount = (get("editCount") as? Number)?.toInt() ?: 0,
@@ -698,6 +730,8 @@ object ShopRepository {
                 "userId" to userId,
                 "userName" to userName,
                 "userAvatarUrl" to userAvatarUrl,
+                "color" to (order.items.firstOrNull { it.product.id == order.product.id }?.color.orEmpty()),
+                "size" to (order.items.firstOrNull { it.product.id == order.product.id }?.size.orEmpty()),
                 "rating" to safeRating,
                 "comment" to comment.trim(),
                 "editCount" to if (reviewSnapshot.exists()) currentEditCount + 1 else 0,

@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +32,7 @@ import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.fashionapp.R
+import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 
@@ -45,7 +44,7 @@ fun PaymentScreen(
     viewModel: ShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
+    val currentUser by UserSession.currentUser.collectAsState()
     val items = uiState.cartItems
     val checkoutItems = remember(items, selectedCartItemIds) {
         if (selectedCartItemIds.isEmpty()) {
@@ -59,17 +58,14 @@ fun PaymentScreen(
     var selectedShippingMethod by remember { mutableStateOf("standard") }
     val shippingFee = if (selectedShippingMethod == "express") 50000.0 else 0.0
     val total = itemsTotal + shippingFee
-    val shippingAddress = "Danang Bul, Fashion Store, Da Nang City"
+    val checkoutUser = uiState.currentUserProfile ?: currentUser
+    val recipientName = checkoutUser?.name?.takeIf { it.isNotBlank() } ?: "Customer"
+    val recipientPhone = checkoutUser?.phoneNumber.orEmpty()
+    val shippingAddress = checkoutUser?.address.orEmpty()
+    val hasShippingAddress = shippingAddress.isNotBlank()
     val selectedItemsMissing = selectedCartItemIds.isNotEmpty() &&
         !uiState.isLoadingCart &&
         checkoutItems.size < selectedCartItemIds.size
-
-    LaunchedEffect(uiState.orderError) {
-        uiState.orderError?.let { message ->
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
-            viewModel.consumeOrderError()
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -130,7 +126,10 @@ fun PaymentScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF)),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(52.dp),
-                        enabled = checkoutItems.isNotEmpty() && !uiState.isLoadingCart && !uiState.isPlacingOrder
+                        enabled = checkoutItems.isNotEmpty() &&
+                            hasShippingAddress &&
+                            !uiState.isLoadingCart &&
+                            !uiState.isPlacingOrder
                     ) {
                         Text(
                             if (uiState.isPlacingOrder) "Placing Order..." else "Place Order",
@@ -179,15 +178,13 @@ fun PaymentScreen(
 
             if (selectedItemsMissing) {
                 item {
-                    Text(
-                        "Some selected items are no longer available.",
-                        color = Color(0xFFB3261E),
-                        fontSize = 13.sp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFFFFF1F1), RoundedCornerShape(12.dp))
-                            .padding(12.dp)
-                    )
+                    PaymentMessage("Some selected items are no longer available.")
+                }
+            }
+
+            uiState.orderError?.let { message ->
+                item {
+                    PaymentMessage(message)
                 }
             }
 
@@ -202,12 +199,28 @@ fun PaymentScreen(
                         .padding(16.dp)
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Bonnie Green", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(recipientName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Spacer(Modifier.height(4.dp))
-                        Text(shippingAddress, color = Color.Gray, fontSize = 13.sp)
+                        if (recipientPhone.isNotBlank()) {
+                            Text(recipientPhone, color = Color.Gray, fontSize = 12.sp)
+                            Spacer(Modifier.height(2.dp))
+                        }
+                        Text(
+                            shippingAddress.ifBlank { "Add a shipping address in your profile" },
+                            color = if (hasShippingAddress) Color.Gray else Color(0xFFB3261E),
+                            fontSize = 13.sp
+                        )
                     }
                     Box(
-                        modifier = Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE5EDFF)).clickable { },
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE5EDFF))
+                            .clickable {
+                                navController.navigate(Screen.Profile.route) {
+                                    launchSingleTop = true
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.Edit, null, tint = Color(0xFF0056FF), modifier = Modifier.size(16.dp))
@@ -329,6 +342,19 @@ private fun CheckoutMessage(
             Text("Back to Cart", fontWeight = FontWeight.Bold)
         }
     }
+}
+
+@Composable
+private fun PaymentMessage(message: String) {
+    Text(
+        message,
+        color = Color(0xFFB3261E),
+        fontSize = 13.sp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFFF1F1), RoundedCornerShape(12.dp))
+            .padding(12.dp)
+    )
 }
 
 @Composable

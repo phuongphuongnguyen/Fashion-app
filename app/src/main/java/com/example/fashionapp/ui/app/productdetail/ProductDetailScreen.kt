@@ -51,6 +51,9 @@ import com.example.fashionapp.data.StorageUrlResolver
 import com.example.fashionapp.data.shop.ShopRepository
 import com.example.fashionapp.navigation.Screen
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue   = Color(0xFF3669C9)
 private val StarYellow    = Color(0xFFFFC107)
@@ -770,6 +773,19 @@ private fun RealReviewItem(review: ProductReview) {
         Column {
             Text(name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             StarRow(rating = review.rating.toFloat().coerceIn(0f, 5f))
+            val variantText = listOf(review.color, review.size)
+                .filter { it.isNotBlank() }
+                .joinToString(" | ")
+            val metaText = listOf(
+                formatReviewDate(review.updatedAtMillis.takeIf { it > 0L } ?: review.createdAtMillis),
+                variantText
+            )
+                .filter { it.isNotBlank() }
+                .joinToString(" • ")
+            if (metaText.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Text(metaText, fontSize = 12.sp, color = TextGray)
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = review.comment.ifBlank { "Không có bình luận" },
@@ -783,54 +799,9 @@ private fun RealReviewItem(review: ProductReview) {
     }
 }
 
-@Composable
-private fun RatingSection(product: Product, navController: NavController) {
-    val rating = product.rating
-    val reviewCount = product.reviewCount
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-    ) {
-        Text("Rating & Reviews", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Spacer(Modifier.height(12.dp))
-
-        // Tổng rating
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            StarRow(rating = rating)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "${rating}/5",
-                fontWeight = FontWeight.Bold,
-                fontSize   = 15.sp,
-                color      = TextDark
-            )
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        // Mock review
-        MockReviewItem(
-            name   = "Khách hàng",
-            rating = rating.coerceAtMost(5f),
-            text   = "Sản phẩm rất đẹp, chất lượng tốt, giao hàng nhanh. Sẽ ủng hộ shop lần sau!"
-        )
-
-        Spacer(Modifier.height(14.dp))
-
-        // View all button
-        OutlinedButton(
-            onClick = { navController.navigate("reviews/${product.id}") },
-            modifier = Modifier.fillMaxWidth(),
-            shape  = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue),
-            border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue)
-        ) {
-            Text("Xem tất cả $reviewCount đánh giá", fontWeight = FontWeight.Medium)
-        }
-    }
-    HorizontalDivider(color = DividerColor)
+private fun formatReviewDate(timestampMillis: Long): String {
+    if (timestampMillis <= 0L) return ""
+    return SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(timestampMillis))
 }
 
 @Composable
@@ -843,36 +814,6 @@ private fun StarRow(rating: Float) {
                 contentDescription = null,
                 tint = StarYellow,
                 modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun MockReviewItem(name: String, rating: Float, text: String) {
-    Row(verticalAlignment = Alignment.Top) {
-        // Avatar
-        Box(
-            modifier         = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(PrimaryBlue.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(name.firstOrNull()?.toString() ?: "K", color = PrimaryBlue, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text(name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            StarRow(rating = rating.coerceAtMost(5f))
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text     = text,
-                fontSize = 13.sp,
-                color    = TextGray,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = 19.sp
             )
         }
     }

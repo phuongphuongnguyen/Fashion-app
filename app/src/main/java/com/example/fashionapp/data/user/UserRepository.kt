@@ -31,7 +31,11 @@ class UserRepository {
             followingCount = snapshot.getLong("followingCount")?.toInt() ?: 0,
             role = snapshot.getString("role").orEmpty(),
             shopId = snapshot.getString("shopId").orEmpty(),
-            username = snapshot.getString("username").orEmpty()
+            username = snapshot.getString("username").orEmpty(),
+            phoneNumber = (snapshot.getString("phoneNumber") ?: snapshot.getString("phone")).orEmpty(),
+            address = (snapshot.getString("address")
+                ?: snapshot.getString("shippingAddress")
+                ?: snapshot.getString("location")).orEmpty()
         )
     }
 

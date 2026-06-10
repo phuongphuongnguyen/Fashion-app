@@ -29,6 +29,7 @@ data class ShopUiState(
     val cartItems: List<CartItem> = emptyList(),
     val orders: List<ReviewOrder> = emptyList(),
     val reviewsByOrderId: Map<String, ProductReview> = emptyMap(),
+    val currentUserProfile: User? = null,
     val shopUser: User? = null,
     val shopLogoUrl: String = "",
     val shopRating: Float = 0f,
@@ -53,6 +54,7 @@ class ShopViewModel : ViewModel() {
     private var observedUserId: String? = "__not_loaded__"
     private var cartJob: Job? = null
     private var ordersJob: Job? = null
+    private var userJob: Job? = null
     private val authStateListener = AuthStateListener { firebaseAuth ->
         loadUserShoppingData(firebaseAuth.currentUser?.uid)
     }
@@ -80,12 +82,14 @@ class ShopViewModel : ViewModel() {
         observedUserId = userId
         cartJob?.cancel()
         ordersJob?.cancel()
+        userJob?.cancel()
 
         if (userId.isNullOrBlank()) {
             _uiState.value = _uiState.value.copy(
                 cartItems = emptyList(),
                 orders = emptyList(),
                 reviewsByOrderId = emptyMap(),
+                currentUserProfile = null,
                 isLoadingCart = false,
                 isLoadingOrders = false,
                 cartError = null
@@ -97,12 +101,22 @@ class ShopViewModel : ViewModel() {
             cartItems = emptyList(),
             orders = emptyList(),
             reviewsByOrderId = emptyMap(),
+            currentUserProfile = null,
             isLoadingCart = true,
             isLoadingOrders = true,
             cartError = null
         )
+        loadCurrentUserProfile(userId)
         loadCartItems(userId)
         loadOrders(userId)
+    }
+
+    private fun loadCurrentUserProfile(userId: String) {
+        userJob = viewModelScope.launch {
+            userRepository.getUserProfileFlow(userId).collect { user ->
+                _uiState.value = _uiState.value.copy(currentUserProfile = user)
+            }
+        }
     }
 
     // navId có thể là userId (vào từ feed/search) HOẶC shopId (vào từ product detail).
@@ -247,7 +261,7 @@ class ShopViewModel : ViewModel() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             val result = runCatching {
-                repository.addToCart(userId, cartItem)
+                repository.restoreCartItem(userId, cartItem)
             }
             result.exceptionOrNull()?.let { error ->
                 _uiState.value = _uiState.value.copy(
