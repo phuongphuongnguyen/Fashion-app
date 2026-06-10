@@ -98,6 +98,7 @@
 //private val ColorWhite = androidx.compose.ui.graphics.Color.White
 package com.example.fashionapp.ui.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -110,16 +111,40 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.fashionapp.R
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.res.ResourcesCompat
+
 
 @Composable
 fun StartScreen(
     onGetStarted: () -> Unit,
     onLoginClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val logoPainter = remember {
+        val drawable = ResourcesCompat.getDrawable(context.resources, R.mipmap.ic_launcher, context.theme)
+        val bitmap = Bitmap.createBitmap(
+            drawable?.intrinsicWidth?.coerceAtLeast(100) ?: 100,
+            drawable?.intrinsicHeight?.coerceAtLeast(100) ?: 100,
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+        drawable?.setBounds(0, 0, canvas.width, canvas.height)
+        drawable?.draw(canvas)
+        BitmapPainter(bitmap.asImageBitmap())
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -137,7 +162,11 @@ fun StartScreen(
                 .background(color = Color(0xFFE8EEFF), shape = CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "🛍", fontSize = 40.sp)
+            Image(
+                painter = logoPainter,
+                contentDescription = "App Logo",
+                modifier = Modifier.size(64.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
