@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,7 @@ fun PaymentScreen(
     viewModel: ShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val items = uiState.cartItems
     val checkoutItems = remember(items, selectedCartItemIds) {
         if (selectedCartItemIds.isEmpty()) {
@@ -57,6 +60,16 @@ fun PaymentScreen(
     val shippingFee = if (selectedShippingMethod == "express") 50000.0 else 0.0
     val total = itemsTotal + shippingFee
     val shippingAddress = "Danang Bul, Fashion Store, Da Nang City"
+    val selectedItemsMissing = selectedCartItemIds.isNotEmpty() &&
+        !uiState.isLoadingCart &&
+        checkoutItems.size < selectedCartItemIds.size
+
+    LaunchedEffect(uiState.orderError) {
+        uiState.orderError?.let { message ->
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeOrderError()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -117,9 +130,13 @@ fun PaymentScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF)),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(52.dp),
-                        enabled = checkoutItems.isNotEmpty()
+                        enabled = checkoutItems.isNotEmpty() && !uiState.isLoadingCart && !uiState.isPlacingOrder
                     ) {
-                        Text("Place Order", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (uiState.isPlacingOrder) "Placing Order..." else "Place Order",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -134,6 +151,46 @@ fun PaymentScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp),
             contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
         ) {
+            if (uiState.isLoadingCart) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color(0xFF0056FF))
+                    }
+                }
+                return@LazyColumn
+            }
+
+            if (checkoutItems.isEmpty()) {
+                item {
+                    CheckoutMessage(
+                        message = if (selectedCartItemIds.isEmpty()) {
+                            "Your cart is empty"
+                        } else {
+                            "Selected items are no longer available"
+                        },
+                        onBackToCart = { navController.popBackStack() }
+                    )
+                }
+                return@LazyColumn
+            }
+
+            if (selectedItemsMissing) {
+                item {
+                    Text(
+                        "Some selected items are no longer available.",
+                        color = Color(0xFFB3261E),
+                        fontSize = 13.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFFFF1F1), RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                    )
+                }
+            }
+
             // Shipping Address
             item {
                 SectionHeader("Shipping Address")
@@ -247,6 +304,29 @@ fun PaymentScreen(
             }
 
             item { Spacer(modifier = Modifier.height(20.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun CheckoutMessage(
+    message: String,
+    onBackToCart: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 120.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(message, color = Color.Gray, fontSize = 14.sp)
+        Button(
+            onClick = onBackToCart,
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF))
+        ) {
+            Text("Back to Cart", fontWeight = FontWeight.Bold)
         }
     }
 }

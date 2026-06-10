@@ -50,6 +50,10 @@ sealed class Screen(val route: String) {
         fun createRoute(productId: String) = "product_detail/$productId"
     }
 
+    object ProductReviews : Screen("product_reviews/{productId}") {
+        fun createRoute(productId: String) = "product_reviews/$productId"
+    }
+
     // ── Shopping flow ─────────────────────────────────────────────────────────
     object Cart       : Screen("cart")
     object Payment    : Screen("payment?cartItemIds={cartItemIds}") {

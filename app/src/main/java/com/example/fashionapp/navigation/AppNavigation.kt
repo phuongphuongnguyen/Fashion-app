@@ -51,6 +51,7 @@ import com.example.fashionapp.ui.app.settings.SettingsScreen
 import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
 import com.example.fashionapp.ui.app.search.SearchScreen
 import com.example.fashionapp.ui.app.productdetail.ProductDetailScreen
+import com.example.fashionapp.ui.app.productdetail.ProductReviewsScreen
 import com.example.fashionapp.ui.app.post.CreatePostScreen
 import com.example.fashionapp.ui.app.shopping.MomoPaymentScreen
 import com.example.fashionapp.ui.app.shopping.ShopViewModel
@@ -279,6 +280,13 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                         productId = productId,
                         navController = navController
                     )
+                }
+                composable(
+                    route = Screen.ProductReviews.route,
+                    arguments = listOf(navArgument("productId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val productId = backStackEntry.arguments?.getString("productId").orEmpty()
+                    ProductReviewsScreen(productId = productId, navController = navController)
                 }
 
                 composable(

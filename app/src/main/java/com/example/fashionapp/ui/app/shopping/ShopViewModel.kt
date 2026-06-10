@@ -37,7 +37,12 @@ data class ShopUiState(
     val isFollowing: Boolean = false,
     val isLoadingProducts: Boolean = true,
     val isLoadingCart: Boolean = true,
-    val isLoadingOrders: Boolean = true
+    val isLoadingOrders: Boolean = true,
+    val cartError: String? = null,
+    val orderError: String? = null,
+    val reviewError: String? = null,
+    val isPlacingOrder: Boolean = false,
+    val isSubmittingReview: Boolean = false
 )
 
 class ShopViewModel : ViewModel() {
@@ -82,7 +87,8 @@ class ShopViewModel : ViewModel() {
                 orders = emptyList(),
                 reviewsByOrderId = emptyMap(),
                 isLoadingCart = false,
-                isLoadingOrders = false
+                isLoadingOrders = false,
+                cartError = null
             )
             return
         }
@@ -92,7 +98,8 @@ class ShopViewModel : ViewModel() {
             orders = emptyList(),
             reviewsByOrderId = emptyMap(),
             isLoadingCart = true,
-            isLoadingOrders = true
+            isLoadingOrders = true,
+            cartError = null
         )
         loadCartItems(userId)
         loadOrders(userId)
@@ -174,10 +181,11 @@ class ShopViewModel : ViewModel() {
 
     private fun loadCartItems(userId: String) {
         cartJob = viewModelScope.launch {
-            repository.getCartItemsFlow(userId).collect { items ->
+            repository.getCartItemsFlow(userId).collect { snapshot ->
                 _uiState.value = _uiState.value.copy(
-                    cartItems = items,
-                    isLoadingCart = false
+                    cartItems = snapshot.items,
+                    isLoadingCart = false,
+                    cartError = snapshot.errorMessage
                 )
             }
         }
@@ -212,14 +220,40 @@ class ShopViewModel : ViewModel() {
             quantity = quantity
         )
         viewModelScope.launch {
-            repository.addToCart(userId, cartItem)
+            val result = runCatching { repository.addToCart(userId, cartItem) }
+            result.exceptionOrNull()?.let { error ->
+                _uiState.value = _uiState.value.copy(
+                    cartError = error.message ?: "Unable to add item to cart"
+                )
+            }
         }
     }
 
     fun updateCartQuantity(cartItemId: String, newQuantity: Int) {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
-            repository.updateCartItemQuantity(userId, cartItemId, newQuantity)
+            val result = runCatching {
+                repository.updateCartItemQuantity(userId, cartItemId, newQuantity)
+            }
+            result.exceptionOrNull()?.let { error ->
+                _uiState.value = _uiState.value.copy(
+                    cartError = error.message ?: "Unable to update cart"
+                )
+            }
+        }
+    }
+
+    fun restoreCartItem(cartItem: CartItem) {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            val result = runCatching {
+                repository.addToCart(userId, cartItem)
+            }
+            result.exceptionOrNull()?.let { error ->
+                _uiState.value = _uiState.value.copy(
+                    cartError = error.message ?: "Unable to restore cart item"
+                )
+            }
         }
     }
 
@@ -234,11 +268,13 @@ class ShopViewModel : ViewModel() {
         onComplete: (String?) -> Unit = {}
     ) {
         val userId = auth.currentUser?.uid ?: run {
+            _uiState.value = _uiState.value.copy(orderError = "Please sign in before checkout")
             onComplete(null)
             return
         }
         val items = cartItems
         if (items.isEmpty()) {
+            _uiState.value = _uiState.value.copy(orderError = "Your checkout items are no longer available")
             onComplete(null)
             return
         }
@@ -248,6 +284,7 @@ class ShopViewModel : ViewModel() {
         val placedAtMillis = System.currentTimeMillis()
 
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isPlacingOrder = true, orderError = null)
             val result = runCatching {
                 repository.placeOrder(
                     userId = userId,
@@ -262,6 +299,11 @@ class ShopViewModel : ViewModel() {
                     momoOrderId = momoOrderId
                 )
             }
+            _uiState.value = _uiState.value.copy(
+                isPlacingOrder = false,
+                orderError = result.exceptionOrNull()?.message
+                    ?: if (result.getOrNull().isNullOrBlank()) "Unable to place order" else null
+            )
             onComplete(result.getOrNull()?.takeIf { it.isNotBlank() })
         }
     }
@@ -273,16 +315,19 @@ class ShopViewModel : ViewModel() {
         onComplete: (Boolean) -> Unit
     ) {
         val userId = auth.currentUser?.uid ?: run {
+            _uiState.value = _uiState.value.copy(reviewError = "Please sign in before reviewing")
             onComplete(false)
             return
         }
         val order = _uiState.value.orders.firstOrNull { it.id == orderId } ?: run {
+            _uiState.value = _uiState.value.copy(reviewError = "Order is no longer available")
             onComplete(false)
             return
         }
         val currentUser = UserSession.currentUser.value
 
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingReview = true, reviewError = null)
             val result = runCatching {
                 repository.submitProductReview(
                     userId = userId,
@@ -300,7 +345,20 @@ class ShopViewModel : ViewModel() {
             if (result.isSuccess) {
                 refreshReviews()
             }
+            _uiState.value = _uiState.value.copy(
+                isSubmittingReview = false,
+                reviewError = result.exceptionOrNull()?.message
+                    ?: if (result.isFailure) "Unable to submit review" else null
+            )
             onComplete(result.isSuccess)
         }
+    }
+
+    fun consumeOrderError() {
+        _uiState.value = _uiState.value.copy(orderError = null)
+    }
+
+    fun consumeReviewError() {
+        _uiState.value = _uiState.value.copy(reviewError = null)
     }
 }

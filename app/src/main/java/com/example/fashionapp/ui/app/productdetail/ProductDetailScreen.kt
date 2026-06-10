@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.fashionapp.data.ProductReview
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
@@ -47,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import coil.compose.AsyncImage
 import com.example.fashionapp.data.StorageUrlResolver
+import com.example.fashionapp.data.shop.ShopRepository
 import com.example.fashionapp.navigation.Screen
 import kotlinx.coroutines.tasks.await
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -189,10 +191,11 @@ fun ProductDetailScreen(
                 )
             }
 
-            // ── Rating & Reviews (mock) ───────────────────────────────────
+            // ── Rating & Reviews ──────────────────────────────────────────
             item { 
-                RatingSection(
+                ProductReviewSection(
                     product = product, 
+                    reviews = state.productReviews,
                     navController = navController 
                 ) 
             }
@@ -216,6 +219,7 @@ fun ProductDetailScreen(
         BottomActionBar(
             product         = product,
             selectedVariant = state.selectedVariant,
+            isLoading       = state.isAddingToCart,
             onAddToCart     = { showAddToCart = true },
             onBuyNow        = { showBuyNow = true },
             modifier        = Modifier.align(Alignment.BottomCenter)
@@ -226,6 +230,51 @@ fun ProductDetailScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 //  IMAGE SECTION
 // ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProductReviewsScreen(
+    productId: String,
+    navController: NavController
+) {
+    val reviews by remember(productId) {
+        ShopRepository.getReviewsForProductFlow(productId)
+    }.collectAsState(initial = emptyList())
+
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Đánh giá sản phẩm", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+            )
+        },
+        containerColor = Color.White
+    ) { padding ->
+        if (reviews.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Chưa có đánh giá", color = TextGray)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(reviews, key = { it.id }) { review ->
+                    RealReviewItem(review = review)
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -644,6 +693,97 @@ private fun DeliveryRow(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
+private fun ProductReviewSection(
+    product: Product,
+    reviews: List<ProductReview>,
+    navController: NavController
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Text("Đánh giá sản phẩm", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(Modifier.height(12.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StarRow(rating = product.rating)
+            Spacer(Modifier.width(8.dp))
+            Text("${product.rating}/5", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextDark)
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        val previewReviews = reviews.take(2)
+        if (previewReviews.isEmpty()) {
+            Text("Chưa có đánh giá", color = TextGray, fontSize = 13.sp)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                previewReviews.forEach { review ->
+                    RealReviewItem(review = review)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        OutlinedButton(
+            onClick = { navController.navigate(Screen.ProductReviews.createRoute(product.id)) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue),
+            border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue)
+        ) {
+            Text("Xem tất cả ${product.reviewCount} đánh giá", fontWeight = FontWeight.Medium)
+        }
+    }
+    HorizontalDivider(color = DividerColor)
+}
+
+@Composable
+private fun RealReviewItem(review: ProductReview) {
+    val name = review.userName.ifBlank { "Khách hàng" }
+    Row(verticalAlignment = Alignment.Top) {
+        if (review.userAvatarUrl.isNotBlank()) {
+            AsyncImage(
+                model = review.userAvatarUrl,
+                contentDescription = name,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryBlue.copy(alpha = 0.15f)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryBlue.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(name.firstOrNull()?.toString() ?: "C", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            StarRow(rating = review.rating.toFloat().coerceIn(0f, 5f))
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = review.comment.ifBlank { "Không có bình luận" },
+                fontSize = 13.sp,
+                color = TextGray,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 19.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun RatingSection(product: Product, navController: NavController) {
     val rating = product.rating
     val reviewCount = product.reviewCount
@@ -869,6 +1009,7 @@ private fun GridProductCard(product: Product, modifier: Modifier, onClick: () ->
 private fun BottomActionBar(
     product: Product,
     selectedVariant: ProductVariant?,
+    isLoading: Boolean,
     onAddToCart: () -> Unit,
     onBuyNow: () -> Unit,
     modifier: Modifier = Modifier,
@@ -891,9 +1032,10 @@ private fun BottomActionBar(
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue),
-                border   = androidx.compose.foundation.BorderStroke(1.5.dp, PrimaryBlue)
+                border   = androidx.compose.foundation.BorderStroke(1.5.dp, PrimaryBlue),
+                enabled  = !isLoading
             ) {
-                Text("Add to cart", fontWeight = FontWeight.SemiBold)
+                Text(if (isLoading) "Adding..." else "Add to cart", fontWeight = FontWeight.SemiBold)
             }
 
             // Buy now
@@ -901,9 +1043,10 @@ private fun BottomActionBar(
                 onClick  = onBuyNow,
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape    = RoundedCornerShape(12.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                colors   = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                enabled  = !isLoading
             ) {
-                Text("Buy now", fontWeight = FontWeight.SemiBold)
+                Text(if (isLoading) "Please wait" else "Buy now", fontWeight = FontWeight.SemiBold)
             }
         }
     }

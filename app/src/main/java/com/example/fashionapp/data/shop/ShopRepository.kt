@@ -13,6 +13,7 @@ import com.example.fashionapp.data.product.toProduct
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.async
@@ -27,6 +28,11 @@ import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+data class CartItemsSnapshot(
+    val items: List<CartItem>,
+    val errorMessage: String? = null
+)
 
 object ShopRepository {
     private val db = FirebaseFirestore.getInstance()
@@ -171,15 +177,18 @@ object ShopRepository {
         awaitClose { listener.remove() }
     }
 
-    fun getCartItemsFlow(userId: String): Flow<List<CartItem>> = callbackFlow {
+    fun getCartItemsFlow(userId: String): Flow<CartItemsSnapshot> = callbackFlow {
         if (userId.isBlank()) {
-            trySend(emptyList()); close(); return@callbackFlow
+            trySend(CartItemsSnapshot(emptyList())); close(); return@callbackFlow
         }
         val listener = db.collection("carts").document(userId).collection("items")
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) {
                     Log.e(TAG, "Failed to load cart items for user=$userId", error)
-                    trySend(cachedCartItems ?: emptyList()); return@addSnapshotListener
+                    val message = error?.message?.takeIf { it.isNotBlank() }
+                        ?: "Unable to load your cart"
+                    trySend(CartItemsSnapshot(cachedCartItems ?: emptyList(), message))
+                    return@addSnapshotListener
                 }
                 launch {
                     val items = snapshot.documents.mapNotNull { doc ->
@@ -207,16 +216,44 @@ object ShopRepository {
                         }
                     }
                     cachedCartItems = items
-                    trySend(items)
+                    trySend(CartItemsSnapshot(items))
                 }
             }
         awaitClose { listener.remove() }
     }.onStart {
-        cachedCartItems?.let { emit(it) }
+        cachedCartItems?.let { emit(CartItemsSnapshot(it)) }
     }
 
-    suspend fun addToCart(userId: String, cartItem: CartItem) {
-        if (userId.isBlank()) return
+    suspend fun addToCart(userId: String, cartItem: CartItem): String {
+        if (userId.isBlank()) return ""
+        val cartDoc = db.collection("carts").document(userId)
+        val cartItemsRef = cartDoc.collection("items")
+        val existingItem = cartItemsRef
+            .whereEqualTo("product.id", cartItem.product.id)
+            .whereEqualTo("color", cartItem.color)
+            .whereEqualTo("size", cartItem.size)
+            .limit(1)
+            .get()
+            .await()
+            .documents
+            .firstOrNull()
+
+        if (existingItem != null) {
+            val itemRef = cartItemsRef.document(existingItem.id)
+            db.runBatch { batch ->
+                batch.set(
+                    cartDoc,
+                    mapOf(
+                        "userId" to userId,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    ),
+                    SetOptions.merge()
+                )
+                batch.update(itemRef, "quantity", FieldValue.increment(cartItem.quantity.toLong()))
+            }.await()
+            return existingItem.id
+        }
+
         val data = hashMapOf(
             "product" to hashMapOf(
                 "id" to cartItem.product.id,
@@ -231,7 +268,6 @@ object ShopRepository {
             "size" to cartItem.size,
             "quantity" to cartItem.quantity
         )
-        val cartDoc = db.collection("carts").document(userId)
         db.runBatch { batch ->
             batch.set(
                 cartDoc,
@@ -243,6 +279,7 @@ object ShopRepository {
             )
             batch.set(cartDoc.collection("items").document(cartItem.id), data)
         }.await()
+        return cartItem.id
     }
 
     suspend fun updateCartItemQuantity(userId: String, cartItemId: String, newQuantity: Int) {
@@ -371,21 +408,34 @@ object ShopRepository {
                     if (orderId.isBlank()) {
                         null
                     } else {
-                        ProductReview(
-                            id = doc.id,
-                            orderId = orderId,
-                            productId = doc.getString("productId").orEmpty(),
-                            userId = doc.getString("userId").orEmpty(),
-                            rating = (doc.get("rating") as? Number)?.toInt() ?: 0,
-                            comment = doc.getString("comment").orEmpty(),
-                            editCount = (doc.get("editCount") as? Number)?.toInt() ?: 0,
-                            createdAtMillis = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
-                            updatedAtMillis = doc.getTimestamp("updatedAt")?.toDate()?.time ?: 0L
-                        )
+                        doc.toProductReview()
                     }
                 }.associateBy { it.orderId }
 
                 trySend(reviews)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun getReviewsForProductFlow(productId: String): Flow<List<ProductReview>> = callbackFlow {
+        if (productId.isBlank()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+
+        val listener = db.collection("products")
+            .document(productId)
+            .collection("reviews")
+            .orderBy("updatedAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    Log.e(TAG, "Failed to load reviews for product=$productId", error)
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                trySend(snapshot.documents.map { it.toProductReview() })
             }
         awaitClose { listener.remove() }
     }
@@ -405,16 +455,9 @@ object ShopRepository {
                 if (!doc.exists()) {
                     null
                 } else {
-                    ProductReview(
-                        id = doc.id,
+                    doc.toProductReview().copy(
                         orderId = doc.getString("orderId").orEmpty().ifBlank { order.id },
-                        productId = doc.getString("productId").orEmpty().ifBlank { order.product.id },
-                        userId = doc.getString("userId").orEmpty(),
-                        rating = (doc.get("rating") as? Number)?.toInt() ?: 0,
-                        comment = doc.getString("comment").orEmpty(),
-                        editCount = (doc.get("editCount") as? Number)?.toInt() ?: 0,
-                        createdAtMillis = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
-                        updatedAtMillis = doc.getTimestamp("updatedAt")?.toDate()?.time ?: 0L
+                        productId = doc.getString("productId").orEmpty().ifBlank { order.product.id }
                     )
                 }
             }.getOrNull()
@@ -584,6 +627,22 @@ object ShopRepository {
         val soldCount: Int,
         val orderCount: Int
     )
+
+    private fun DocumentSnapshot.toProductReview(): ProductReview {
+        return ProductReview(
+            id = id,
+            orderId = getString("orderId").orEmpty(),
+            productId = getString("productId").orEmpty(),
+            userId = getString("userId").orEmpty(),
+            userName = getString("userName").orEmpty(),
+            userAvatarUrl = getString("userAvatarUrl").orEmpty(),
+            rating = (get("rating") as? Number)?.toInt() ?: 0,
+            comment = getString("comment").orEmpty(),
+            editCount = (get("editCount") as? Number)?.toInt() ?: 0,
+            createdAtMillis = getTimestamp("createdAt")?.toDate()?.time ?: 0L,
+            updatedAtMillis = getTimestamp("updatedAt")?.toDate()?.time ?: 0L
+        )
+    }
 
     suspend fun submitProductReview(
         userId: String,
