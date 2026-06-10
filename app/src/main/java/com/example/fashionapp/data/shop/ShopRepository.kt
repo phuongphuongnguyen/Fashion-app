@@ -24,9 +24,6 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 object ShopRepository {
     private val db = FirebaseFirestore.getInstance()
@@ -191,8 +188,7 @@ object ShopRepository {
                                 price = safeDouble(productMap["price"]),
                                 imageUrl = StorageUrlResolver.resolve(productMap["imageUrl"] as? String ?: ""),
                                 rating = (productMap["rating"] as? Number)?.toFloat() ?: 0f,
-                                soldCount = (productMap["soldCount"] as? Number)?.toInt() ?: 0,
-                                shopId = productMap["shopId"] as? String ?: doc.getString("shopId").orEmpty()
+                                soldCount = (productMap["soldCount"] as? Number)?.toInt() ?: 0
                             )
                             CartItem(
                                 id = doc.id,
@@ -224,8 +220,7 @@ object ShopRepository {
                 "price" to cartItem.product.price,
                 "imageUrl" to cartItem.product.imageUrl,
                 "rating" to cartItem.product.rating,
-                "soldCount" to cartItem.product.soldCount,
-                "shopId" to cartItem.product.shopId
+                "soldCount" to cartItem.product.soldCount
             ),
             "color" to cartItem.color,
             "size" to cartItem.size,
@@ -294,16 +289,12 @@ object ShopRepository {
                                         productMap?.get("imageUrl") as? String
                                             ?: itemMap["productImage"] as? String
                                             ?: ""
-                                    ),
-                                    shopId = productMap?.get("shopId") as? String
-                                        ?: itemMap["shopId"] as? String
-                                        ?: ""
+                                    )
                                 )
                                 if (product.id.isBlank() && product.name.isBlank()) return@mapNotNull null
                                 OrderItem(
                                     cartItemId = itemMap["cartItemId"] as? String ?: "",
                                     product = product,
-                                    shopId = itemMap["shopId"] as? String ?: product.shopId,
                                     color = itemMap["color"] as? String ?: variantParts.getOrNull(1).orEmpty(),
                                     size = itemMap["size"] as? String ?: variantParts.getOrNull(0).orEmpty(),
                                     quantity = safeInt(itemMap["quantity"]),
@@ -318,8 +309,7 @@ object ShopRepository {
                                     id = productMap["id"] as? String ?: "",
                                     name = productMap["name"] as? String ?: "",
                                     price = safeDouble(productMap["price"]),
-                                    imageUrl = StorageUrlResolver.resolve(productMap["imageUrl"] as? String ?: ""),
-                                    shopId = productMap["shopId"] as? String ?: ""
+                                    imageUrl = StorageUrlResolver.resolve(productMap["imageUrl"] as? String ?: "")
                                 )
                             }
                             ReviewOrder(
@@ -440,23 +430,17 @@ object ShopRepository {
         val orderRef = db.collection("orders").document()
         val subtotal = cartItems.sumOf { it.totalPrice }
         val totalPrice = subtotal + shippingFee
-        val isPaid = paymentStatus.equals("PAID", ignoreCase = true)
-        val dayId = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(placedAtMillis))
         val data = hashMapOf<String, Any>(
             "userId" to userId,
             "items" to cartItems.map { item ->
-                val shopId = item.product.shopId
                 hashMapOf(
                     "cartItemId" to item.id,
                     "product" to hashMapOf(
                         "id" to item.product.id,
                         "name" to item.product.name,
                         "price" to item.product.price,
-                        "imageUrl" to item.product.imageUrl,
-                        "shopId" to shopId
+                        "imageUrl" to item.product.imageUrl
                     ),
-                    "productId" to item.product.id,
-                    "shopId" to shopId,
                     "color" to item.color,
                     "size" to item.size,
                     "quantity" to item.quantity,
@@ -485,105 +469,19 @@ object ShopRepository {
             val cartRef = db.collection("carts").document(userId).collection("items")
             cartItems.forEach { item ->
                 batch.delete(cartRef.document(item.id))
-            }
-
-            if (isPaid) {
-                applyRevenueUpdates(batch, cartItems, dayId, totalPrice)
+                if (item.product.id.isNotBlank()) {
+                    batch.update(
+                        db.collection("products").document(item.product.id),
+                        mapOf(
+                            "soldCount" to FieldValue.increment(item.quantity.toLong()),
+                            "revenue" to FieldValue.increment(item.totalPrice)
+                        )
+                    )
+                }
             }
         }.await()
         return orderRef.id
     }
-
-    private fun applyRevenueUpdates(
-        batch: com.google.firebase.firestore.WriteBatch,
-        cartItems: List<CartItem>,
-        dayId: String,
-        orderTotal: Double
-    ) {
-        val productStats = cartItems
-            .filter { it.product.id.isNotBlank() }
-            .groupBy { it.product.id }
-            .mapValues { (_, items) ->
-                RevenueStats(
-                    revenue = items.sumOf { it.totalPrice },
-                    soldCount = items.sumOf { it.quantity },
-                    orderCount = 1
-                )
-            }
-
-        val shopStats = cartItems
-            .filter { it.product.shopId.isNotBlank() }
-            .groupBy { it.product.shopId }
-            .mapValues { (_, items) ->
-                RevenueStats(
-                    revenue = items.sumOf { it.totalPrice },
-                    soldCount = items.sumOf { it.quantity },
-                    orderCount = 1
-                )
-            }
-
-        productStats.forEach { (productId, stats) ->
-            val productRef = db.collection("products").document(productId)
-            batch.update(
-                productRef,
-                mapOf(
-                    "soldCount" to FieldValue.increment(stats.soldCount.toLong()),
-                    "revenue" to FieldValue.increment(stats.revenue)
-                )
-            )
-            batch.set(
-                productRef.collection("dailyRevenue").document(dayId),
-                dailyRevenueData(stats),
-                SetOptions.merge()
-            )
-        }
-
-        shopStats.forEach { (shopId, stats) ->
-            val shopRef = db.collection("shops").document(shopId)
-            batch.set(
-                shopRef,
-                mapOf(
-                    "revenue" to FieldValue.increment(stats.revenue),
-                    "soldCount" to FieldValue.increment(stats.soldCount.toLong()),
-                    "orderCount" to FieldValue.increment(stats.orderCount.toLong()),
-                    "updatedAt" to FieldValue.serverTimestamp()
-                ),
-                SetOptions.merge()
-            )
-            batch.set(
-                shopRef.collection("dailyRevenue").document(dayId),
-                dailyRevenueData(stats),
-                SetOptions.merge()
-            )
-        }
-
-        batch.set(
-            db.collection("analytics_daily").document(dayId),
-            mapOf(
-                "grossRevenue" to FieldValue.increment(orderTotal),
-                "netRevenue" to FieldValue.increment(orderTotal),
-                "orderCount" to FieldValue.increment(1L),
-                "soldCount" to FieldValue.increment(cartItems.sumOf { it.quantity }.toLong()),
-                "updatedAt" to FieldValue.serverTimestamp()
-            ),
-            SetOptions.merge()
-        )
-    }
-
-    private fun dailyRevenueData(stats: RevenueStats): Map<String, Any> {
-        return mapOf(
-            "revenue" to FieldValue.increment(stats.revenue),
-            "soldCount" to FieldValue.increment(stats.soldCount.toLong()),
-            "orderCount" to FieldValue.increment(stats.orderCount.toLong()),
-            "updatedAt" to FieldValue.serverTimestamp()
-        )
-    }
-
-    private data class RevenueStats(
-        val revenue: Double,
-        val soldCount: Int,
-        val orderCount: Int
-    )
 
     suspend fun submitProductReview(
         userId: String,

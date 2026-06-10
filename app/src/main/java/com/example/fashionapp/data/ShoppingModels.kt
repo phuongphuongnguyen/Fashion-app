@@ -15,7 +15,6 @@ data class CartItem(
 data class OrderItem(
     val cartItemId: String = "",
     val product: Product = Product(),
-    val shopId: String = product.shopId,
     val color: String = "",
     val size: String = "",
     val quantity: Int = 1,
