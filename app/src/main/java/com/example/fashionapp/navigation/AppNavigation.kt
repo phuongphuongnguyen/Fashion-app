@@ -18,6 +18,7 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.navArgument
+import com.example.fashionapp.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,6 +32,9 @@ import com.example.fashionapp.ui.app.home.HomeScreen
 import com.example.fashionapp.ui.app.home.MessagesScreen
 import com.example.fashionapp.ui.app.saved.SavedScreen
 import com.example.fashionapp.ui.app.saved.PostDetailScreen
+import com.example.fashionapp.ui.app.shopDashboard.SavedTabRouter
+import com.example.fashionapp.ui.app.shopDashboard.ShopDashboardScreen
+import com.example.fashionapp.ui.app.shopDashboard.ProductAnalyticsScreen
 import com.example.fashionapp.ui.app.profile.ProfileScreen
 import com.example.fashionapp.ui.app.profile.ProfileRouterScreen
 import com.example.fashionapp.ui.app.shopping.CartScreen
@@ -225,7 +229,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     ShopScreen(navController = navController, shopId = shopId)
                 }
                 composable(Screen.Saved.route) {
-                    SavedScreen(navController = navController)
+                    SavedTabRouter(navController = navController)
                 }
                 composable(Screen.Profile.route) {
                     ProfileScreen(navController = navController)
@@ -276,6 +280,17 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 ) { backStackEntry ->
                     val productId = backStackEntry.arguments?.getString("productId").orEmpty()
                     ProductDetailScreen(
+                        productId = productId,
+                        navController = navController
+                    )
+                }
+
+                composable(
+                    route = Screen.ProductAnalytics.route,
+                    arguments = listOf(navArgument("productId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val productId = backStackEntry.arguments?.getString("productId").orEmpty()
+                    ProductAnalyticsScreen(
                         productId = productId,
                         navController = navController
                     )
@@ -375,6 +390,22 @@ fun AppBottomBar(
     currentDestination: NavDestination?,
     onTabSelected: (Screen) -> Unit
 ) {
+    val currentUser by com.example.fashionapp.data.user.UserSession.currentUser.collectAsState()
+    val isShop = currentUser?.role?.equals("shop", ignoreCase = true) == true
+
+    val items = remember(isShop) {
+        listOf(
+            BottomNavItem(Screen.Home, "Home", R.drawable.ic_home),
+            BottomNavItem(Screen.Shopping, "Shop", R.drawable.ic_shopping),
+            BottomNavItem(
+                screen = Screen.Saved,
+                label = if (isShop) "Analytics" else "Saved",
+                iconRes = if (isShop) R.drawable.ic_analyst else R.drawable.ic_saved
+            ),
+            BottomNavItem(Screen.Profile, "Profile", R.drawable.ic_profile)
+        )
+    }
+
     Surface(
         color = Color.White,
         shadowElevation = 8.dp
@@ -387,7 +418,7 @@ fun AppBottomBar(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            bottomNavItems.forEach { item ->
+            items.forEach { item ->
                 val currentRoute = currentDestination?.route
                 val isSelected = when (item.screen) {
                     Screen.Shopping -> currentRoute in listOf(
