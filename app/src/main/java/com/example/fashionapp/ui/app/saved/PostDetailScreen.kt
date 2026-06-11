@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.home.HomeViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
@@ -79,7 +80,10 @@ fun PostDetailScreen(
                         isVerified = (post.authorName == "mina"),
                         onLikeClick = { homeViewModel.toggleLike(post.id) },
                         onSaveClick = { savedViewModel.toggleSave(post.id) },
-                        onCommentClick = { showComments = true }
+                        onCommentClick = { showComments = true },
+                        onProductClick = { productId ->
+                            navController.navigate(Screen.ProductDetail.createRoute(productId))
+                        }
                     )
                 }
             }
