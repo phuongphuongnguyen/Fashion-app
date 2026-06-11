@@ -1,5 +1,6 @@
 package com.example.fashionapp.ui.app.productdetail
 
+import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -157,6 +159,7 @@ fun ProductDetailScreen(
                     imageUrls       = product.imageUrls,
                     selectedIndex   = state.selectedImageIndex,
                     isWishlisted    = state.isWishlisted,
+                    shareText        = "${product.name} - ₫${formatPrice(product.price)}",
                     onBack          = { navController.popBackStack() },
                     onWishlist      = { viewModel.toggleWishlist() },
                     onImageSelected = { viewModel.selectImage(it) }
@@ -285,10 +288,12 @@ private fun ImageSection(
     imageUrls: List<String>,
     selectedIndex: Int,
     isWishlisted: Boolean,
+    shareText: String,
     onBack: () -> Unit,
     onWishlist: () -> Unit,
     onImageSelected: (Int) -> Unit,
 ) {
+    val context = LocalContext.current
     val pagerState = rememberPagerState(
         initialPage = selectedIndex,
         pageCount   = { imageUrls.size.coerceAtLeast(1) }
@@ -370,7 +375,13 @@ private fun ImageSection(
                 )
             }
             IconButton(
-                onClick  = { },
+                onClick  = {
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Share product"))
+                },
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
@@ -808,13 +819,38 @@ private fun formatReviewDate(timestampMillis: Long): String {
 private fun StarRow(rating: Float) {
     Row {
         val full = rating.toInt()
+        val hasHalf = rating - full >= 0.5f && full < 5
         repeat(5) { i ->
-            Icon(
-                imageVector = if (i < full) Icons.Filled.Star else Icons.Outlined.StarOutline,
-                contentDescription = null,
-                tint = StarYellow,
-                modifier = Modifier.size(18.dp)
-            )
+            Box(modifier = Modifier.size(18.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.StarOutline,
+                    contentDescription = null,
+                    tint = StarYellow,
+                    modifier = Modifier.size(18.dp)
+                )
+                if (i < full) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = StarYellow,
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else if (i == full && hasHalf) {
+                    Box(
+                        modifier = Modifier
+                            .width(9.dp)
+                            .height(18.dp)
+                            .clipToBounds()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            tint = StarYellow,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

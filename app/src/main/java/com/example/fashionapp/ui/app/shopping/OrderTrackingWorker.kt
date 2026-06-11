@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.google.android.gms.tasks.Tasks
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 /**
@@ -40,6 +42,12 @@ class OrderTrackingWorker(
 
         Log.d(TAG, "doWork step=$step orderId=$orderId userId=$userId")
 
+        val orderState = getOrderState(orderId) ?: return Result.retry()
+        if (orderState.isTerminal) {
+            Log.d(TAG, "Skip tracking step=$step for terminal order=$orderId status=${orderState.orderStatus}/${orderState.paymentStatus}")
+            return Result.success()
+        }
+
         // ── Nội dung notification theo step ──────────────────────────────
         val (title, message) = when (step) {
             1 -> "Đơn hàng đã được đóng gói 📦" to
@@ -64,7 +72,9 @@ class OrderTrackingWorker(
 
         // ── Step 3: cập nhật Firestore status → "Delivered" ───────────
         if (step == 3) {
-            updateOrderStatusToDelivered(orderId)
+            if (!updateOrderStatusToDelivered(orderId)) {
+                Log.d(TAG, "Skip delivered update for order=$orderId because status changed")
+            }
         }
 
         return Result.success()
@@ -96,22 +106,68 @@ class OrderTrackingWorker(
 
     // ── Cập nhật Firestore status ────────────────────────────────────────
     // Path: orders/{orderId}
-    private fun updateOrderStatusToDelivered(orderId: String) {
+    private fun updateOrderStatusToDelivered(orderId: String): Boolean {
         val db = FirebaseFirestore.getInstance()
 
-        db.collection("orders").document(orderId)
-            .update(
-                mapOf(
-                    "orderStatus" to "Delivered",
-                    "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
-                )
+        return try {
+            Tasks.await(
+                db.runTransaction { transaction ->
+                    val orderRef = db.collection("orders").document(orderId)
+                    val snapshot = transaction.get(orderRef)
+                    if (!snapshot.exists()) return@runTransaction false
+
+                    val state = OrderState(
+                        orderStatus = snapshot.getString("orderStatus").orEmpty(),
+                        paymentStatus = snapshot.getString("paymentStatus").orEmpty()
+                    )
+                    if (state.isTerminal) return@runTransaction false
+
+                    transaction.update(
+                        orderRef,
+                        mapOf(
+                            "orderStatus" to "Delivered",
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
+                    )
+                    true
+                }
+            ).also { updated ->
+                if (updated) Log.d(TAG, "Updated order $orderId to Delivered")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update order $orderId: ${e.message}")
+            false
+        }
+    }
+
+    private fun getOrderState(orderId: String): OrderState? {
+        return try {
+            val snapshot = Tasks.await(
+                FirebaseFirestore.getInstance()
+                    .collection("orders")
+                    .document(orderId)
+                    .get()
             )
-            .addOnSuccessListener {
-                Log.d(TAG, "Updated order $orderId to Delivered")
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Failed to update order $orderId: ${e.message}")
-            }
+            if (!snapshot.exists()) return null
+            OrderState(
+                orderStatus = snapshot.getString("orderStatus").orEmpty(),
+                paymentStatus = snapshot.getString("paymentStatus").orEmpty()
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read order $orderId before tracking: ${e.message}")
+            null
+        }
+    }
+
+    private data class OrderState(
+        val orderStatus: String,
+        val paymentStatus: String
+    ) {
+        val isTerminal: Boolean
+            get() = orderStatus.equals("Cancelled", ignoreCase = true) ||
+                orderStatus.equals("Canceled", ignoreCase = true) ||
+                paymentStatus.equals("REFUNDED", ignoreCase = true) ||
+                paymentStatus.equals("CANCELLED", ignoreCase = true)
     }
 
     private fun saveToFirestore(userId: String, message: String, type: String) {

@@ -43,10 +43,11 @@ sealed class Screen(val route: String) {
     object ShopDetail : Screen("shop_detail/{shopId}") {
         fun createRoute(shopId: String) = "shop_detail/$shopId"
     }
-    object Search : Screen("search?query={query}&categoryId={categoryId}") {
-        fun createRoute(query: String = "", categoryId: String? = null): String {
+    object Search : Screen("search?query={query}&categoryId={categoryId}&sort={sort}") {
+        fun createRoute(query: String = "", categoryId: String? = null, sort: String? = null): String {
             val q = "search?query=$query"
-            return if (categoryId != null) "$q&categoryId=$categoryId" else q
+            val withCategory = if (categoryId != null) "$q&categoryId=$categoryId" else q
+            return if (sort != null) "$withCategory&sort=$sort" else withCategory
         }
     }
 

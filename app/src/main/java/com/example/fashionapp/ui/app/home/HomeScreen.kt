@@ -100,6 +100,7 @@ fun HomeScreen(
                             isLiked = uiState.likedPosts[post.id] ?: false,
                             isSaved = savedUiState.savedPostIds.contains(post.id),
                             isVerified = post.authorName == "mina",
+                            isLikePending = post.id in uiState.pendingLikePostIds,
                             onLikeClick = { viewModel.toggleLike(post.id) },
                             onSaveClick = { savedViewModel.toggleSave(post.id) },
                             onCommentClick = {
@@ -110,6 +111,9 @@ fun HomeScreen(
                                 if (post.authorId.isNotBlank()) {
                                     navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
                                 }
+                            },
+                            onProductClick = { productId ->
+                                navController.navigate(Screen.ProductDetail.createRoute(productId))
                             }
                         )
                         HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))

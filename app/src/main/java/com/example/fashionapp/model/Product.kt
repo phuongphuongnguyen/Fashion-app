@@ -19,6 +19,7 @@ data class Product(
     val stock: Int = 0,
     val freeShipping: Boolean = false,
     val tags: List<String> = emptyList(),
+    val createdAtMillis: Long = 0L,
     val specifications: Map<String, String> = emptyMap(),  // Material, Origin...
 )
 

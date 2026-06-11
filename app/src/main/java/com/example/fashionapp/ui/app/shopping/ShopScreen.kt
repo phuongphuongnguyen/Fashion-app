@@ -91,7 +91,6 @@ fun ShopScreen(
     var selectedTab by remember { mutableStateOf("Posts") }
     var selectedPostId by remember { mutableStateOf<String?>(null) }
     var showComments by remember { mutableStateOf(false) }
-    var localLikedPosts by remember { mutableStateOf(setOf<String>()) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
@@ -158,18 +157,10 @@ fun ShopScreen(
                     items(shopPosts, key = { it.id }) { post ->
                         FeedPostItem(
                             post = post,
-                            isLiked = (homeState.likedPosts[post.id] ?: false) ||
-                                    localLikedPosts.contains(post.id),
+                            isLiked = homeState.likedPosts[post.id] ?: false,
                             isSaved = savedUiState.savedPostIds.contains(post.id),
-                            onLikeClick = {
-                                if (homeState.posts.any { it.id == post.id }) {
-                                    homeViewModel.toggleLike(post.id)
-                                } else {
-                                    localLikedPosts =
-                                        if (localLikedPosts.contains(post.id)) localLikedPosts - post.id
-                                        else localLikedPosts + post.id
-                                }
-                            },
+                            isLikePending = post.id in homeState.pendingLikePostIds,
+                            onLikeClick = { homeViewModel.toggleLike(post.id) },
                             onSaveClick = { savedViewModel.toggleSave(post.id) },
                             onCommentClick = {
                                 selectedPostId = post.id
@@ -179,6 +170,9 @@ fun ShopScreen(
                                 if (post.authorId != shopId) {
                                     navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
                                 }
+                            },
+                            onProductClick = { productId ->
+                                navController.navigate(Screen.ProductDetail.createRoute(productId))
                             }
                         )
                         HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
@@ -269,13 +263,18 @@ private fun ShopHeader(
             if (!isOwnProfile) {
                 if (isFollowing) {
                     // Đang theo dõi: chỉ chữ xanh, không button (vẫn bấm được để bỏ theo dõi)
-                    Text(
-                        "Following",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1769FF),
-                        modifier = Modifier.clickable { onFollowClick() }
-                    )
+                    Button(
+                        onClick = onFollowClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE5EDFF),
+                            contentColor = Color(0xFF1769FF)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text("Following", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 } else {
                     Button(
                         onClick = onFollowClick,

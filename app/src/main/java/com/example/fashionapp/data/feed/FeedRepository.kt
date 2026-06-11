@@ -1,9 +1,9 @@
 package com.example.fashionapp.data.feed
 
 import android.util.Log
+import com.example.fashionapp.model.Comment
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.ProductTag
-import com.example.fashionapp.model.Comment
 import com.example.fashionapp.data.StorageUrlResolver
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
@@ -99,6 +99,21 @@ class FeedRepository {
             val createdAt = doc.getTimestamp("createdAt")
 
             @Suppress("UNCHECKED_CAST")
+            val rawComments = (doc.get("comments") as? List<*>) ?: emptyList<Any>()
+            val legacyComments = rawComments.mapNotNull { item ->
+                (item as? Map<*, *>)?.let { map ->
+                    Comment(
+                        id = map["id"] as? String ?: "",
+                        username = map["username"] as? String ?: "",
+                        avatarUrl = map["avatarUrl"] as? String ?: "",
+                        text = map["text"] as? String ?: "",
+                        createdAt = map["createdAt"] as? com.google.firebase.Timestamp
+                    )
+                }
+            }
+            val comments = getPostComments(doc.id, legacyComments)
+
+            @Suppress("UNCHECKED_CAST")
             val imagePaths = (doc.get("images") as? List<String>) ?: emptyList()
 
             val imageUrlsDeferred = imagePaths.map { path ->
@@ -145,25 +160,111 @@ class FeedRepository {
                 createdAt = createdAt,
                 commentCount = doc.getLong("commentCount") ?: 0L,
                 shareCount = doc.getLong("shareCount") ?: 0L,
-                tags = (doc.get("tags") as? List<String>) ?: emptyList()
+                tags = (doc.get("tags") as? List<String>) ?: emptyList(),
+                comments = comments
             )
         } catch (_: Exception) {
             null
         }
     }
 
-    suspend fun toggleLike(postId: String, currentCount: Long, isLiked: Boolean) {
-        val delta = if (isLiked) -1L else 1L
-        db.collection("posts").document(postId)
-            .update("likeCount", currentCount + delta)
+    fun getLikedPostIdsFlow(userId: String): Flow<Set<String>> = callbackFlow {
+        if (userId.isBlank()) {
+            trySend(emptySet())
+            close()
+            return@callbackFlow
+        }
+
+        val listener = db.collectionGroup("likes")
+            .whereEqualTo("userId", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    trySend(emptySet())
+                    return@addSnapshotListener
+                }
+                val ids = snapshot.documents.mapNotNull { doc ->
+                    doc.reference.parent.parent?.id
+                }.toSet()
+                trySend(ids)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun toggleLike(postId: String, userId: String) {
+        if (postId.isBlank() || userId.isBlank()) return
+        val postRef = db.collection("posts").document(postId)
+        val likeRef = postRef.collection("likes").document(userId)
+
+        db.runTransaction { transaction ->
+            val likeSnapshot = transaction.get(likeRef)
+            if (likeSnapshot.exists()) {
+                transaction.delete(likeRef)
+                transaction.update(postRef, "likeCount", FieldValue.increment(-1L))
+            } else {
+                transaction.set(
+                    likeRef,
+                    mapOf(
+                        "userId" to userId,
+                        "createdAt" to FieldValue.serverTimestamp()
+                    )
+                )
+                transaction.update(postRef, "likeCount", FieldValue.increment(1L))
+            }
+        }.await()
     }
 
     suspend fun addComment(postId: String, comment: Comment) {
-        db.collection("posts").document(postId)
-            .collection("comments").document(comment.id).set(comment).await()
-        db.collection("posts").document(postId)
-            .update("commentCount", FieldValue.increment(1)).await()
+        if (postId.isBlank() || comment.text.isBlank()) return
+        val commentRef = db.collection("posts").document(postId)
+            .collection("comments")
+            .document(comment.id.ifBlank { db.collection("posts").document().id })
+        val data = mapOf(
+            "id" to commentRef.id,
+            "username" to comment.username,
+            "avatarUrl" to comment.avatarUrl,
+            "text" to comment.text,
+            "createdAt" to (comment.createdAt ?: com.google.firebase.Timestamp.now())
+        )
+        db.runBatch { batch ->
+            batch.set(commentRef, data)
+            batch.update(
+                db.collection("posts").document(postId),
+                "commentCount",
+                FieldValue.increment(1L)
+            )
+        }.await()
     }
+
+    private suspend fun getPostComments(postId: String, fallback: List<Comment>): List<Comment> {
+        return try {
+            val snapshot = db.collection("posts").document(postId)
+                .collection("comments")
+                .orderBy("createdAt", Query.Direction.ASCENDING)
+                .limit(100)
+                .get()
+                .await()
+            val comments = snapshot.documents.mapNotNull { doc ->
+                Comment(
+                    id = doc.getString("id").orEmpty().ifBlank { doc.id },
+                    username = doc.getString("username").orEmpty(),
+                    avatarUrl = doc.getString("avatarUrl").orEmpty(),
+                    text = doc.getString("text").orEmpty(),
+                    createdAt = doc.getTimestamp("createdAt")
+                ).takeIf { it.text.isNotBlank() }
+            }
+            comments.ifEmpty { fallback }
+        } catch (_: Exception) {
+            fallback
+        }
+    }
+
+//    suspend fun addComment(postId: String, comment: Comment) {
+//        db.collection("posts").document(postId)
+//            .collection("comments").document(comment.id).set(comment).await()
+//        db.collection("posts").document(postId)
+//            .update("commentCount", FieldValue.increment(1)).await()
+//    }
 
     suspend fun createPost(
         authorId: String,

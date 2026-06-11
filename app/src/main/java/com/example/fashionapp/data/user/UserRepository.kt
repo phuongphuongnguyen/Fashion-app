@@ -35,7 +35,8 @@ class UserRepository {
             phoneNumber = (snapshot.getString("phoneNumber") ?: snapshot.getString("phone")).orEmpty(),
             address = (snapshot.getString("address")
                 ?: snapshot.getString("shippingAddress")
-                ?: snapshot.getString("location")).orEmpty()
+                ?: snapshot.getString("location")).orEmpty(),
+            bio = (snapshot.getString("bio") ?: snapshot.getString("description")).orEmpty()
         )
     }
 
@@ -73,6 +74,18 @@ class UserRepository {
     }
 
     // Tìm user là chủ của shop theo shopId (users/{uid} có field shopId == shopId).
+    suspend fun updateUserBio(userId: String, bio: String) {
+        if (userId.isBlank()) return
+        db.collection("users").document(userId)
+            .update(
+                mapOf(
+                    "bio" to bio.trim(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            )
+            .await()
+    }
+
     suspend fun findUserByShopId(shopId: String): User? {
         if (shopId.isBlank()) return null
         return try {

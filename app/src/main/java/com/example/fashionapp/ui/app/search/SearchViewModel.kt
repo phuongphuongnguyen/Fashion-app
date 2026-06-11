@@ -23,28 +23,31 @@ data class SearchUiState(
     val submittedQuery: String = "",
     val subCategories: List<SubCategory> = emptyList(),
     val selectedCategoryId: String? = null,
+    val sortMode: String? = null,
     val products: List<Product> = emptyList(),
     val users: List<User> = emptyList(),
     val history: List<String> = emptyList(),
     val popular: List<String> = emptyList(),
 ) {
     val showSuggestions: Boolean
-        get() = submittedQuery.isBlank() && selectedCategoryId.isNullOrBlank()
+        get() = submittedQuery.isBlank() && selectedCategoryId.isNullOrBlank() && sortMode.isNullOrBlank()
 }
 
 class SearchViewModel(
     initialQuery: String = "",
     initialCategoryId: String? = null,
+    initialSort: String? = null,
     private val historyRepo: SearchHistoryRepository,
 ) : ViewModel() {
 
-    private val hasInitialCriteria = initialQuery.isNotBlank() || initialCategoryId != null
+    private val hasInitialCriteria = initialQuery.isNotBlank() || initialCategoryId != null || !initialSort.isNullOrBlank()
 
     private val _uiState = MutableStateFlow(
         SearchUiState(
             query              = initialQuery,
             submittedQuery     = if (hasInitialCriteria) initialQuery else "",
             selectedCategoryId = initialCategoryId,
+            sortMode           = initialSort,
             popular            = SearchHistoryRepository.POPULAR_KEYWORDS,
             history            = historyRepo.getHistory(),
             isLoadingInitial   = hasInitialCriteria,
@@ -56,17 +59,17 @@ class SearchViewModel(
         loadSubCategories()
         // Chỉ search nếu được mở với query/category sẵn (vd. từ Shopping → click category)
         if (hasInitialCriteria) {
-            runSearch(initialQuery, initialCategoryId)
+            runSearch(initialQuery, initialCategoryId, initialSort)
         }
     }
 
-    private fun runSearch(query: String, categoryId: String?) {
+    private fun runSearch(query: String, categoryId: String?, sortMode: String? = _uiState.value.sortMode) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSearching = true) }
             // Tìm sản phẩm + user song song
             val productsDeferred = async { SearchRepository.search(query, categoryId) }
             val usersDeferred = async { SearchRepository.searchUsers(query) }
-            val products = productsDeferred.await()
+            val products = sortProducts(productsDeferred.await(), sortMode)
             val users = usersDeferred.await()
             _uiState.update {
                 it.copy(
@@ -75,6 +78,7 @@ class SearchViewModel(
                     products         = products,
                     users            = users,
                     submittedQuery   = query,
+                    sortMode         = sortMode,
                 )
             }
         }
@@ -94,7 +98,8 @@ class SearchViewModel(
             historyRepo.addQuery(q)
             _uiState.update { it.copy(history = historyRepo.getHistory()) }
         }
-        runSearch(q, _uiState.value.selectedCategoryId)
+        _uiState.update { it.copy(sortMode = null) }
+        runSearch(q, _uiState.value.selectedCategoryId, null)
     }
 
     // Click category → search ngay
@@ -131,7 +136,8 @@ class SearchViewModel(
                 history = historyRepo.getHistory(),
             )
         }
-        runSearch(trimmed, _uiState.value.selectedCategoryId)
+        _uiState.update { it.copy(sortMode = null) }
+        runSearch(trimmed, _uiState.value.selectedCategoryId, null)
     }
 
     fun removeHistoryItem(item: String) {
@@ -147,8 +153,8 @@ class SearchViewModel(
     fun refresh() {
         SearchRepository.clearCache()
         val s = _uiState.value
-        if (s.submittedQuery.isNotBlank() || s.selectedCategoryId != null) {
-            runSearch(s.submittedQuery, s.selectedCategoryId)
+        if (s.submittedQuery.isNotBlank() || s.selectedCategoryId != null || !s.sortMode.isNullOrBlank()) {
+            runSearch(s.submittedQuery, s.selectedCategoryId, s.sortMode)
         }
     }
 
@@ -161,6 +167,7 @@ class SearchViewModel(
                 products       = emptyList(),
                 users          = emptyList(),
                 isSearching    = false,
+                sortMode       = null,
             )
         }
     }
@@ -171,12 +178,28 @@ class SearchViewModel(
             _uiState.update { it.copy(subCategories = subs) }
         }
     }
+
+    private fun sortProducts(products: List<Product>, sortMode: String?): List<Product> {
+        return when (sortMode) {
+            "popular" -> products.sortedWith(
+                compareByDescending<Product> { it.soldCount }
+                    .thenByDescending { it.rating }
+                    .thenBy { it.name }
+            )
+            "new" -> products.sortedWith(
+                compareByDescending<Product> { it.createdAtMillis }
+                    .thenByDescending { it.id }
+            )
+            else -> products
+        }
+    }
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────────
 class SearchViewModelFactory(
     private val initialQuery: String,
     private val initialCategoryId: String?,
+    private val initialSort: String?,
     private val context: Context,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -184,6 +207,7 @@ class SearchViewModelFactory(
         return SearchViewModel(
             initialQuery      = initialQuery,
             initialCategoryId = initialCategoryId,
+            initialSort       = initialSort,
             historyRepo       = SearchHistoryRepository(context),
         ) as T
     }

@@ -287,7 +287,25 @@ object ShopRepository {
         if (newQuantity <= 0) {
             db.collection("carts").document(userId).collection("items").document(cartItemId).delete().await()
         } else {
-            db.collection("carts").document(userId).collection("items").document(cartItemId).update("quantity", newQuantity).await()
+            val itemRef = db.collection("carts").document(userId).collection("items").document(cartItemId)
+            db.runTransaction { transaction ->
+                val itemSnapshot = transaction.get(itemRef)
+                if (!itemSnapshot.exists()) return@runTransaction null
+                @Suppress("UNCHECKED_CAST")
+                val productMap = itemSnapshot.get("product") as? Map<String, Any> ?: emptyMap()
+                val productId = productMap["id"] as? String ?: ""
+                if (productId.isNotBlank()) {
+                    val productSnapshot = transaction.get(db.collection("products").document(productId))
+                    ensureRequestedStockAvailable(
+                        productSnapshot = productSnapshot,
+                        color = itemSnapshot.getString("color").orEmpty(),
+                        size = itemSnapshot.getString("size").orEmpty(),
+                        requestedQuantity = newQuantity
+                    )
+                }
+                transaction.update(itemRef, "quantity", newQuantity)
+                null
+            }.await()
         }
     }
 
@@ -553,22 +571,87 @@ object ShopRepository {
             data["momoOrderId"] = momoOrderId
         }
 
-        db.runBatch { batch ->
-            batch.set(orderRef, data)
+        val productRefs = cartItems
+            .mapNotNull { item -> item.product.id.takeIf { it.isNotBlank() } }
+            .distinct()
+            .associateWith { productId -> db.collection("products").document(productId) }
+
+        db.runTransaction { transaction ->
+            val productSnapshots = productRefs.mapValues { (_, ref) -> transaction.get(ref) }
+
+            transaction.set(orderRef, data)
             val cartRef = db.collection("carts").document(userId).collection("items")
             cartItems.forEach { item ->
-                batch.delete(cartRef.document(item.id))
+                transaction.delete(cartRef.document(item.id))
+            }
+
+            productSnapshots.forEach { (productId, snapshot) ->
+                val items = cartItems.filter { it.product.id == productId }
+                val updates = stockUpdatesForProduct(snapshot, items)
+                if (updates.isNotEmpty()) {
+                    transaction.update(productRefs.getValue(productId), updates)
+                }
             }
 
             if (isPaid) {
-                applyRevenueUpdates(batch, cartItems, dayId, totalPrice)
+                applyRevenueUpdates(transaction, cartItems, dayId, totalPrice)
             }
+            null
         }.await()
         return orderRef.id
     }
 
+    suspend fun cancelOrder(userId: String, order: ReviewOrder) {
+        if (userId.isBlank() || order.id.isBlank()) return
+        if (order.status.equals("Cancelled", ignoreCase = true)) return
+        if (order.status.equals("Delivered", ignoreCase = true)) {
+            throw IllegalStateException("Delivered orders cannot be cancelled")
+        }
+
+        val orderRef = db.collection("orders").document(order.id)
+        val productRefs = order.items
+            .mapNotNull { it.product.id.takeIf { productId -> productId.isNotBlank() } }
+            .distinct()
+            .associateWith { productId -> db.collection("products").document(productId) }
+        val dayId = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(order.placedAtMillis.takeIf { it > 0L } ?: System.currentTimeMillis()))
+        val wasPaid = order.paymentStatus.equals("PAID", ignoreCase = true)
+
+        db.runTransaction { transaction ->
+            val orderSnapshot = transaction.get(orderRef)
+            if (!orderSnapshot.exists()) throw IllegalStateException("Order no longer exists")
+            if (orderSnapshot.getString("userId") != userId) throw IllegalStateException("Order does not belong to current user")
+            val currentStatus = orderSnapshot.getString("orderStatus").orEmpty()
+            if (currentStatus.equals("Cancelled", ignoreCase = true)) return@runTransaction null
+            if (currentStatus.equals("Delivered", ignoreCase = true)) {
+                throw IllegalStateException("Delivered orders cannot be cancelled")
+            }
+
+            val productSnapshots = productRefs.mapValues { (_, ref) -> transaction.get(ref) }
+            productSnapshots.forEach { (productId, snapshot) ->
+                val items = order.items.filter { it.product.id == productId }
+                val updates = restoreStockUpdatesForProduct(snapshot, items)
+                if (updates.isNotEmpty()) transaction.update(productRefs.getValue(productId), updates)
+            }
+
+            transaction.update(
+                orderRef,
+                mapOf(
+                    "orderStatus" to "Cancelled",
+                    "paymentStatus" to if (wasPaid) "REFUNDED" else order.paymentStatus,
+                    "cancelledAt" to FieldValue.serverTimestamp(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            )
+
+            if (wasPaid) {
+                applyRevenueReversal(transaction, order.items, dayId, order.totalPrice)
+            }
+            null
+        }.await()
+    }
+
     private fun applyRevenueUpdates(
-        batch: com.google.firebase.firestore.WriteBatch,
+        transaction: com.google.firebase.firestore.Transaction,
         cartItems: List<CartItem>,
         dayId: String,
         orderTotal: Double
@@ -578,7 +661,7 @@ object ShopRepository {
             .groupBy { it.product.id }
             .mapValues { (_, items) ->
                 RevenueStats(
-                    revenue = items.sumOf { it.totalPrice },
+                    revenue = items.sumOf { it.product.price * it.quantity },
                     soldCount = items.sumOf { it.quantity },
                     orderCount = 1
                 )
@@ -589,7 +672,7 @@ object ShopRepository {
             .groupBy { it.product.shopId }
             .mapValues { (_, items) ->
                 RevenueStats(
-                    revenue = items.sumOf { it.totalPrice },
+                    revenue = items.sumOf { it.product.price * it.quantity },
                     soldCount = items.sumOf { it.quantity },
                     orderCount = 1
                 )
@@ -597,14 +680,14 @@ object ShopRepository {
 
         productStats.forEach { (productId, stats) ->
             val productRef = db.collection("products").document(productId)
-            batch.update(
+            transaction.update(
                 productRef,
                 mapOf(
                     "soldCount" to FieldValue.increment(stats.soldCount.toLong()),
                     "revenue" to FieldValue.increment(stats.revenue)
                 )
             )
-            batch.set(
+            transaction.set(
                 productRef.collection("dailyRevenue").document(dayId),
                 dailyRevenueData(stats),
                 SetOptions.merge()
@@ -613,7 +696,7 @@ object ShopRepository {
 
         shopStats.forEach { (shopId, stats) ->
             val shopRef = db.collection("shops").document(shopId)
-            batch.set(
+            transaction.set(
                 shopRef,
                 mapOf(
                     "revenue" to FieldValue.increment(stats.revenue),
@@ -623,14 +706,14 @@ object ShopRepository {
                 ),
                 SetOptions.merge()
             )
-            batch.set(
+            transaction.set(
                 shopRef.collection("dailyRevenue").document(dayId),
                 dailyRevenueData(stats),
                 SetOptions.merge()
             )
         }
 
-        batch.set(
+        transaction.set(
             db.collection("analytics_daily").document(dayId),
             mapOf(
                 "grossRevenue" to FieldValue.increment(orderTotal),
@@ -643,11 +726,199 @@ object ShopRepository {
         )
     }
 
-    private fun dailyRevenueData(stats: RevenueStats): Map<String, Any> {
+    private fun applyRevenueReversal(
+        transaction: com.google.firebase.firestore.Transaction,
+        orderItems: List<OrderItem>,
+        dayId: String,
+        orderTotal: Double
+    ) {
+        val productStats = orderItems
+            .filter { it.product.id.isNotBlank() }
+            .groupBy { it.product.id }
+            .mapValues { (_, items) ->
+                RevenueStats(
+                    revenue = items.sumOf { it.product.price * it.quantity },
+                    soldCount = items.sumOf { it.quantity },
+                    orderCount = 1
+                )
+            }
+        val shopStats = orderItems
+            .filter { it.shopId.isNotBlank() || it.product.shopId.isNotBlank() }
+            .groupBy { it.shopId.ifBlank { it.product.shopId } }
+            .mapValues { (_, items) ->
+                RevenueStats(
+                    revenue = items.sumOf { it.product.price * it.quantity },
+                    soldCount = items.sumOf { it.quantity },
+                    orderCount = 1
+                )
+            }
+
+        productStats.forEach { (productId, stats) ->
+            val productRef = db.collection("products").document(productId)
+            transaction.update(
+                productRef,
+                mapOf(
+                    "soldCount" to FieldValue.increment(-stats.soldCount.toLong()),
+                    "revenue" to FieldValue.increment(-stats.revenue)
+                )
+            )
+            transaction.set(
+                productRef.collection("dailyRevenue").document(dayId),
+                dailyRevenueData(stats, multiplier = -1),
+                SetOptions.merge()
+            )
+        }
+
+        shopStats.forEach { (shopId, stats) ->
+            val shopRef = db.collection("shops").document(shopId)
+            transaction.set(
+                shopRef,
+                mapOf(
+                    "revenue" to FieldValue.increment(-stats.revenue),
+                    "soldCount" to FieldValue.increment(-stats.soldCount.toLong()),
+                    "orderCount" to FieldValue.increment(-stats.orderCount.toLong()),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                SetOptions.merge()
+            )
+            transaction.set(
+                shopRef.collection("dailyRevenue").document(dayId),
+                dailyRevenueData(stats, multiplier = -1),
+                SetOptions.merge()
+            )
+        }
+
+        transaction.set(
+            db.collection("analytics_daily").document(dayId),
+            mapOf(
+                "grossRevenue" to FieldValue.increment(-orderTotal),
+                "netRevenue" to FieldValue.increment(-orderTotal),
+                "orderCount" to FieldValue.increment(-1L),
+                "soldCount" to FieldValue.increment(-orderItems.sumOf { it.quantity }.toLong()),
+                "updatedAt" to FieldValue.serverTimestamp()
+            ),
+            SetOptions.merge()
+        )
+    }
+
+    private fun stockUpdatesForProduct(
+        productSnapshot: DocumentSnapshot,
+        items: List<CartItem>
+    ): Map<String, Any> {
+        if (!productSnapshot.exists() || items.isEmpty()) return emptyMap()
+
+        val updates = mutableMapOf<String, Any>()
+        val totalQuantity = items.sumOf { it.quantity }
+        val currentStock = safeInt(productSnapshot.get("stock"))
+        @Suppress("UNCHECKED_CAST")
+        val rawVariants = (productSnapshot.get("variants") as? List<Map<String, Any>>) ?: emptyList()
+
+        if (productSnapshot.contains("stock")) {
+            if (currentStock < totalQuantity) {
+                throw IllegalStateException("Insufficient stock for ${productSnapshot.id}")
+            }
+            updates["stock"] = currentStock - totalQuantity
+        }
+
+        if (rawVariants.isNotEmpty()) {
+            val requiredByVariant = items.groupBy { it.color to it.size }
+                .mapValues { (_, variantItems) -> variantItems.sumOf { it.quantity } }
+            val matched = mutableSetOf<Pair<String, String>>()
+            val updatedVariants = rawVariants.map { variant ->
+                val color = variant["color"] as? String ?: ""
+                val size = variant["size"] as? String ?: ""
+                val key = color to size
+                val required = requiredByVariant[key] ?: 0
+                if (required <= 0) return@map variant
+
+                val variantStock = safeInt(variant["stock"])
+                if (variantStock < required) {
+                    throw IllegalStateException("Insufficient stock for ${productSnapshot.id} $color/$size")
+                }
+                matched.add(key)
+                variant.toMutableMap().apply {
+                    this["stock"] = variantStock - required
+                }
+            }
+
+            val missingVariant = requiredByVariant.keys.firstOrNull { it !in matched }
+            if (missingVariant != null) {
+                throw IllegalStateException("Variant not found for ${productSnapshot.id} ${missingVariant.first}/${missingVariant.second}")
+            }
+            updates["variants"] = updatedVariants
+        }
+
+        updates["updatedAt"] = FieldValue.serverTimestamp()
+        return updates
+    }
+
+    private fun restoreStockUpdatesForProduct(
+        productSnapshot: DocumentSnapshot,
+        items: List<OrderItem>
+    ): Map<String, Any> {
+        if (!productSnapshot.exists() || items.isEmpty()) return emptyMap()
+
+        val updates = mutableMapOf<String, Any>()
+        val totalQuantity = items.sumOf { it.quantity }
+        val currentStock = safeInt(productSnapshot.get("stock"))
+        if (productSnapshot.contains("stock")) {
+            updates["stock"] = currentStock + totalQuantity
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val rawVariants = (productSnapshot.get("variants") as? List<Map<String, Any>>) ?: emptyList()
+        if (rawVariants.isNotEmpty()) {
+            val restoreByVariant = items.groupBy { it.color to it.size }
+                .mapValues { (_, variantItems) -> variantItems.sumOf { it.quantity } }
+            val updatedVariants = rawVariants.map { variant ->
+                val color = variant["color"] as? String ?: ""
+                val size = variant["size"] as? String ?: ""
+                val restore = restoreByVariant[color to size] ?: 0
+                if (restore <= 0) return@map variant
+                variant.toMutableMap().apply {
+                    this["stock"] = safeInt(variant["stock"]) + restore
+                }
+            }
+            updates["variants"] = updatedVariants
+        }
+
+        updates["updatedAt"] = FieldValue.serverTimestamp()
+        return updates
+    }
+
+    private fun ensureRequestedStockAvailable(
+        productSnapshot: DocumentSnapshot,
+        color: String,
+        size: String,
+        requestedQuantity: Int
+    ) {
+        if (!productSnapshot.exists()) throw IllegalStateException("Product is no longer available")
+        val productStock = safeInt(productSnapshot.get("stock"))
+        @Suppress("UNCHECKED_CAST")
+        val variants = (productSnapshot.get("variants") as? List<Map<String, Any>>) ?: emptyList()
+        if (variants.isEmpty()) {
+            if (productSnapshot.contains("stock") && requestedQuantity > productStock) {
+                throw IllegalStateException("Only $productStock items left in stock")
+            }
+            return
+        }
+        if (productSnapshot.contains("stock") && requestedQuantity > productStock) {
+            throw IllegalStateException("Only $productStock items left in stock")
+        }
+        val variant = variants.firstOrNull {
+            (it["color"] as? String ?: "") == color && (it["size"] as? String ?: "") == size
+        } ?: throw IllegalStateException("Selected variant is no longer available")
+        val variantStock = safeInt(variant["stock"])
+        if (requestedQuantity > variantStock) {
+            throw IllegalStateException("Only $variantStock items left for $color/$size")
+        }
+    }
+
+    private fun dailyRevenueData(stats: RevenueStats, multiplier: Int = 1): Map<String, Any> {
         return mapOf(
-            "revenue" to FieldValue.increment(stats.revenue),
-            "soldCount" to FieldValue.increment(stats.soldCount.toLong()),
-            "orderCount" to FieldValue.increment(stats.orderCount.toLong()),
+            "revenue" to FieldValue.increment(stats.revenue * multiplier),
+            "soldCount" to FieldValue.increment(stats.soldCount.toLong() * multiplier),
+            "orderCount" to FieldValue.increment(stats.orderCount.toLong() * multiplier),
             "updatedAt" to FieldValue.serverTimestamp()
         )
     }
@@ -689,13 +960,18 @@ object ShopRepository {
         val safeRating = rating.coerceIn(1, 5)
         val productRef = db.collection("products").document(order.product.id)
         val reviewRef = productRef.collection("reviews").document(order.id)
+        val shopId = order.product.shopId.ifBlank { order.items.firstOrNull { it.product.id == order.product.id }?.shopId.orEmpty() }
+        val shopRef = shopId.takeIf { it.isNotBlank() }?.let { db.collection("shops").document(it) }
 
         db.runTransaction { transaction ->
             val productSnapshot = transaction.get(productRef)
             val reviewSnapshot = transaction.get(reviewRef)
+            val shopSnapshot = shopRef?.let { transaction.get(it) }
 
             val currentRating = (productSnapshot.get("rating") as? Number)?.toDouble() ?: 0.0
             val currentReviewCount = (productSnapshot.get("reviewCount") as? Number)?.toInt() ?: 0
+            val currentShopRating = (shopSnapshot?.get("rating") as? Number)?.toDouble() ?: 0.0
+            val currentShopReviewCount = (shopSnapshot?.get("reviewCount") as? Number)?.toInt() ?: 0
             val oldRating = (reviewSnapshot.get("rating") as? Number)?.toDouble()
             val currentEditCount = (reviewSnapshot.get("editCount") as? Number)?.toInt() ?: 0
             val now = Timestamp.now()
@@ -750,6 +1026,27 @@ object ShopRepository {
                     "reviewCount" to newReviewCount
                 )
             )
+            shopRef?.let { ref ->
+                val newShopReviewCount = if (reviewSnapshot.exists()) {
+                    currentShopReviewCount.coerceAtLeast(1)
+                } else {
+                    currentShopReviewCount + 1
+                }
+                val newShopAverage = if (reviewSnapshot.exists() && oldRating != null) {
+                    ((currentShopRating * newShopReviewCount) - oldRating + safeRating) / newShopReviewCount
+                } else {
+                    ((currentShopRating * currentShopReviewCount) + safeRating) / newShopReviewCount
+                }
+                transaction.set(
+                    ref,
+                    mapOf(
+                        "rating" to newShopAverage.toFloat(),
+                        "reviewCount" to newShopReviewCount,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    ),
+                    SetOptions.merge()
+                )
+            }
         }.await()
     }
 
