@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.google.firebase.auth.FirebaseAuth
+import com.example.fashionapp.data.notification.NotificationRepository
 
 data class HomeUiState(
     val posts: List<Post> = emptyList(),
@@ -76,8 +78,19 @@ class HomeViewModel : ViewModel() {
         )
 
         viewModelScope.launch {
-            //val post = currentState.posts.find { it.id == postId } ?: return@launch
-            //repository.toggleLike(postId, post.likeCount, currentLiked)
+            val post = currentState.posts.find { it.id == postId } ?: return@launch
+            repository.toggleLike(postId, post.likeCount, currentLiked)
+
+            val currentUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+            if (!currentLiked && post.authorId.isNotBlank() && post.authorId != currentUid) {
+                val senderName = currentState.user?.name ?: "Ai đó"
+                val notificationRepo = NotificationRepository()
+                notificationRepo.addNotification(
+                    userId = post.authorId,
+                    message = "$senderName đã thích bài viết của bạn.",
+                    type = "LIKE"
+                )
+            }
         }
     }
 
@@ -105,5 +118,21 @@ class HomeViewModel : ViewModel() {
         }
 
         _uiState.value = currentState.copy(posts = newPosts)
+
+        viewModelScope.launch {
+            val post = currentState.posts.find { it.id == postId } ?: return@launch
+            repository.addComment(postId, newComment)
+
+            val currentUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+            if (post.authorId.isNotBlank() && post.authorId != currentUid) {
+                val senderName = user?.name ?: "Ai đó"
+                val notificationRepo = NotificationRepository()
+                notificationRepo.addNotification(
+                    userId = post.authorId,
+                    message = "$senderName đã bình luận: \"$text\" trên bài viết của bạn.",
+                    type = "COMMENT"
+                )
+            }
+        }
     }
 }

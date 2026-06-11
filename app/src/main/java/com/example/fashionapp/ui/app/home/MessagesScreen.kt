@@ -117,6 +117,9 @@ private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
     val title = when (data.type) {
         "PAYMENT" -> "Thanh toán thành công 🎉"
         "SHIPPING" -> "Theo dõi đơn hàng 🚚"
+        "LIKE" -> "Yêu thích bài viết ❤️"
+        "COMMENT" -> "Bình luận bài viết 💬"
+        "SAVE" -> "Lưu bài viết 💾"
         else -> "Thông báo 🔔"
     }
 

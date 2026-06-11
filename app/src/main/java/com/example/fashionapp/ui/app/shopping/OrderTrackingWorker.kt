@@ -51,7 +51,15 @@ class OrderTrackingWorker(
             else -> return Result.failure()
         }
 
-        showNotification(title, message, step, orderId)
+        val prefs = applicationContext.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+        val prefix = if (userId.isBlank()) "" else "${userId}_"
+        val isMasterEnabled = prefs.getBoolean("${prefix}notifications", prefs.getBoolean("notifications", true))
+        val isSystemEnabled = prefs.getBoolean("${prefix}system_notifications", prefs.getBoolean("system_notifications", true))
+        val isOrderEnabled = prefs.getBoolean("${prefix}order_updates", prefs.getBoolean("order_updates", true))
+
+        if (isMasterEnabled && isSystemEnabled && isOrderEnabled) {
+            showNotification(title, message, step, orderId)
+        }
         saveToFirestore(userId, message, "SHIPPING")
 
         // ── Step 3: cập nhật Firestore status → "Delivered" ───────────

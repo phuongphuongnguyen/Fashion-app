@@ -19,11 +19,14 @@ import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.example.fashionapp.ui.theme.FashionAppTheme
 import com.google.firebase.auth.FirebaseAuth
 
+import com.example.fashionapp.data.notification.NotificationListenerHelper
+
 class MainActivity : ComponentActivity(), ImageLoaderFactory {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         StorageUrlResolver.init(applicationContext)
+        NotificationListenerHelper.init(applicationContext)
         setContent {
             val settingsViewModel: AppSettingsViewModel = viewModel(
                 factory = AppSettingsViewModelFactory(applicationContext)

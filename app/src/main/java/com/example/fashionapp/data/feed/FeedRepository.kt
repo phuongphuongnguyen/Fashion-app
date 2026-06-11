@@ -3,6 +3,7 @@ package com.example.fashionapp.data.feed
 import android.util.Log
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.ProductTag
+import com.example.fashionapp.model.Comment
 import com.example.fashionapp.data.StorageUrlResolver
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
@@ -155,6 +156,13 @@ class FeedRepository {
         val delta = if (isLiked) -1L else 1L
         db.collection("posts").document(postId)
             .update("likeCount", currentCount + delta)
+    }
+
+    suspend fun addComment(postId: String, comment: Comment) {
+        db.collection("posts").document(postId)
+            .collection("comments").document(comment.id).set(comment).await()
+        db.collection("posts").document(postId)
+            .update("commentCount", FieldValue.increment(1)).await()
     }
 
     suspend fun createPost(
