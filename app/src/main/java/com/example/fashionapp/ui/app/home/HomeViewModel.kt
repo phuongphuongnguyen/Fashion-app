@@ -11,6 +11,7 @@ import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -20,11 +21,13 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     // Map postId -> isLiked (local optimistic state)
-    val likedPosts: Map<String, Boolean> = emptyMap()
+    val likedPosts: Map<String, Boolean> = emptyMap(),
+    val pendingLikePostIds: Set<String> = emptySet()
 )
 
 class HomeViewModel : ViewModel() {
     private val repository = FeedRepository()
+    private var likedPostsJob: Job? = null
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -38,6 +41,22 @@ class HomeViewModel : ViewModel() {
         viewModelScope.launch {
             UserSession.currentUser.collect { user ->
                 _uiState.value = _uiState.value.copy(user = user)
+                observeLikedPosts(user?.id.orEmpty())
+            }
+        }
+    }
+
+    private fun observeLikedPosts(userId: String) {
+        likedPostsJob?.cancel()
+        if (userId.isBlank()) {
+            _uiState.value = _uiState.value.copy(likedPosts = emptyMap())
+            return
+        }
+        likedPostsJob = viewModelScope.launch {
+            repository.getLikedPostIdsFlow(userId).collect { ids ->
+                _uiState.value = _uiState.value.copy(
+                    likedPosts = ids.associateWith { true }
+                )
             }
         }
     }
@@ -55,6 +74,9 @@ class HomeViewModel : ViewModel() {
 
     fun toggleLike(postId: String) {
         val currentState = _uiState.value
+        val userId = currentState.user?.id.orEmpty()
+        if (userId.isBlank()) return
+        if (postId in currentState.pendingLikePostIds) return
         val currentLiked = currentState.likedPosts[postId] ?: false
 
         // 1. Cập nhật local liked state
@@ -72,12 +94,20 @@ class HomeViewModel : ViewModel() {
 
         _uiState.value = currentState.copy(
             posts      = newPosts,
-            likedPosts = newLikedPosts
+            likedPosts = newLikedPosts,
+            pendingLikePostIds = currentState.pendingLikePostIds + postId
         )
 
         viewModelScope.launch {
-            //val post = currentState.posts.find { it.id == postId } ?: return@launch
-            //repository.toggleLike(postId, post.likeCount, currentLiked)
+            runCatching {
+                repository.toggleLike(postId, userId)
+            }.onFailure {
+                _uiState.value = currentState
+            }.onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    pendingLikePostIds = _uiState.value.pendingLikePostIds - postId
+                )
+            }
         }
     }
 
@@ -105,5 +135,13 @@ class HomeViewModel : ViewModel() {
         }
 
         _uiState.value = currentState.copy(posts = newPosts)
+
+        viewModelScope.launch {
+            runCatching {
+                repository.addComment(postId, newComment)
+            }.onFailure {
+                _uiState.value = currentState
+            }
+        }
     }
 }

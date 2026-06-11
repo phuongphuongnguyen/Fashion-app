@@ -85,11 +85,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
         Screen.Shop.route,
         Screen.Saved.route,
         Screen.Profile.route,
-        Screen.Cart.route,
-        Screen.Payment.route,
-        Screen.History.route,
-        Screen.Review.route,
-        Screen.ReviewDone.route
+        Screen.History.route
     )
 
     Scaffold(
@@ -265,15 +261,18 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     route = Screen.Search.route,
                     arguments = listOf(
                         navArgument("query") { defaultValue = ""; type = NavType.StringType },
-                        navArgument("categoryId") { nullable = true; defaultValue = null; type = NavType.StringType }
+                        navArgument("categoryId") { nullable = true; defaultValue = null; type = NavType.StringType },
+                        navArgument("sort") { nullable = true; defaultValue = null; type = NavType.StringType }
                     )
                 ) { backStackEntry ->
                     val query = backStackEntry.arguments?.getString("query").orEmpty()
                     val catId = backStackEntry.arguments?.getString("categoryId")
+                    val sort = backStackEntry.arguments?.getString("sort")
                     SearchScreen(
                         navController = navController,
                         initialQuery = query,
-                        initialCategoryId = catId
+                        initialCategoryId = catId,
+                        initialSort = sort
                     )
                 }
 
@@ -407,11 +406,7 @@ fun AppBottomBar(
                     Screen.Shopping -> currentRoute in listOf(
                         Screen.Shopping.route,
                         Screen.Shop.route,
-                        Screen.Cart.route,
-                        Screen.Payment.route,
-                        Screen.History.route,
-                        Screen.Review.route,
-                        Screen.ReviewDone.route
+                        Screen.History.route
                     )
                     else -> currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
                 }

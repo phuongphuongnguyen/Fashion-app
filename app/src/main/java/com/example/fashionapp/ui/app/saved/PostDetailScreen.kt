@@ -77,6 +77,7 @@ fun PostDetailScreen(
                         isLiked = homeState.likedPosts[post.id] ?: false,
                         isSaved = savedUiState.savedPostIds.contains(post.id),
                         isVerified = (post.authorName == "mina"),
+                        isLikePending = post.id in homeState.pendingLikePostIds,
                         onLikeClick = { homeViewModel.toggleLike(post.id) },
                         onSaveClick = { savedViewModel.toggleSave(post.id) },
                         onCommentClick = { showComments = true }

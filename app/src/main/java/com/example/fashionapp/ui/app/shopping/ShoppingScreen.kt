@@ -103,7 +103,7 @@ fun ShoppingScreen(
                 val cats = state.categories.ifEmpty { fallbackCategories }
                 SectionHeader(
                     title = "Categories",
-                    onSeeAll = {}
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute()) }
                 )
                 Spacer(Modifier.height(12.dp))
                 CategoriesGrid(
@@ -116,7 +116,10 @@ fun ShoppingScreen(
 
             // ── New Items ─────────────────────────────────────────────────
             item {
-                SectionHeader(title = "New Items", onSeeAll = {})
+                SectionHeader(
+                    title = "New Items",
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute(sort = "new")) }
+                )
                 Spacer(Modifier.height(12.dp))
                 ProductRow(
                     products = state.newItems,
@@ -130,7 +133,7 @@ fun ShoppingScreen(
             item {
                 SectionHeader(
                     title = "Most Popular",
-                    onSeeAll = {}
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute(sort = "popular")) }
                 )
                 Spacer(Modifier.height(12.dp))
                 ProductRow(

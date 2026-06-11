@@ -322,6 +322,28 @@ class ShopViewModel : ViewModel() {
         }
     }
 
+    fun cancelOrder(orderId: String) {
+        val userId = auth.currentUser?.uid ?: run {
+            _uiState.value = _uiState.value.copy(orderError = "Please sign in before cancelling")
+            return
+        }
+        val order = _uiState.value.orders.firstOrNull { it.id == orderId } ?: run {
+            _uiState.value = _uiState.value.copy(orderError = "Order is no longer available")
+            return
+        }
+
+        viewModelScope.launch {
+            val result = runCatching {
+                repository.cancelOrder(userId, order)
+            }
+            result.exceptionOrNull()?.let { error ->
+                _uiState.value = _uiState.value.copy(
+                    orderError = error.message ?: "Unable to cancel order"
+                )
+            }
+        }
+    }
+
     fun submitReview(
         orderId: String,
         rating: Int,

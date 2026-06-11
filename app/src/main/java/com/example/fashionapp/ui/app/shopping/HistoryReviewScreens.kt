@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -29,8 +30,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -76,11 +80,20 @@ fun HistoryScreen(
         mutableStateOf(if (initialTab == "History") "History" else "Ongoing")
     }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var pendingCancelOrderId by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000)
             nowMillis = System.currentTimeMillis()
+        }
+    }
+
+    LaunchedEffect(uiState.orderError) {
+        uiState.orderError?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.consumeOrderError()
         }
     }
 
@@ -97,6 +110,30 @@ fun HistoryScreen(
         }
     }
 
+    pendingCancelOrderId?.let { orderId ->
+        AlertDialog(
+            onDismissRequest = { pendingCancelOrderId = null },
+            title = { Text("Cancel order?") },
+            text = { Text("This will cancel the order, restore product stock, and refund paid orders.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingCancelOrderId = null
+                        viewModel.cancelOrder(orderId)
+                    }
+                ) {
+                    Text("Cancel order", color = Color(0xFFE53935), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCancelOrderId = null }) {
+                    Text("Keep order")
+                }
+            },
+            containerColor = Color.White
+        )
+    }
+
     Scaffold(
         topBar = {
             FashionTopBar(
@@ -104,6 +141,7 @@ fun HistoryScreen(
                 onBackClick = { navController.popBackStack() }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.White
     ) { padding ->
         LazyColumn(
@@ -225,7 +263,22 @@ fun HistoryScreen(
                                 )
                             }
                         } else {
-                            Text("Ongoing", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Ongoing", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Spacer(Modifier.height(6.dp))
+                                Button(
+                                    onClick = { pendingCancelOrderId = order.id },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFFFEBEE),
+                                        contentColor = Color(0xFFE53935)
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                    modifier = Modifier.height(32.dp),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Cancel", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
