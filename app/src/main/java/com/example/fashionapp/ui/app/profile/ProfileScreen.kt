@@ -97,8 +97,7 @@ fun ProfileScreen(
                 onDismissRequest = { showBioDialog = false },
                 sheetState = bioSheetState,
                 containerColor = Color.White,
-                dragHandle = { BottomSheetDefaults.DragHandle() },
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                dragHandle = { BottomSheetDefaults.DragHandle() }
             ) {
                 Column(
                     modifier = Modifier
