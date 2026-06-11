@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.ImageLoader
 import coil.ImageLoaderFactory
@@ -18,12 +19,31 @@ import com.example.fashionapp.ui.app.settings.AppSettingsViewModelFactory
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.example.fashionapp.ui.theme.FashionAppTheme
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity(), ImageLoaderFactory {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         StorageUrlResolver.init(applicationContext)
+        
+        // Theo dõi trạng thái đăng nhập và nạp Profile vào UserSession
+        val auth = FirebaseAuth.getInstance()
+        val userRepository = com.example.fashionapp.data.user.UserRepository()
+        auth.addAuthStateListener { firebaseAuth ->
+            val uid = firebaseAuth.currentUser?.uid
+            if (uid != null) {
+                // Nạp profile realtime
+                lifecycleScope.launch {
+                    userRepository.getUserProfileFlow(uid).collect { user ->
+                        com.example.fashionapp.data.user.UserSession.updateCurrentUser(user)
+                    }
+                }
+            } else {
+                com.example.fashionapp.data.user.UserSession.clear()
+            }
+        }
+
         setContent {
             val settingsViewModel: AppSettingsViewModel = viewModel(
                 factory = AppSettingsViewModelFactory(applicationContext)

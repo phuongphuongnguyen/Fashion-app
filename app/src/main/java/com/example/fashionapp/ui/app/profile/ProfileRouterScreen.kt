@@ -26,7 +26,7 @@ fun ProfileRouterScreen(
     val role by produceState<String?>(initialValue = null, id) {
         val repo = UserRepository()
         val owner = repo.getUserProfile(id) ?: repo.findUserByShopId(id)
-        value = (owner?.role ?: "").ifBlank { "user" }
+        value = (owner?.role ?: "").lowercase().ifBlank { "user" }
     }
 
     when (role) {

@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -85,6 +86,9 @@ fun HistoryScreen(
 
     val displayedOrders = remember(orders, selectedTab, nowMillis) {
         orders.filter { order ->
+            // Đơn đã giao (Delivered) → luôn thuộc History
+            // Đơn đang xử lý (Ongoing) + chưa quá timeout → thuộc Ongoing
+            // Còn lại → History
             val isOngoing = order.status == "Ongoing" &&
                 order.placedAtMillis > 0L &&
                 nowMillis - order.placedAtMillis < ONGOING_DURATION_MILLIS
@@ -278,6 +282,7 @@ fun ReviewScreen(
     viewModel: ShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val orderToReview = uiState.orders.firstOrNull { it.id == orderId }
     val productToReview = orderToReview?.product
     val existingReview = uiState.reviewsByOrderId[orderId]
@@ -290,6 +295,13 @@ fun ReviewScreen(
     var rating by remember { mutableIntStateOf(5) }
     var comment by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.reviewError) {
+        uiState.reviewError?.let { message ->
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeReviewError()
+        }
+    }
 
     LaunchedEffect(existingReview?.id, existingReview?.rating, existingReview?.comment) {
         existingReview?.let {
@@ -430,11 +442,11 @@ fun ReviewScreen(
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF)),
                         shape = RoundedCornerShape(25.dp),
-                        enabled = productToReview != null && canEditReview && !isSubmitting
+                        enabled = productToReview != null && canEditReview && !isSubmitting && !uiState.isSubmittingReview
                     ) {
                         Text(
                             when {
-                                isSubmitting -> "Submitting..."
+                                isSubmitting || uiState.isSubmittingReview -> "Submitting..."
                                 existingReview == null -> "Submit Review"
                                 isEditingReview -> "Save Edit"
                                 else -> "Reviewed"

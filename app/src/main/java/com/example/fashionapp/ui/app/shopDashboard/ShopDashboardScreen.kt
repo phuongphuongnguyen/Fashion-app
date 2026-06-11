@@ -49,17 +49,7 @@ fun ShopDashboardScreen(
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Quản lý shop",
-                actions = {
-                    IconButton(onClick = { navController.navigate(Screen.Settings.createRoute()) }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_setting),
-                            contentDescription = "Cài đặt",
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(30.dp)
-                        )
-                    }
-                }
+                title = "Quản lý shop"
             )
         },
         containerColor = Color.White,

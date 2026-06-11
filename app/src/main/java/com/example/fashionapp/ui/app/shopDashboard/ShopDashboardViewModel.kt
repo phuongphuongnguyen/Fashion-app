@@ -47,6 +47,7 @@ class ShopDashboardViewModel : ViewModel() {
             val user = userRepository.getUserProfile(uid)
             // shopId: ưu tiên users/{uid}.shopId, fallback về chính uid (lúc đăng ký shop, shopId = uid)
             val shopId = user?.shopId?.takeIf { it.isNotBlank() } ?: uid
+            android.util.Log.d("ShopDashboardVM", "Using shopId: $shopId for uid: $uid")
 
             val statsDeferred = async { ShopDashboardRepository.getShopStats(shopId) }
             val dailyDeferred = async { ShopDashboardRepository.getShopDailyRevenue(shopId, limit = 7) }

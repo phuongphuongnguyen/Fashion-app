@@ -13,9 +13,11 @@ import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.User
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuth.AuthStateListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -27,6 +29,7 @@ data class ShopUiState(
     val cartItems: List<CartItem> = emptyList(),
     val orders: List<ReviewOrder> = emptyList(),
     val reviewsByOrderId: Map<String, ProductReview> = emptyMap(),
+    val currentUserProfile: User? = null,
     val shopUser: User? = null,
     val shopLogoUrl: String = "",
     val shopRating: Float = 0f,
@@ -35,7 +38,12 @@ data class ShopUiState(
     val isFollowing: Boolean = false,
     val isLoadingProducts: Boolean = true,
     val isLoadingCart: Boolean = true,
-    val isLoadingOrders: Boolean = true
+    val isLoadingOrders: Boolean = true,
+    val cartError: String? = null,
+    val orderError: String? = null,
+    val reviewError: String? = null,
+    val isPlacingOrder: Boolean = false,
+    val isSubmittingReview: Boolean = false
 )
 
 class ShopViewModel : ViewModel() {
@@ -43,14 +51,72 @@ class ShopViewModel : ViewModel() {
     private val feedRepository = FeedRepository()
     private val userRepository = UserRepository()
     private val auth = FirebaseAuth.getInstance()
+    private var observedUserId: String? = "__not_loaded__"
+    private var cartJob: Job? = null
+    private var ordersJob: Job? = null
+    private var userJob: Job? = null
+    private val authStateListener = AuthStateListener { firebaseAuth ->
+        loadUserShoppingData(firebaseAuth.currentUser?.uid)
+    }
 
     private val _uiState = MutableStateFlow(ShopUiState())
     val uiState: StateFlow<ShopUiState> = _uiState.asStateFlow()
 
     init {
         loadProducts()
-        loadCartItems()
-        loadOrders()
+        auth.addAuthStateListener(authStateListener)
+        refreshShoppingData()
+    }
+
+    override fun onCleared() {
+        auth.removeAuthStateListener(authStateListener)
+        super.onCleared()
+    }
+
+    fun refreshShoppingData() {
+        loadUserShoppingData(auth.currentUser?.uid, force = true)
+    }
+
+    private fun loadUserShoppingData(userId: String?, force: Boolean = false) {
+        if (!force && observedUserId == userId) return
+        observedUserId = userId
+        cartJob?.cancel()
+        ordersJob?.cancel()
+        userJob?.cancel()
+
+        if (userId.isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(
+                cartItems = emptyList(),
+                orders = emptyList(),
+                reviewsByOrderId = emptyMap(),
+                currentUserProfile = null,
+                isLoadingCart = false,
+                isLoadingOrders = false,
+                cartError = null
+            )
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            cartItems = emptyList(),
+            orders = emptyList(),
+            reviewsByOrderId = emptyMap(),
+            currentUserProfile = null,
+            isLoadingCart = true,
+            isLoadingOrders = true,
+            cartError = null
+        )
+        loadCurrentUserProfile(userId)
+        loadCartItems(userId)
+        loadOrders(userId)
+    }
+
+    private fun loadCurrentUserProfile(userId: String) {
+        userJob = viewModelScope.launch {
+            userRepository.getUserProfileFlow(userId).collect { user ->
+                _uiState.value = _uiState.value.copy(currentUserProfile = user)
+            }
+        }
     }
 
     // navId có thể là userId (vào từ feed/search) HOẶC shopId (vào từ product detail).
@@ -127,21 +193,20 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    private fun loadCartItems() {
-        val userId = auth.currentUser?.uid ?: return
-        viewModelScope.launch {
-            repository.getCartItemsFlow(userId).collect { items ->
+    private fun loadCartItems(userId: String) {
+        cartJob = viewModelScope.launch {
+            repository.getCartItemsFlow(userId).collect { snapshot ->
                 _uiState.value = _uiState.value.copy(
-                    cartItems = items,
-                    isLoadingCart = false
+                    cartItems = snapshot.items,
+                    isLoadingCart = false,
+                    cartError = snapshot.errorMessage
                 )
             }
         }
     }
 
-    private fun loadOrders() {
-        val userId = auth.currentUser?.uid ?: return
-        viewModelScope.launch {
+    private fun loadOrders(userId: String) {
+        ordersJob = viewModelScope.launch {
             repository.getOrdersFlow(userId).collect { orders ->
                 _uiState.value = _uiState.value.copy(
                     orders = orders,
@@ -169,52 +234,91 @@ class ShopViewModel : ViewModel() {
             quantity = quantity
         )
         viewModelScope.launch {
-            repository.addToCart(userId, cartItem)
+            val result = runCatching { repository.addToCart(userId, cartItem) }
+            result.exceptionOrNull()?.let { error ->
+                _uiState.value = _uiState.value.copy(
+                    cartError = error.message ?: "Unable to add item to cart"
+                )
+            }
         }
     }
 
     fun updateCartQuantity(cartItemId: String, newQuantity: Int) {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
-            repository.updateCartItemQuantity(userId, cartItemId, newQuantity)
+            val result = runCatching {
+                repository.updateCartItemQuantity(userId, cartItemId, newQuantity)
+            }
+            result.exceptionOrNull()?.let { error ->
+                _uiState.value = _uiState.value.copy(
+                    cartError = error.message ?: "Unable to update cart"
+                )
+            }
+        }
+    }
+
+    fun restoreCartItem(cartItem: CartItem) {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            val result = runCatching {
+                repository.restoreCartItem(userId, cartItem)
+            }
+            result.exceptionOrNull()?.let { error ->
+                _uiState.value = _uiState.value.copy(
+                    cartError = error.message ?: "Unable to restore cart item"
+                )
+            }
         }
     }
 
     fun placeOrderFromCart(
         cartItems: List<CartItem> = _uiState.value.cartItems,
         paymentMethod: String = "visa",
+        paymentStatus: String = "PAID",
         shippingMethod: String = "standard",
         shippingFee: Double = 0.0,
-        shippingAddress: String = ""
+        shippingAddress: String = "",
+        momoOrderId: String = "",
+        onComplete: (String?) -> Unit = {}
     ) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = auth.currentUser?.uid ?: run {
+            _uiState.value = _uiState.value.copy(orderError = "Please sign in before checkout")
+            onComplete(null)
+            return
+        }
         val items = cartItems
-        if (items.isEmpty()) return
+        if (items.isEmpty()) {
+            _uiState.value = _uiState.value.copy(orderError = "Your checkout items are no longer available")
+            onComplete(null)
+            return
+        }
 
         val dateFormat = SimpleDateFormat("MMMM yyyy", Locale.US)
         val currentDate = dateFormat.format(Date())
         val placedAtMillis = System.currentTimeMillis()
 
-        val orders = items.map {
-            ReviewOrder(
-                id = "order_${System.currentTimeMillis()}_${it.id}",
-                product = it.product,
-                status = "Ongoing",
-                orderDate = currentDate,
-                placedAtMillis = placedAtMillis
-            )
-        }
-
         viewModelScope.launch {
-            repository.placeOrder(
-                userId = userId,
-                orders = orders,
-                paymentMethod = paymentMethod,
-                shippingMethod = shippingMethod,
-                shippingFee = shippingFee,
-                shippingAddress = shippingAddress
+            _uiState.value = _uiState.value.copy(isPlacingOrder = true, orderError = null)
+            val result = runCatching {
+                repository.placeOrder(
+                    userId = userId,
+                    cartItems = items,
+                    orderDate = currentDate,
+                    placedAtMillis = placedAtMillis,
+                    paymentMethod = paymentMethod,
+                    paymentStatus = paymentStatus,
+                    shippingMethod = shippingMethod,
+                    shippingFee = shippingFee,
+                    shippingAddress = shippingAddress,
+                    momoOrderId = momoOrderId
+                )
+            }
+            _uiState.value = _uiState.value.copy(
+                isPlacingOrder = false,
+                orderError = result.exceptionOrNull()?.message
+                    ?: if (result.getOrNull().isNullOrBlank()) "Unable to place order" else null
             )
-            repository.clearCart(userId, items)
+            onComplete(result.getOrNull()?.takeIf { it.isNotBlank() })
         }
     }
 
@@ -225,16 +329,19 @@ class ShopViewModel : ViewModel() {
         onComplete: (Boolean) -> Unit
     ) {
         val userId = auth.currentUser?.uid ?: run {
+            _uiState.value = _uiState.value.copy(reviewError = "Please sign in before reviewing")
             onComplete(false)
             return
         }
         val order = _uiState.value.orders.firstOrNull { it.id == orderId } ?: run {
+            _uiState.value = _uiState.value.copy(reviewError = "Order is no longer available")
             onComplete(false)
             return
         }
         val currentUser = UserSession.currentUser.value
 
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingReview = true, reviewError = null)
             val result = runCatching {
                 repository.submitProductReview(
                     userId = userId,
@@ -252,7 +359,20 @@ class ShopViewModel : ViewModel() {
             if (result.isSuccess) {
                 refreshReviews()
             }
+            _uiState.value = _uiState.value.copy(
+                isSubmittingReview = false,
+                reviewError = result.exceptionOrNull()?.message
+                    ?: if (result.isFailure) "Unable to submit review" else null
+            )
             onComplete(result.isSuccess)
         }
+    }
+
+    fun consumeOrderError() {
+        _uiState.value = _uiState.value.copy(orderError = null)
+    }
+
+    fun consumeReviewError() {
+        _uiState.value = _uiState.value.copy(reviewError = null)
     }
 }

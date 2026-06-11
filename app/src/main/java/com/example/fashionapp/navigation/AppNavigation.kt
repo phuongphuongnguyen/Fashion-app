@@ -55,6 +55,7 @@ import com.example.fashionapp.ui.app.settings.SettingsScreen
 import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
 import com.example.fashionapp.ui.app.search.SearchScreen
 import com.example.fashionapp.ui.app.productdetail.ProductDetailScreen
+import com.example.fashionapp.ui.app.productdetail.ProductReviewsScreen
 import com.example.fashionapp.ui.app.post.CreatePostScreen
 import com.example.fashionapp.ui.app.shopping.MomoPaymentScreen
 import com.example.fashionapp.ui.app.shopping.ShopViewModel
@@ -232,13 +233,23 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     SavedTabRouter(navController = navController)
                 }
                 composable(Screen.Profile.route) {
-                    ProfileScreen(navController = navController)
+                    val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+                    ProfileRouterScreen(
+                        id            = uid,
+                        navController = navController
+                    )
                 }
 
                 // ── App screens ───────────────────────────────────────────
 
-                composable(Screen.Settings.route) {
-                    SettingsScreen(navController = navController)
+                composable(
+                    route = Screen.Settings.route,
+                    arguments = listOf(
+                        navArgument("subScreen") { nullable = true; defaultValue = null; type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val subScreen = backStackEntry.arguments?.getString("subScreen")
+                    SettingsScreen(navController = navController, initialSubScreen = subScreen)
                 }
                 composable(Screen.Chatbot.route) {
                     ChatbotScreen(navController = navController)
@@ -283,6 +294,13 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                         productId = productId,
                         navController = navController
                     )
+                }
+                composable(
+                    route = Screen.ProductReviews.route,
+                    arguments = listOf(navArgument("productId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val productId = backStackEntry.arguments?.getString("productId").orEmpty()
+                    ProductReviewsScreen(productId = productId, navController = navController)
                 }
 
                 composable(
@@ -400,7 +418,7 @@ fun AppBottomBar(
             BottomNavItem(
                 screen = Screen.Saved,
                 label = if (isShop) "Analytics" else "Saved",
-                iconRes = if (isShop) R.drawable.ic_analyst else R.drawable.ic_saved
+                iconRes = if (isShop) R.drawable.ic_charts else R.drawable.ic_saved
             ),
             BottomNavItem(Screen.Profile, "Profile", R.drawable.ic_profile)
         )
@@ -460,10 +478,11 @@ fun BottomNavItemView(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        val tint = if (isSelected) Color.Black else Color.Unspecified
         Icon(
             painter = painterResource(id = item.iconRes),
             contentDescription = item.label,
-            tint = if (isSelected) Color.Black else Color.Unspecified,
+            tint = tint,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))

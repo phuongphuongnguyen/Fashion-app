@@ -68,20 +68,20 @@ object ShopDashboardRepository {
         }
     }
 
-    // shops/{shopId}/dailyRevenue → các ngày gần nhất (trả về tăng dần để vẽ chart trái→phải)
+    // shops/{shopId}/DailyRevenue → các ngày gần nhất (trả về tăng dần để vẽ chart trái→phải)
     suspend fun getShopDailyRevenue(shopId: String, limit: Int = 7): List<DailyRevenuePoint> {
         if (shopId.isBlank()) return emptyList()
         return fetchDailyRevenue(
-            db.collection("shops").document(shopId).collection("dailyRevenue"),
+            db.collection("shops").document(shopId).collection("DailyRevenue"),
             limit
         )
     }
 
-    // products/{productId}/dailyRevenue → các ngày gần nhất
+    // products/{productId}/DailyRevenue → các ngày gần nhất
     suspend fun getProductDailyRevenue(productId: String, limit: Int = 7): List<DailyRevenuePoint> {
         if (productId.isBlank()) return emptyList()
         return fetchDailyRevenue(
-            db.collection("products").document(productId).collection("dailyRevenue"),
+            db.collection("products").document(productId).collection("DailyRevenue"),
             limit
         )
     }
@@ -93,7 +93,7 @@ object ShopDashboardRepository {
                 .orderBy(FieldPath.documentId(), Query.Direction.DESCENDING)
                 .limit(limit.toLong())
                 .get().await()
-            snap.documents.map { d ->
+            val result = snap.documents.map { d ->
                 DailyRevenuePoint(
                     date = d.id,
                     revenue = safeDouble(d.get("revenue")),
@@ -101,7 +101,11 @@ object ShopDashboardRepository {
                     soldCount = safeInt(d.get("soldCount"))
                 )
             }.sortedBy { it.date }
-        } catch (_: Exception) {
+            
+            android.util.Log.d("ShopDashboardRepo", "Fetched ${result.size} points for path: ${ref.path}")
+            result
+        } catch (e: Exception) {
+            android.util.Log.e("ShopDashboardRepo", "Error fetching daily revenue for path: ${ref.path}", e)
             emptyList()
         }
     }
@@ -123,7 +127,7 @@ object ShopDashboardRepository {
                 }
             }.awaitAll().filterNotNull()
                 .sortedByDescending { it.revenue }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             emptyList()
         }
     }

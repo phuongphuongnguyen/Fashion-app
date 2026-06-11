@@ -31,6 +31,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -46,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -97,8 +99,20 @@ fun ShopScreen(
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "",
-                onBackClick = { navController.popBackStack() }
+                title = if (shopState.isOwnProfile) "Profile" else "",
+                onBackClick = if (shopState.isOwnProfile) null else { { navController.popBackStack() } },
+                actions = {
+                    if (shopState.isOwnProfile) {
+                        IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_setting),
+                                contentDescription = "Settings",
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+                    }
+                }
             )
         },
         containerColor = Color.White
@@ -132,7 +146,7 @@ fun ShopScreen(
             }
             
             // Chỉ tài khoản role = "shop" mới có tab Products; user thường chỉ có Posts.
-            val isShop = shopState.shopUser?.role == "shop"
+            val isShop = shopState.shopUser?.role?.equals("shop", ignoreCase = true) == true
 
             ShopHeader(
                 shopName = shopName,
@@ -179,6 +193,9 @@ fun ShopScreen(
                                 if (post.authorId != shopId) {
                                     navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
                                 }
+                            },
+                            onProductClick = { productId ->
+                                navController.navigate(Screen.ProductDetail.createRoute(productId))
                             }
                         )
                         HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))

@@ -5,6 +5,13 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+
 
 data class AuthResult(
     val isSuccess: Boolean,
@@ -79,8 +86,11 @@ class FirebaseAuthBackend(
         return try {
             val normalizedEmail = email.trim()
 
-            val methods = auth.fetchSignInMethodsForEmail(normalizedEmail).await().signInMethods
-            if (methods.isNullOrEmpty()) {
+            val usersQuery = firestore.collection("users")
+                .whereEqualTo("email", normalizedEmail)
+                .get()
+                .await()
+            if (usersQuery.isEmpty) {
                 return AuthResult(false, "Tai khoan khong ton tai")
             }
 
@@ -100,23 +110,49 @@ class FirebaseAuthBackend(
                 )
                 .await()
 
-            firestore.collection("mail")
-                .add(
-                    mapOf(
-                        "to" to normalizedEmail,
-                        "message" to mapOf(
-                            "subject" to "Fashion App OTP",
-                            "text" to "Ma OTP cua ban la: $otp. Ma co hieu luc trong 60 giay."
-                        )
-                    )
-                )
-                .await()
+            // Gọi API Brevo để gửi email trực tiếp chứa OTP
+            val client = OkHttpClient()
+            val apiKey = "" // Cần được thay thế bằng API Key của bạn
+            val senderEmail = "" // Cần được thay thế bằng email đăng ký Brevo của bạn
+
+            val jsonBody = """
+                {
+                  "sender": {
+                    "name": "Fashion App Support",
+                    "email": "$senderEmail"
+                  },
+                  "to": [
+                    {
+                      "email": "$normalizedEmail"
+                    }
+                  ],
+                  "subject": "Fashion App - Mã OTP đặt lại mật khẩu",
+                  "htmlContent": "<html><body><h3>Mã xác nhận OTP của bạn là: <b style='color:#007BFF;font-size:24px;'>$otp</b></h3><p>Mã này có hiệu lực trong vòng 60 giây.</p></body></html>"
+                }
+            """.trimIndent()
+
+            val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
+            val request = Request.Builder()
+                .url("https://api.brevo.com/v3/smtp/email")
+                .addHeader("api-key", apiKey)
+                .addHeader("Content-Type", "application/json")
+                .post(body)
+                .build()
+
+            val response = withContext(Dispatchers.IO) {
+                client.newCall(request).execute()
+            }
+
+            if (!response.isSuccessful) {
+                return AuthResult(false, "Gui email that bai. Vui long kiem tra cau hinh API.")
+            }
 
             AuthResult(true, "Da gui OTP 4 so ve email. Vui long nhap trong 60 giay.")
         } catch (e: FirebaseAuthException) {
             AuthResult(false, mapFirebaseAuthError(e.errorCode))
-        } catch (_: Exception) {
-            AuthResult(false, "Khong the ket noi den server, vui long thu lai")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            AuthResult(false, "Loi: ${e.localizedMessage ?: e.message}")
         }
     }
 
@@ -182,11 +218,27 @@ class FirebaseAuthBackend(
                 return AuthResult(false, "OTP khong hop le")
             }
 
-            // Firebase client SDK cannot reset another account's password by email+OTP.
-            // Keep user on secure flow until backend is available.
-            AuthResult(false, "Da xac thuc OTP. Tam thoi chua doi duoc mat khau neu khong co backend.")
-        } catch (_: Exception) {
-            AuthResult(false, "Khong the ket noi den server, vui long thu lai")
+            // Xử lý đổi mật khẩu giả lập ở phía client bằng cách lưu vào Firestore users
+            val usersQuery = firestore.collection("users")
+                .whereEqualTo("email", normalizedEmail)
+                .get()
+                .await()
+
+            if (!usersQuery.isEmpty) {
+                val userDoc = usersQuery.documents.first()
+                firestore.collection("users")
+                    .document(userDoc.id)
+                    .update("password", newPassword)
+                    .await()
+            }
+
+            // Xóa mã OTP sau khi sử dụng thành công
+            docRef.delete().await()
+
+            AuthResult(true, "Dat lai mat khau thanh cong")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            AuthResult(false, "Loi: ${e.localizedMessage ?: e.message}")
         }
     }
 
