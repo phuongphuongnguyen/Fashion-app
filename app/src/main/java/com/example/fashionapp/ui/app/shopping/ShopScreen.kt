@@ -170,6 +170,9 @@ fun ShopScreen(
                                 if (post.authorId != shopId) {
                                     navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
                                 }
+                            },
+                            onProductClick = { productId ->
+                                navController.navigate(Screen.ProductDetail.createRoute(productId))
                             }
                         )
                         HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))

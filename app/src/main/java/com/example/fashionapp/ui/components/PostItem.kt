@@ -50,7 +50,8 @@ fun FeedPostItem(
     onLikeClick: () -> Unit,
     onSaveClick: () -> Unit,
     onCommentClick: () -> Unit,
-    onHeaderClick: () -> Unit = {}
+    onHeaderClick: () -> Unit = {},
+    onProductClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     Column {
@@ -67,7 +68,7 @@ fun FeedPostItem(
         }
 
         if (post.taggedProducts.isNotEmpty()) {
-            ProductTagsRow(tags = post.taggedProducts)
+            ProductTagsRow(tags = post.taggedProducts, onProductClick = onProductClick)
         }
 
         ActionRow(
@@ -233,7 +234,7 @@ fun PostImagesRow(imageUrls: List<String>) {
 }
 
 @Composable
-fun ProductTagsRow(tags: List<ProductTag>) {
+fun ProductTagsRow(tags: List<ProductTag>, onProductClick: (String) -> Unit = {}) {
     Row(
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -241,8 +242,14 @@ fun ProductTagsRow(tags: List<ProductTag>) {
         tags.take(4).forEach { tag ->
             AsyncImage(
                 model = tag.thumbnailUrl.ifBlank { null },
-                contentDescription = null,
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFF0F0F0)),
+                contentDescription = tag.label.ifBlank { null },
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF0F0F0))
+                    .clickable(enabled = tag.productId.isNotBlank()) {
+                        onProductClick(tag.productId)
+                    },
                 contentScale = ContentScale.Crop,
                 error = painterResource(R.drawable.ic_shopping)
             )
