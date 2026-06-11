@@ -52,6 +52,7 @@ class OrderTrackingWorker(
         }
 
         showNotification(title, message, step, orderId)
+        saveToFirestore(userId, message, "SHIPPING")
 
         // ── Step 3: cập nhật Firestore status → "Delivered" ───────────
         if (step == 3) {
@@ -102,6 +103,32 @@ class OrderTrackingWorker(
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Failed to update order $orderId: ${e.message}")
+            }
+    }
+
+    private fun saveToFirestore(userId: String, message: String, type: String) {
+        if (userId.isEmpty()) return
+        val db = FirebaseFirestore.getInstance()
+        val docRef = db.collection("users")
+            .document(userId)
+            .collection("user_notifications")
+            .document()
+
+        val data = hashMapOf(
+            "id" to docRef.id,
+            "userId" to userId,
+            "message" to message,
+            "type" to type,
+            "isRead" to false,
+            "createdAt" to com.google.firebase.Timestamp.now()
+        )
+
+        docRef.set(data)
+            .addOnSuccessListener {
+                Log.d(TAG, "Successfully saved tracking notification to Firestore: ${docRef.id}")
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to save notification: ${e.message}")
             }
     }
 

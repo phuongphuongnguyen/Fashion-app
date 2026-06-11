@@ -157,6 +157,25 @@ fun MomoPaymentScreen(
                         if (orderId == null) return@placeOrderFromCart
 
                         showPaymentNotification(context, amount)
+
+                        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        db.collection("users")
+                            .document(uid)
+                            .collection("user_notifications")
+                            .add(
+                                hashMapOf(
+                                    "id" to "", // will be set or can be updated, but for simple document read, it's fine. Wait, we can generate a document ID.
+                                    "userId" to uid,
+                                    "message" to "Đơn hàng ₫${formatAmount(amount)} đã được thanh toán thành công!",
+                                    "type" to "PAYMENT",
+                                    "isRead" to false,
+                                    "createdAt" to com.google.firebase.Timestamp.now()
+                                )
+                            ).addOnSuccessListener { docRef ->
+                                // Optional: Update the 'id' field inside the document to match the document's auto-generated ID.
+                                docRef.update("id", docRef.id)
+                            }
+
                         OrderTrackingScheduler.scheduleTracking(
                             context = context,
                             orderId = orderId,
