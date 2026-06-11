@@ -27,8 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.navigation.NavController
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.data.user.UserSession
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.Dispatchers
@@ -61,8 +61,8 @@ fun MomoPaymentScreen(
     viewModel: ShopViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ){
     val uiState by viewModel.uiState.collectAsState()
+    val currentUser by UserSession.currentUser.collectAsState()
     val context = LocalContext.current
-    val db  = FirebaseFirestore.getInstance()
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val checkoutItems = remember(uiState.cartItems, selectedCartItemIds) {
         if (selectedCartItemIds.isEmpty()) {
@@ -71,10 +71,15 @@ fun MomoPaymentScreen(
             uiState.cartItems.filter { it.id in selectedCartItemIds }
         }
     }
+    val checkoutUser = uiState.currentUserProfile ?: currentUser
+    val shippingAddress = checkoutUser?.address.orEmpty()
+    val hasShippingAddress = shippingAddress.isNotBlank()
+    val selectedItemsMissing = selectedCartItemIds.isNotEmpty() &&
+        !uiState.isLoadingCart &&
+        checkoutItems.size < selectedCartItemIds.size
 
     var qrCodeUrl        by remember { mutableStateOf<String?>(null) }
     var momoOrderId      by remember { mutableStateOf<String?>(null) }
-    var firestoreOrderId by remember { mutableStateOf<String?>(null) }
     var isLoading        by remember { mutableStateOf(true) }
     var errorMsg         by remember { mutableStateOf<String?>(null) }
     var isPaid           by remember { mutableStateOf(false) }
@@ -92,27 +97,36 @@ fun MomoPaymentScreen(
     }
 
     // ── Bước 1: Tạo QR MoMo ─────────────────────────────────────────────────
-    LaunchedEffect(Unit) {
+    LaunchedEffect(amount, uiState.isLoadingCart, checkoutItems, hasShippingAddress, selectedItemsMissing) {
+        if (uiState.isLoadingCart) return@LaunchedEffect
+        when {
+            checkoutItems.isEmpty() -> {
+                errorMsg = "Không có sản phẩm để thanh toán"
+                isLoading = false
+                return@LaunchedEffect
+            }
+            selectedItemsMissing -> {
+                errorMsg = "Một số sản phẩm đã chọn không còn trong giỏ hàng"
+                isLoading = false
+                return@LaunchedEffect
+            }
+            !hasShippingAddress -> {
+                errorMsg = "Vui lòng cập nhật địa chỉ giao hàng trước khi thanh toán"
+                isLoading = false
+                return@LaunchedEffect
+            }
+            amount <= 0L -> {
+                errorMsg = "Số tiền thanh toán không hợp lệ"
+                isLoading = false
+                return@LaunchedEffect
+            }
+        }
         try {
             val result  = withContext(Dispatchers.IO) { createMomoQR(amount) }
             qrCodeUrl   = result.first
             momoOrderId = result.second
             isLoading   = false
 
-            // Tạo document order trong Firestore
-            val orderData = hashMapOf(
-                "userId"        to uid,
-                "totalPrice"    to amount,
-                "paymentMethod" to "MoMo",
-                "paymentStatus" to "UNPAID",
-                "momoOrderId"   to result.second,
-                "createdAt"     to com.google.firebase.Timestamp.now()
-            )
-            db.collection("orders").add(orderData)
-                .addOnSuccessListener { docRef ->
-                    firestoreOrderId = docRef.id
-                    Log.d("MoMo", "Tạo order: ${docRef.id}")
-                }
         } catch (e: Exception) {
             errorMsg = e.message
             isLoading = false
@@ -123,6 +137,7 @@ fun MomoPaymentScreen(
     // ── Bước 2: Polling MoMo 3s/lần ─────────────────────────────────────────
     LaunchedEffect(momoOrderId) {
         val oid = momoOrderId ?: return@LaunchedEffect
+        if (!hasShippingAddress || checkoutItems.isEmpty()) return@LaunchedEffect
         isPolling = true
         while (isActive && !isPaid) {
             delay(3000)
@@ -134,22 +149,44 @@ fun MomoPaymentScreen(
                     isPolling = false
                     viewModel.placeOrderFromCart(
                         cartItems = checkoutItems,
-                        paymentMethod = "MoMo"
-                    )
-                    // Update Firestore
-                    firestoreOrderId?.let { docId ->
-                        db.collection("orders").document(docId)
-                            .update("paymentStatus", "PAID")
-                            .addOnSuccessListener {
-                                Log.d("MoMo", "Update PAID: $docId")
-                            }
-                    }
+                        paymentMethod = "MoMo",
+                        paymentStatus = "PAID",
+                        shippingAddress = shippingAddress,
+                        momoOrderId = oid
+                    ) { orderId ->
+                        if (orderId == null) return@placeOrderFromCart
 
-                    // Bắn notification
-                    showPaymentNotification(context, amount)
-                    navController.navigate(Screen.History.createRoute("Ongoing")) {
-                        popUpTo(Screen.Cart.route) { inclusive = false }
-                        launchSingleTop = true
+                        showPaymentNotification(context, amount)
+
+                        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        db.collection("users")
+                            .document(uid)
+                            .collection("user_notifications")
+                            .add(
+                                hashMapOf(
+                                    "id" to "", // will be set or can be updated, but for simple document read, it's fine. Wait, we can generate a document ID.
+                                    "userId" to uid,
+                                    "message" to "Đơn hàng ₫${formatAmount(amount)} đã được thanh toán thành công!",
+                                    "type" to "PAYMENT",
+                                    "isRead" to false,
+                                    "createdAt" to com.google.firebase.Timestamp.now()
+                                )
+                            ).addOnSuccessListener { docRef ->
+                                // Optional: Update the 'id' field inside the document to match the document's auto-generated ID.
+                                docRef.update("id", docRef.id)
+                            }
+
+                        OrderTrackingScheduler.scheduleTracking(
+                            context = context,
+                            orderId = orderId,
+                            userId  = uid,
+                            amount  = amount
+                        )
+
+                        navController.navigate(Screen.History.createRoute("Ongoing")) {
+                            popUpTo(Screen.Cart.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 }
             } catch (e: Exception) {

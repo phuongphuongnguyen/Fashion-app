@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,10 +23,16 @@ import androidx.navigation.NavController
 import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
+import com.example.fashionapp.data.NotificationModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MessagesScreen(navController: NavController) {
+fun MessagesScreen(
+    navController: NavController,
+    viewModel: NotificationViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    val notifications by viewModel.notifications.collectAsState()
+
     Scaffold(
         topBar = {
             FashionTopBar(
@@ -45,18 +53,22 @@ fun MessagesScreen(navController: NavController) {
             HorizontalDivider(thickness = 8.dp, color = Color(0xFFF7F7F7))
 
             // ── Notifications List ──
-            val notifications = listOf(
-                NotificationData("Order Success", "Your order #12345 has been placed successfully.", "2m ago"),
-                NotificationData("Flash Sale", "Flash sale starts in 30 minutes. Don't miss out!", "1h ago"),
-                NotificationData("New Collection", "New summer collection is now available.", "5h ago"),
-                NotificationData("Shipping Update", "Your package is on its way to your address.", "1d ago"),
-                NotificationData("Promotion", "Get 20% off on your next purchase.", "2d ago")
-            )
-
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(notifications) { item ->
-                    NotificationItem(item)
-                    HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+            if (notifications.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Không có thông báo nào", color = Color.Gray, fontSize = 14.sp)
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(notifications) { item ->
+                        NotificationItem(
+                            data = item,
+                            onClick = { viewModel.markAsRead(item.id) }
+                        )
+                        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+                    }
                 }
             }
         }
@@ -101,10 +113,18 @@ private fun ChatbotEntryItem(onClick: () -> Unit) {
 }
 
 @Composable
-private fun NotificationItem(data: NotificationData) {
+private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
+    val title = when (data.type) {
+        "PAYMENT" -> "Thanh toán thành công 🎉"
+        "SHIPPING" -> "Theo dõi đơn hàng 🚚"
+        else -> "Thông báo 🔔"
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
+            .background(if (!data.isRead) Color(0xFFF6F8FE) else Color.Transparent)
             .padding(16.dp),
         verticalAlignment = Alignment.Top
     ) {
@@ -125,12 +145,12 @@ private fun NotificationItem(data: NotificationData) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = data.title,
-                    fontWeight = FontWeight.SemiBold,
+                    text = title,
+                    fontWeight = if (!data.isRead) FontWeight.Bold else FontWeight.SemiBold,
                     fontSize = 15.sp
                 )
                 Text(
-                    text = data.time,
+                    text = formatTimeAgo(data.createdAt),
                     color = Color.Gray,
                     fontSize = 11.sp
                 )
@@ -143,11 +163,31 @@ private fun NotificationItem(data: NotificationData) {
                 lineHeight = 18.sp
             )
         }
+        if (!data.isRead) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF3669C9))
+                    .align(Alignment.CenterVertically)
+            )
+        }
     }
 }
 
-data class NotificationData(
-    val title: String,
-    val message: String,
-    val time: String
-)
+private fun formatTimeAgo(timestamp: com.google.firebase.Timestamp?): String {
+    val time = timestamp?.toDate()?.time ?: return ""
+    val diff = System.currentTimeMillis() - time
+    val seconds = diff / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
+
+    return when {
+        seconds < 60 -> "vừa xong"
+        minutes < 60 -> "${minutes}m ago"
+        hours < 24 -> "${hours}h ago"
+        else -> "${days}d ago"
+    }
+}

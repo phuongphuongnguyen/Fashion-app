@@ -23,7 +23,11 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
 
     // ── App screens ───────────────────────────────────────────────────────────
-    object Settings : Screen("settings")
+    object Settings : Screen("settings?subScreen={subScreen}") {
+        fun createRoute(subScreen: String? = null): String {
+            return if (subScreen.isNullOrBlank()) "settings" else "settings?subScreen=$subScreen"
+        }
+    }
     object Chatbot  : Screen("chatbot")
     object Messages : Screen("messages")
     object CreatePost : Screen("create_post?authorId={authorId}") {
@@ -48,6 +52,10 @@ sealed class Screen(val route: String) {
 
     object ProductDetail : Screen("product_detail/{productId}") {
         fun createRoute(productId: String) = "product_detail/$productId"
+    }
+
+    object ProductReviews : Screen("product_reviews/{productId}") {
+        fun createRoute(productId: String) = "product_reviews/$productId"
     }
 
     // ── Shopping flow ─────────────────────────────────────────────────────────

@@ -20,23 +20,32 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +64,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.data.CartItem
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +77,13 @@ fun CartScreen(
     val existingItemIds = items.map { it.id }.toSet()
     var selectedItemIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var hasInitializedSelection by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshShoppingData()
+    }
 
     LaunchedEffect(existingItemIds) {
         selectedItemIds = if (existingItemIds.isEmpty()) {
@@ -90,12 +107,19 @@ fun CartScreen(
                 title = "Shopping Cart",
                 onBackClick = { navController.popBackStack() },
                 actions = {
-                    TextButton(onClick = { /* Handle Edit */ }) {
-                        Text("Edit", color = Color(0xFF0057FF), fontWeight = FontWeight.Medium)
+                    if (items.isNotEmpty()) {
+                        TextButton(onClick = { isEditing = !isEditing }) {
+                            Text(
+                                if (isEditing) "Done" else "Edit",
+                                color = Color(0xFF0057FF),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             Surface(shadowElevation = 16.dp, color = Color.White) {
                 Row(
@@ -113,32 +137,58 @@ fun CartScreen(
                     }
                     Button(
                         onClick = {
-                            navController.navigate(Screen.Payment.createRoute(selectedItemIds)) {
-                                launchSingleTop = true
+                            if (isEditing) {
+                                selectedItemIds.forEach { itemId ->
+                                    viewModel.updateCartQuantity(itemId, 0)
+                                }
+                                selectedItemIds = emptySet()
+                                isEditing = false
+                            } else {
+                                navController.navigate(Screen.Payment.createRoute(selectedItemIds)) {
+                                    launchSingleTop = true
+                                }
                             }
                         },
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isEditing) Color(0xFFE53935) else Color(0xFF0057FF)
+                        ),
                         modifier = Modifier
                             .width(140.dp)
                             .height(48.dp),
                         enabled = selectedItems.isNotEmpty()
                     ) {
-                        Text("Checkout", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (isEditing) "Delete" else "Checkout",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
         },
         containerColor = Color.White
     ) { padding ->
-        if (items.isEmpty() && !uiState.isLoadingCart) {
+        if (uiState.isLoadingCart) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Your cart is empty", color = Color.Gray)
+                CircularProgressIndicator(color = Color(0xFF0057FF))
+            }
+        } else if (items.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                EmptyCartState(
+                    errorMessage = uiState.cartError,
+                    onRetry = viewModel::refreshShoppingData
+                )
             }
         } else {
             LazyColumn(
@@ -148,6 +198,14 @@ fun CartScreen(
                     .padding(horizontal = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                uiState.cartError?.let { message ->
+                    item {
+                        CartErrorBanner(
+                            message = message,
+                            onRetry = viewModel::refreshShoppingData
+                        )
+                    }
+                }
                 item {
                     CartHistoryTabs(
                         selected = "Cart",
@@ -198,22 +256,138 @@ fun CartScreen(
                     }
                 }
                 items(items, key = { it.id }) { item ->
-                    CartItemRow(
-                        item = item,
-                        selected = item.id in selectedItemIds,
-                        onSelectedChange = { checked ->
-                            selectedItemIds = if (checked) {
-                                selectedItemIds + item.id
-                            } else {
-                                selectedItemIds - item.id
+                    SwipeToDeleteCartItem(
+                        onDelete = {
+                            viewModel.updateCartQuantity(item.id, 0)
+                            selectedItemIds = selectedItemIds - item.id
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Item removed",
+                                    actionLabel = "Undo"
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    viewModel.restoreCartItem(item)
+                                }
                             }
-                        },
-                        onUpdateQuantity = { newQty ->
-                            viewModel.updateCartQuantity(item.id, newQty)
                         }
+                    ) {
+                        CartItemRow(
+                            item = item,
+                            selected = item.id in selectedItemIds,
+                            onSelectedChange = { checked ->
+                                selectedItemIds = if (checked) {
+                                    selectedItemIds + item.id
+                                } else {
+                                    selectedItemIds - item.id
+                                }
+                            },
+                            onUpdateQuantity = { newQty ->
+                                viewModel.updateCartQuantity(item.id, newQty)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwipeToDeleteCartItem(
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE53935))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete item",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
+        },
+        content = {
+            content()
+        }
+    )
+}
+
+@Composable
+private fun EmptyCartState(
+    errorMessage: String?,
+    onRetry: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(horizontal = 32.dp)
+    ) {
+        Text(
+            errorMessage ?: "Your cart is empty",
+            color = if (errorMessage == null) Color.Gray else Color(0xFFE53935),
+            fontSize = 14.sp
+        )
+        if (errorMessage != null) {
+            Button(
+                onClick = onRetry,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF))
+            ) {
+                Text("Retry", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CartErrorBanner(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFFFF1F1))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            message,
+            color = Color(0xFFB3261E),
+            fontSize = 12.sp,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onRetry) {
+            Text("Retry", color = Color(0xFF0057FF), fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -285,7 +459,10 @@ private fun CartItemRow(
                         .background(Color(0xFFF5F5F5))
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
-                    QuantityButton(onClick = { onUpdateQuantity(item.quantity - 1) }) {
+                    QuantityButton(
+                        onClick = { onUpdateQuantity(item.quantity - 1) },
+                        enabled = item.quantity > 1
+                    ) {
                         Icon(Icons.Default.Remove, null, modifier = Modifier.size(14.dp))
                     }
                     Text(
@@ -304,13 +481,17 @@ private fun CartItemRow(
 }
 
 @Composable
-private fun QuantityButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+private fun QuantityButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
     Box(
         modifier = Modifier
             .size(26.dp)
             .clip(CircleShape)
             .background(Color.White)
-            .clickable { onClick() },
+            .clickable(enabled = enabled) { onClick() },
         contentAlignment = Alignment.Center
     ) {
         content()

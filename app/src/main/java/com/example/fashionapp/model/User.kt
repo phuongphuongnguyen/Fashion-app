@@ -9,7 +9,9 @@ data class User(
     val followingCount: Int = 0,
     val role: String = "",
     val shopId: String = "",
-    val username: String = ""
+    val username: String = "",
+    val phoneNumber: String = "",
+    val address: String = ""
 ) {
     val image: String
         get() = avatarUrl

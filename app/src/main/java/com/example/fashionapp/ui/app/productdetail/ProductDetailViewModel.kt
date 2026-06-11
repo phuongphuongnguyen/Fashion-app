@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import android.util.Log
+import com.example.fashionapp.data.ProductReview
 import com.example.fashionapp.data.product.ProductRepository
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
@@ -25,6 +26,8 @@ data class ProductDetailUiState(
     val selectedImageIndex: Int = 0,
     val isWishlisted: Boolean = false,
     val isAddedToCart: Boolean = false,
+    val productReviews: List<ProductReview> = emptyList(),
+    val isAddingToCart: Boolean = false,
     val cartError: String? = null,
     // Khi != null → đã thêm món "Buy Now" vào giỏ, sẵn sàng sang checkout
     val buyNowCartItemId: String? = null,
@@ -59,6 +62,13 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
                 selectedVariant  = product?.variants?.firstOrNull(),
                 error            = if (product == null) "Không tìm thấy sản phẩm" else null,
             )
+            product?.id?.takeIf { it.isNotBlank() }?.let { loadedProductId ->
+                launch {
+                    ShopRepository.getReviewsForProductFlow(loadedProductId).collect { reviews ->
+                        _uiState.value = _uiState.value.copy(productReviews = reviews)
+                    }
+                }
+            }
         }
     }
 
@@ -92,14 +102,20 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
         val cartItem = createCartItem(product, variant, quantity)
 
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isAddingToCart = true, cartError = null)
             try {
                 ShopRepository.addToCart(userId, cartItem)
                 Log.d(TAG, "Added cart item ${cartItem.id} for user $userId")
-                _uiState.value = _uiState.value.copy(isAddedToCart = true, cartError = null)
+                _uiState.value = _uiState.value.copy(
+                    isAddedToCart = true,
+                    isAddingToCart = false,
+                    cartError = null
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to add cart item ${cartItem.id} for user $userId", e)
                 _uiState.value = _uiState.value.copy(
                     isAddedToCart = false,
+                    isAddingToCart = false,
                     cartError = e.message ?: "Failed to add to cart"
                 )
             }
@@ -122,13 +138,19 @@ class ProductDetailViewModel(private val productId: String) : ViewModel() {
         val cartItem = createCartItem(product, variant, quantity)
 
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isAddingToCart = true, cartError = null)
             try {
-                ShopRepository.addToCart(userId, cartItem)
-                Log.d(TAG, "Buy now: added cart item ${cartItem.id} for user $userId")
-                _uiState.value = _uiState.value.copy(buyNowCartItemId = cartItem.id, cartError = null)
+                val cartItemId = ShopRepository.addToCart(userId, cartItem)
+                Log.d(TAG, "Buy now: added cart item $cartItemId for user $userId")
+                _uiState.value = _uiState.value.copy(
+                    buyNowCartItemId = cartItemId,
+                    isAddingToCart = false,
+                    cartError = null
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Buy now failed for ${cartItem.id} (user $userId)", e)
                 _uiState.value = _uiState.value.copy(
+                    isAddingToCart = false,
                     cartError = e.message ?: "Failed to checkout"
                 )
             }

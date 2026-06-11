@@ -55,13 +55,21 @@ private val DangerRed     = Color(0xFFE53935)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navController: NavController) {
+fun SettingsScreen(navController: NavController, initialSubScreen: String? = null) {
     val settings = LocalAppSettings.current
+    val sessionUser by UserSession.currentUser.collectAsState()
     val scrollState = rememberScrollState()
 
     // sub-screen routing inside Settings
-    var currentSubScreen by remember { mutableStateOf<SubScreen?>(null) }
+    var currentSubScreen by remember {
+        mutableStateOf(
+            initialSubScreen?.uppercase()?.let {
+                try { SubScreen.valueOf(it) } catch(e: Exception) { null }
+            }
+        )
+    }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
 
     // Dynamic Theme Colors
     val isDark = settings.isDarkMode
@@ -94,7 +102,13 @@ fun SettingsScreen(navController: NavController) {
                 dividerColor = dividerColor
             )
             SubScreen.SHIPPING -> ShippingSubScreen(
-                onBack = { currentSubScreen = null },
+                onBack = {
+                    if (initialSubScreen?.uppercase() == "SHIPPING") {
+                        navController.popBackStack()
+                    } else {
+                        currentSubScreen = null
+                    }
+                },
                 isDark = isDark,
                 bgColor = bgColor,
                 cardColor = cardColor,
@@ -170,6 +184,25 @@ fun SettingsScreen(navController: NavController) {
                 subTextColor = subTextColor,
                 dividerColor = dividerColor,
                 topBarBgColor = topBarBgColor
+            )
+            SubScreen.REGISTER_SHOP -> RegisterShopScreen(
+                onBack = { currentSubScreen = null },
+                onRegistered = { currentSubScreen = null },
+                isDark = isDark,
+                bgColor = bgColor,
+                cardColor = cardColor,
+                textColor = textColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor
+            )
+            SubScreen.SELLER_CENTRE -> SellerCentreScreen(
+                onBack = { currentSubScreen = null },
+                isDark = isDark,
+                bgColor = bgColor,
+                cardColor = cardColor,
+                textColor = textColor,
+                subTextColor = subTextColor,
+                dividerColor = dividerColor
             )
             null -> {
                 // ── Main settings list ──
@@ -248,6 +281,21 @@ fun SettingsScreen(navController: NavController) {
                             title = settings.t("Shop", "Cửa hàng", "Boutique", "ショップ", "쇼핑", "商店"),
                             textColor = textColor
                         )
+                        if (sessionUser?.role?.equals("shop", ignoreCase = true) == true) {
+                            FlatSettingRow(
+                                label = settings.t("Seller Centre", "Kênh Người Bán", "Centre Vendeur", "販売者センター", "판매자 센터", "卖家中心"),
+                                onClick = { currentSubScreen = SubScreen.SELLER_CENTRE },
+                                textColor = textColor, subTextColor = subTextColor,
+                                dividerColor = dividerColor
+                            )
+                        } else {
+                            FlatSettingRow(
+                                label = settings.t("Register as a Seller", "Đăng ký mở Cửa hàng", "S'inscrire comme vendeur", "販売者として登録", "판매자로 등록", "注册为卖家"),
+                                onClick = { currentSubScreen = SubScreen.REGISTER_SHOP },
+                                textColor = textColor, subTextColor = subTextColor,
+                                dividerColor = dividerColor
+                            )
+                        }
                         FlatSettingRow(
                             label = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"),
                             value = settings.country,
@@ -293,6 +341,14 @@ fun SettingsScreen(navController: NavController) {
                         FlatSettingRow(
                             label = settings.t("About app", "Về app", "À propos de app", "Appについて", "App 정보", "关于 App"),
                             onClick = { currentSubScreen = SubScreen.ABOUT },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Log out", "Đăng xuất", "Se déconnecter", "ログアウト", "로그아웃", "退出登录"),
+                            onClick = {
+                                showLogoutConfirmDialog = true
+                            },
                             textColor = textColor, subTextColor = subTextColor,
                             dividerColor = dividerColor
                         )
@@ -386,6 +442,59 @@ fun SettingsScreen(navController: NavController) {
                             containerColor = cardColor
                         )
                     }
+
+                    if (showLogoutConfirmDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showLogoutConfirmDialog = false },
+                            title = {
+                                Text(
+                                    text = settings.t("Log out?", "Đăng xuất?", "Se déconnecter?", "ログアウトしますか？", "로그아웃하시겠습니까?", "确定退出登录？"),
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor
+                                )
+                            },
+                            text = {
+                                Text(
+                                    text = settings.t(
+                                        "Are you sure you want to log out of your account?",
+                                        "Bạn có chắc chắn muốn đăng xuất khỏi tài khoản của mình không?",
+                                        "Êtes-vous sûr de vouloir vous déconnecter de votre compte?",
+                                        "アカウントからログアウトしてもよろしいですか？",
+                                        "계정에서 로그아웃하시겠습니까?",
+                                        "您确定要退出当前账户吗？"
+                                    ),
+                                    color = textColor
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showLogoutConfirmDialog = false
+                                        FirebaseAuth.getInstance().signOut()
+                                        UserSession.clear()
+                                        navController.navigate(Screen.Start.route) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        text = settings.t("Log out", "Đăng xuất", "Se déconnecter", "ログアウト", "로그아웃", "退出登录"),
+                                        color = DangerRed,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showLogoutConfirmDialog = false }) {
+                                    Text(
+                                        text = settings.t("Cancel", "Hủy", "Annuler", "キャンセル", "취소", "取消"),
+                                        color = subTextColor
+                                    )
+                                }
+                            },
+                            containerColor = cardColor
+                        )
+                    }
                 }
             }
         }
@@ -393,7 +502,7 @@ fun SettingsScreen(navController: NavController) {
 }
 
 // ── Sub-screen enum ──
-private enum class SubScreen { PROFILE, SHIPPING, PAYMENT, LANGUAGE, CURRENCY, SIZE, COUNTRY, NOTIFICATIONS, ABOUT }
+private enum class SubScreen { PROFILE, SHIPPING, PAYMENT, LANGUAGE, CURRENCY, SIZE, COUNTRY, NOTIFICATIONS, ABOUT, REGISTER_SHOP, SELLER_CENTRE }
 
 // ══════════════════════════════════════════
 // ── Sub Screens ──
@@ -666,12 +775,25 @@ private fun ShippingSubScreen(
     val settings = LocalAppSettings.current
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("app_settings", android.content.Context.MODE_PRIVATE)
-    var fullName by remember { mutableStateOf(prefs.getString("ship_name", "") ?: "") }
-    var address by remember { mutableStateOf(prefs.getString("ship_address", "") ?: "") }
+    
+    val sessionUser by UserSession.currentUser.collectAsState()
+    val scope = rememberCoroutineScope()
+    
+    var fullName by remember { mutableStateOf(sessionUser?.name ?: prefs.getString("ship_name", "") ?: "") }
+    var address by remember { mutableStateOf(sessionUser?.address ?: prefs.getString("ship_address", "") ?: "") }
     var city by remember { mutableStateOf(prefs.getString("ship_city", "") ?: "") }
     var zipCode by remember { mutableStateOf(prefs.getString("ship_zip", "") ?: "") }
-    var phone by remember { mutableStateOf(prefs.getString("ship_phone", "") ?: "") }
+    var phone by remember { mutableStateOf(sessionUser?.phoneNumber ?: prefs.getString("ship_phone", "") ?: "") }
     var saved by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(sessionUser) {
+        sessionUser?.let {
+            if (fullName.isBlank()) fullName = it.name
+            if (address.isBlank()) address = it.address
+            if (phone.isBlank()) phone = it.phoneNumber
+        }
+    }
 
     Scaffold(containerColor = bgColor) { padding ->
         Column(
@@ -702,20 +824,20 @@ private fun ShippingSubScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            FlatTextField(value = fullName, onValueChange = { fullName = it },
+            FlatTextField(value = fullName, onValueChange = { fullName = it; saved = false },
                 placeholder = settings.t("Full Name", "Họ và tên", "Nom complet", "氏名", "이름", "全名"),
                 textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
-            FlatTextField(value = address, onValueChange = { address = it },
+            FlatTextField(value = address, onValueChange = { address = it; saved = false },
                 placeholder = settings.t("Address", "Địa chỉ", "Adresse", "住所", "주소", "地址"),
                 textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
-            FlatTextField(value = city, onValueChange = { city = it },
+            FlatTextField(value = city, onValueChange = { city = it; saved = false },
                 placeholder = settings.t("City", "Thành phố", "Ville", "都市", "도시", "城市"),
                 textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
-            FlatTextField(value = zipCode, onValueChange = { zipCode = it },
+            FlatTextField(value = zipCode, onValueChange = { zipCode = it; saved = false },
                 placeholder = settings.t("Zip Code", "Mã bưu điện", "Code postal", "郵便番号", "우편번호", "邮编"),
                 textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
                 keyboardType = KeyboardType.Number)
-            FlatTextField(value = phone, onValueChange = { phone = it },
+            FlatTextField(value = phone, onValueChange = { phone = it; saved = false },
                 placeholder = settings.t("Phone Number", "Số điện thoại", "Téléphone", "電話番号", "전화번호", "电话号码"),
                 textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
                 keyboardType = KeyboardType.Phone)
@@ -724,28 +846,61 @@ private fun ShippingSubScreen(
 
             Button(
                 onClick = {
-                    prefs.edit()
-                        .putString("ship_name", fullName)
-                        .putString("ship_address", address)
-                        .putString("ship_city", city)
-                        .putString("ship_zip", zipCode)
-                        .putString("ship_phone", phone)
-                        .apply()
-                    saved = true
+                    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
+                    isSaving = true
+                    scope.launch {
+                        try {
+                            val db = FirebaseFirestore.getInstance()
+                            val updates = mapOf<String, Any>(
+                                "name" to fullName,
+                                "address" to address,
+                                "phoneNumber" to phone
+                            )
+                            db.collection("users").document(uid)
+                                .update(updates)
+                                .await()
+
+                            val updatedUser = (sessionUser ?: User(id = uid)).copy(
+                                name = fullName,
+                                address = address,
+                                phoneNumber = phone
+                            )
+                            UserSession.updateCurrentUser(updatedUser)
+
+                            prefs.edit()
+                                .putString("ship_name", fullName)
+                                .putString("ship_address", address)
+                                .putString("ship_city", city)
+                                .putString("ship_zip", zipCode)
+                                .putString("ship_phone", phone)
+                                .apply()
+
+                            saved = true
+                        } catch (e: Exception) {
+                            // Handle error
+                        } finally {
+                            isSaving = false
+                        }
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 24.dp)
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                enabled = !isSaving
             ) {
-                Text(
-                    if (saved) settings.t("Saved ✓", "Đã lưu ✓", "Enregistré ✓", "保存済み ✓", "저장됨 ✓", "已保存 ✓")
-                    else settings.t("Save Address", "Lưu địa chỉ", "Enregistrer", "保存", "저장", "保存地址"),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                if (isSaving) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        if (saved) settings.t("Saved ✓", "Đã lưu ✓", "Enregistré ✓", "保存済み ✓", "저장됨 ✓", "已保存 ✓")
+                        else settings.t("Save Address", "Lưu địa chỉ", "Enregistrer", "保存", "저장", "保存地址"),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
@@ -1500,4 +1655,3 @@ private fun FlatInfoRow(
         )
     }
 }
-
