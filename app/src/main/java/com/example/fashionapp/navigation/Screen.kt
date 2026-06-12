@@ -120,6 +120,6 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem(Screen.Home,    "Home",    R.drawable.ic_home),
     BottomNavItem(Screen.Shopping,"Shop",    R.drawable.ic_shopping),
-    BottomNavItem(Screen.Saved,   "Saved",   R.drawable.ic_saved),
+    BottomNavItem(Screen.Saved,   "Saved",   R.drawable.ic_bookmark),
     BottomNavItem(Screen.Profile, "Profile", R.drawable.ic_profile)
 )

@@ -66,10 +66,12 @@ class CreatePostViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(CreatePostUiState())
     val uiState: StateFlow<CreatePostUiState> = _uiState.asStateFlow()
 
+    // Đặt chế độ tạo bài viết (POST) hoặc sản phẩm mới (PRODUCT) trong biểu mẫu tạo bài đăng
     fun setMode(mode: CreateMode) {
         _uiState.value = _uiState.value.copy(mode = mode)
     }
 
+    // Đăng bài viết mới kèm ảnh và chú thích lên mạng xã hội của ứng dụng, có thể liên kết tài khoản shop
     fun submitPost(authorIdOverride: String?, caption: String, imageUris: List<Uri>) {
         val currentUser = UserSession.currentUser.value
         val authorId = authorIdOverride?.takeIf { it.isNotBlank() } ?: auth.currentUser?.uid.orEmpty()
@@ -103,6 +105,7 @@ class CreatePostViewModel : ViewModel() {
         }
     }
 
+    // Tạo sản phẩm mới kèm các biến thể (kích cỡ/màu sắc) và hình ảnh rồi cập nhật lên cửa hàng
     fun submitProduct(
         shopId: String,
         name: String,
@@ -144,6 +147,7 @@ class CreatePostViewModel : ViewModel() {
         }
     }
 
+    // Reset lại trạng thái kết quả đăng tin (thành công/lỗi) để chuẩn bị cho lần thực thi tiếp theo
     fun consumeResult() {
         _uiState.value = _uiState.value.copy(isSuccess = false, error = null)
     }

@@ -43,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.auth.FirebaseAuth
 
+// Màn hình thanh toán và đặt hàng, xử lý thông tin nhận hàng, lựa chọn phương thức thanh toán (Visa/Momo) và tạo đơn hàng trong hệ thống
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(
@@ -75,6 +76,14 @@ fun PaymentScreen(
         !uiState.isLoadingCart &&
         checkoutItems.size < selectedCartItemIds.size
     val context = LocalContext.current
+    val prefs = remember(context) { context.getSharedPreferences("app_settings", android.content.Context.MODE_PRIVATE) }
+    val savedCardNumber = prefs.getString("pay_card", "") ?: ""
+    val cleanCardNumber = savedCardNumber.filter { it.isDigit() }
+    val visaSubtitle = if (cleanCardNumber.length >= 4) {
+        "**** **** **** ${cleanCardNumber.takeLast(4)}"
+    } else {
+        "**** **** **** 4567"
+    }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
@@ -324,7 +333,7 @@ fun PaymentScreen(
                         badgeColor = MaterialTheme.colorScheme.surfaceVariant,
                         badgeTextColor = MaterialTheme.colorScheme.primary,
                         title = "Visa",
-                        subtitle = "**** **** **** 4567",
+                        subtitle = visaSubtitle,
                         onSelected = { selectedPaymentMethod = it }
                     )
                     PaymentMethodOption(

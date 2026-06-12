@@ -34,6 +34,7 @@ data class ChatMessage(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+// Màn hình chatbot thông minh hỗ trợ tư vấn thời trang và trả lời các thắc mắc về sản phẩm/đơn hàng
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatbotScreen(navController: NavController) {
@@ -85,6 +86,7 @@ fun ChatbotScreen(navController: NavController) {
         }
     }
 
+    // Gửi tin nhắn của người dùng đến mô hình Gemini và nhận câu trả lời được cá nhân hóa dựa trên ngữ cảnh dữ liệu của ứng dụng
     fun sendToGemini(userMessage: String) {
         messages   = messages + ChatMessage(text = userMessage, isUser = true)
         inputText  = ""

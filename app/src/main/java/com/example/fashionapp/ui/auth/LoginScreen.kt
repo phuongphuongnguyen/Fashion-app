@@ -40,6 +40,7 @@ import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
+// Màn hình đăng nhập tài khoản người dùng bằng email và mật khẩu đồng thời đồng bộ hóa thông tin phiên hiện tại
 @Composable
 fun LoginScreen(
     authRepository: AuthRepository,

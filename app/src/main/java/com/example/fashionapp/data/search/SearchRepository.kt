@@ -26,6 +26,7 @@ object SearchRepository {
     private var cachedSubCategories: List<SubCategory>? = null
     private var cachedUsers: List<User>? = null
 
+    // Truy vấn dữ liệu toàn bộ sản phẩm từ Firestore và lưu vào cache để giảm số lần đọc DB
     suspend fun getAllProducts(): List<Product> = coroutineScope {
         cachedProducts?.let { return@coroutineScope it }
 
@@ -44,6 +45,7 @@ object SearchRepository {
         } catch (_: Exception) { emptyList() }
     }
 
+    // Tìm kiếm các sản phẩm phù hợp với từ khóa truy vấn (sau khi chuẩn hóa không dấu) và lọc theo phân mục
     suspend fun search(query: String, categoryId: String? = null): List<Product> {
         val all = getAllProducts()
         val tokens = normalize(query).split(WHITESPACE).filter { it.isNotBlank() }
@@ -61,6 +63,7 @@ object SearchRepository {
         }
     }
 
+    // Truy vấn thông tin của toàn bộ người dùng từ Firestore để phục vụ tìm kiếm bạn bè/tác giả bài viết
     suspend fun getAllUsers(): List<User> = coroutineScope {
         cachedUsers?.let { return@coroutineScope it }
 
@@ -98,8 +101,7 @@ object SearchRepository {
         } catch (_: Exception) { emptyList() }
     }
 
-    // Tìm user theo tên (bỏ dấu): tên phải CHỨA từ khoá. Không gần đúng, không nhận gõ sai.
-    // Query rỗng → không trả user (user chỉ tìm theo từ khoá).
+    // Tìm kiếm tài khoản người dùng theo tên sau khi chuẩn hóa chuỗi không dấu
     suspend fun searchUsers(query: String): List<User> {
         val tokens = normalize(query).split(WHITESPACE).filter { it.isNotBlank() }
         if (tokens.isEmpty()) return emptyList()
@@ -135,12 +137,14 @@ object SearchRepository {
     private val WHITESPACE = "\\s+".toRegex()
     private val COMBINING_MARKS = "\\p{Mn}+".toRegex()
 
+    // Xóa sạch bộ nhớ đệm (in-memory cache) của sản phẩm, danh mục và người dùng để bắt buộc tải mới
     fun clearCache() {
         cachedProducts = null
         cachedSubCategories = null
         cachedUsers = null
     }
 
+    // Lấy danh sách các danh mục con phổ biến và tải trước các URL hình ảnh đại diện của chúng
     suspend fun getSubCategories(): List<SubCategory> {
         cachedSubCategories?.let { return it }
         val targetIds = listOf("cat001a", "cat001b", "cat001c", "cat002", "cat003", "cat004", "cat005", "cat006", "cat007")

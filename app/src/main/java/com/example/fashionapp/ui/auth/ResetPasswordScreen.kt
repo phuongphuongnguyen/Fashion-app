@@ -39,6 +39,7 @@ import com.example.fashionapp.data.auth.AuthRepository
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
+// Màn hình thiết lập mật khẩu mới cho tài khoản sau khi người dùng xác thực thành công mã OTP khôi phục
 @Composable
 fun ResetPasswordScreen(
     authRepository: AuthRepository,

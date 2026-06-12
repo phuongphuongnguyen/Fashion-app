@@ -20,6 +20,7 @@ object OrderTrackingScheduler {
 
     private const val TAG = "OrderTrackingScheduler"
 
+    // Thiết lập lịch trình chạy ngầm qua WorkManager gửi thông báo tiến độ đơn hàng (đóng gói, vận chuyển, giao nhận)
     fun scheduleTracking(context: Context, orderId: String, userId: String, amount: Long) {
         val workManager = WorkManager.getInstance(context)
 
@@ -48,6 +49,7 @@ object OrderTrackingScheduler {
         }
     }
 
+    // Hiển thị thông báo cục bộ xác nhận đơn hàng thanh toán thành công và sẵn sàng để giao đi
     fun showPaymentNotification(context: Context, amount: Long) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
         val prefix = if (uid.isBlank()) "" else "${uid}_"

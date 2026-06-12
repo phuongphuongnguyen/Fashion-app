@@ -31,6 +31,7 @@ object NotificationListenerHelper {
 
     private var appContext: Context? = null
 
+    // Khởi tạo Helper lắng nghe thông báo và đăng ký bộ lắng nghe sự thay đổi trạng thái đăng nhập Firebase Auth
     fun init(context: Context) {
         appContext = context.applicationContext
         auth.addAuthStateListener(authStateListener)
@@ -41,6 +42,7 @@ object NotificationListenerHelper {
         }
     }
 
+    // Bắt đầu lắng nghe các thông báo mới từ Firestore của người dùng hiện tại theo thời gian thực (realtime snapshot)
     private fun startListening(context: Context?, userId: String) {
         stopListening()
         val targetContext = context ?: appContext ?: return
@@ -71,11 +73,13 @@ object NotificationListenerHelper {
             }
     }
 
+    // Ngừng lắng nghe thông báo từ Firestore và giải phóng đăng ký bộ lắng nghe để tránh rò rỉ bộ nhớ (memory leak)
     fun stopListening() {
         listenerRegistration?.remove()
         listenerRegistration = null
     }
 
+    // Kiểm tra cấu hình cài đặt thông báo của người dùng và hiển thị thông báo hệ thống nếu được phép
     private fun triggerSystemNotificationIfNeeded(context: Context, userId: String, notification: NotificationModel) {
         val prefs = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
         val prefix = "${userId}_"

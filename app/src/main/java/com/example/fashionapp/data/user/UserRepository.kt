@@ -40,6 +40,7 @@ class UserRepository {
         )
     }
 
+    // Lấy dữ liệu hồ sơ cá nhân của người dùng theo luồng dữ liệu thời gian thực (Flow)
     fun getUserProfileFlow(userId: String): Flow<User?> = callbackFlow {
         if (userId.isBlank()) {
             trySend(null)
@@ -64,6 +65,7 @@ class UserRepository {
         awaitClose { listener.remove() }
     }
 
+    // Lấy thông tin chi tiết hồ sơ cá nhân của người dùng một lần duy nhất từ Firestore
     suspend fun getUserProfile(userId: String): User? {
         if (userId.isBlank()) return null
         return try {
@@ -73,7 +75,7 @@ class UserRepository {
         } catch (_: Exception) { null }
     }
 
-    // Tìm user là chủ của shop theo shopId (users/{uid} có field shopId == shopId).
+    // Cập nhật thông tin giới thiệu bản thân (bio) của người dùng vào Firestore
     suspend fun updateUserBio(userId: String, bio: String) {
         if (userId.isBlank()) return
         db.collection("users").document(userId)
@@ -86,6 +88,7 @@ class UserRepository {
             .await()
     }
 
+    // Tìm kiếm thông tin người dùng dựa trên ID của cửa hàng (shopId) mà họ sở hữu
     suspend fun findUserByShopId(shopId: String): User? {
         if (shopId.isBlank()) return null
         return try {
@@ -98,7 +101,7 @@ class UserRepository {
     }
 
     // ── Follow ──────────────────────────────────────────────────────────────
-    // currentUid có đang theo dõi targetUid không (realtime).
+    // Kiểm tra trạng thái theo dõi thời gian thực giữa hai người dùng (Flow)
     fun isFollowingFlow(currentUid: String, targetUid: String): Flow<Boolean> = callbackFlow {
         if (currentUid.isBlank() || targetUid.isBlank() || currentUid == targetUid) {
             trySend(false)
@@ -114,8 +117,7 @@ class UserRepository {
         awaitClose { listener.remove() }
     }
 
-    // Bật/tắt theo dõi. Ghi 2 chiều (following của mình + followers của target) và
-    // cập nhật followerCount/followingCount bằng transaction để không lệch số.
+    // Thiết lập hoặc hủy trạng thái theo dõi và cập nhật số lượng người theo dõi giữa hai tài khoản
     suspend fun setFollowing(currentUid: String, targetUid: String, follow: Boolean) {
         if (currentUid.isBlank() || targetUid.isBlank() || currentUid == targetUid) return
 
@@ -145,6 +147,7 @@ class UserRepository {
         }.await()
     }
 
+    // Khởi tạo thông tin hồ sơ mặc định và ảnh đại diện ngẫu nhiên khi người dùng đăng ký mới
     suspend fun seedUserProfile(userId: String, email: String) {
         if (userId.isBlank()) return
         val name = email.substringBefore("@").replaceFirstChar { it.uppercase() }
@@ -163,6 +166,7 @@ class UserRepository {
         db.collection("users").document(userId).set(data as Map<String, Any>, com.google.firebase.firestore.SetOptions.merge()).await()
     }
 
+    // Lấy danh sách ID các bài viết đã lưu của người dùng theo thời gian thực (Flow)
     fun getSavedPostIdsFlow(userId: String): Flow<List<String>> = callbackFlow {
         if (userId.isBlank()) {
             trySend(emptyList())
@@ -183,12 +187,14 @@ class UserRepository {
         awaitClose { listener.remove() }
     }
 
+    // Lưu bài viết yêu thích của người dùng vào bộ sưu tập cá nhân
     suspend fun savePost(userId: String, postId: String) {
         if (userId.isBlank() || postId.isBlank()) return
         val data = hashMapOf("savedAt" to System.currentTimeMillis())
         db.collection("users").document(userId).collection("saved_posts").document(postId).set(data).await()
     }
 
+    // Bỏ lưu bài viết yêu thích của người dùng khỏi bộ sưu tập cá nhân
     suspend fun unsavePost(userId: String, postId: String) {
         if (userId.isBlank() || postId.isBlank()) return
         db.collection("users").document(userId).collection("saved_posts").document(postId).delete().await()

@@ -45,6 +45,7 @@ class ProfileViewModel(
         if (!isOwn) observeFollowing()
     }
 
+    // Theo dõi phiên đăng nhập hiện tại để cập nhật thông tin cá nhân của người dùng
     private fun observeUserSession() {
         viewModelScope.launch {
             UserSession.currentUser.collect { user ->
@@ -55,6 +56,7 @@ class ProfileViewModel(
         }
     }
 
+    // Lắng nghe sự thay đổi thông tin cá nhân của người dùng đích từ Firestore
     private fun observeUserProfile() {
         if (targetId.isBlank()) return
         viewModelScope.launch {
@@ -67,6 +69,7 @@ class ProfileViewModel(
         }
     }
 
+    // Tải toàn bộ bài đăng của người dùng đích và cập nhật lên trang cá nhân
     private fun loadUserPosts() {
         if (targetId.isBlank()) return
         viewModelScope.launch {
@@ -79,6 +82,7 @@ class ProfileViewModel(
         }
     }
 
+    // Theo dõi trạng thái theo dõi (Follow/Unfollow) đối với người dùng đích
     private fun observeFollowing() {
         viewModelScope.launch {
             userRepository.isFollowingFlow(myUid, targetId).collect { following ->
@@ -87,6 +91,7 @@ class ProfileViewModel(
         }
     }
 
+    // Bật hoặc tắt chế độ theo dõi (Follow/Unfollow) tài khoản người dùng khác
     fun toggleFollow() {
         if (isOwn || myUid.isBlank() || targetId.isBlank()) return
         val shouldFollow = !_uiState.value.isFollowing
@@ -95,6 +100,7 @@ class ProfileViewModel(
         }
     }
 
+    // Cập nhật thông tin giới thiệu (Bio) của bản thân lên hệ thống Firestore
     fun updateBio(bio: String) {
         if (!isOwn || myUid.isBlank()) return
         viewModelScope.launch {
@@ -105,6 +111,7 @@ class ProfileViewModel(
         }
     }
 
+    // Xóa bỏ thông báo lỗi hiển thị khi cập nhật tiểu sử thất bại
     fun consumeBioError() {
         _uiState.value = _uiState.value.copy(bioError = null)
     }

@@ -125,8 +125,10 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.res.ResourcesCompat
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
 
-
+// Màn hình khởi đầu giới thiệu của ứng dụng hỗ trợ điều hướng đăng nhập hoặc bắt đầu khám phá cửa hàng
 @Composable
 fun StartScreen(
     onGetStarted: () -> Unit,
@@ -161,20 +163,22 @@ fun StartScreen(
         Box(
             modifier = Modifier
                 .size(100.dp)
-                .background(color = Color(0xFFE8EEFF), shape = CircleShape),
+                .clip(CircleShape)
+                .background(color = Color(0xFFE8EEFF)),
             contentAlignment = Alignment.Center
         ) {
             Image(
                 painter = logoPainter,
                 contentDescription = "App Logo",
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Shoppe",
+            text = "Fashion app",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1A1A2E)
@@ -182,15 +186,15 @@ fun StartScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = settings.t(
-                "Beautiful eCommerce UI Kit\nfor your online store",
-                "Giao diện mua sắm thời trang tuyệt đẹp\ncho cửa hàng trực tuyến của bạn"
-            ),
-            fontSize = 14.sp,
-            color = Color(0xFF9E9E9E),
-            textAlign = TextAlign.Center
-        )
+//        Text(
+//            text = settings.t(
+//                "Beautiful eCommerce UI Kit\nfor your online store",
+//                "Giao diện mua sắm thời trang tuyệt đẹp\ncho cửa hàng trực tuyến của bạn"
+//            ),
+//            fontSize = 14.sp,
+//            color = Color(0xFF9E9E9E),
+//            textAlign = TextAlign.Center
+//        )
 
         // Đẩy button xuống dưới
         Spacer(modifier = Modifier.weight(1f))
