@@ -3,9 +3,7 @@ package com.example.fashionapp.data.shop
 import com.example.fashionapp.data.product.toProduct
 import com.example.fashionapp.model.Product
 import com.google.firebase.firestore.CollectionReference
-import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -72,7 +70,7 @@ object ShopDashboardRepository {
     suspend fun getShopDailyRevenue(shopId: String, limit: Int = 7): List<DailyRevenuePoint> {
         if (shopId.isBlank()) return emptyList()
         return fetchDailyRevenue(
-            db.collection("shops").document(shopId).collection("DailyRevenue"),
+            db.collection("shops").document(shopId).collection("dailyRevenue"),
             limit
         )
     }
@@ -81,18 +79,16 @@ object ShopDashboardRepository {
     suspend fun getProductDailyRevenue(productId: String, limit: Int = 7): List<DailyRevenuePoint> {
         if (productId.isBlank()) return emptyList()
         return fetchDailyRevenue(
-            db.collection("products").document(productId).collection("DailyRevenue"),
+            db.collection("products").document(productId).collection("dailyRevenue"),
             limit
         )
     }
 
     private suspend fun fetchDailyRevenue(ref: CollectionReference, limit: Int): List<DailyRevenuePoint> {
         return try {
-            // document id = yyyy-MM-dd → sort theo documentId chính là sort theo ngày
-            val snap = ref
-                .orderBy(FieldPath.documentId(), Query.Direction.DESCENDING)
-                .limit(limit.toLong())
-                .get().await()
+            // Lấy tất cả rồi sort + cắt ở client → không cần index đặc biệt.
+            // (Mỗi shop/product chỉ có tối đa ~vài chục ngày nên đọc hết là ổn.)
+            val snap = ref.get().await()
             val result = snap.documents.map { d ->
                 DailyRevenuePoint(
                     date = d.id,
@@ -100,8 +96,11 @@ object ShopDashboardRepository {
                     orderCount = safeInt(d.get("orderCount")),
                     soldCount = safeInt(d.get("soldCount"))
                 )
-            }.sortedBy { it.date }
-            
+            }
+                .sortedByDescending { it.date }   // mới nhất trước
+                .take(limit)                      // lấy `limit` ngày gần nhất
+                .sortedBy { it.date }             // rồi sort tăng dần để vẽ chart trái→phải
+
             android.util.Log.d("ShopDashboardRepo", "Fetched ${result.size} points for path: ${ref.path}")
             result
         } catch (e: Exception) {

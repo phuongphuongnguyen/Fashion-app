@@ -29,13 +29,13 @@ import com.example.fashionapp.data.shop.ShopProductStat
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 
-// ── Palette (đồng bộ với phần còn lại của app) ──
+
 private val PrimaryBlue = Color(0xFF3669C9)
 private val PrimaryBlueDark = Color(0xFF274B9A)
 private val TextDark = Color(0xFF1A1A1A)
 private val TextGray = Color(0xFF888888)
 private val CardBg = Color(0xFFF7F8FA)
-private val GreenRevenue = Color(0xFF00A152)
+private val colorRevenue = Color(0xFF274B9A)
 private val StarYellow = Color(0xFFFFC107)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,7 +116,7 @@ fun ShopDashboardScreen(
     }
 }
 
-// ── Hero card: tổng doanh thu + 3 chỉ số nhanh ──
+// tổng doanh thu
 @Composable
 private fun RevenueHeroCard(state: ShopDashboardUiState) {
     Column(
@@ -167,7 +167,7 @@ private fun HeroDivider() {
     )
 }
 
-// ── 2 thẻ chỉ số: đánh giá + tỉ lệ phản hồi ──
+// đánh giá, tỉ lệ phản hồi
 @Composable
 private fun MetricCardsRow(state: ShopDashboardUiState) {
     Row(
@@ -213,7 +213,7 @@ private fun SectionTitle(text: String) {
     Text(text, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = TextDark)
 }
 
-// ── 1 dòng sản phẩm trong dashboard (bấm → phân tích sản phẩm) ──
+// products
 @Composable
 private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
     val product = stat.product
@@ -247,7 +247,7 @@ private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
                 color = TextDark
             )
             Spacer(Modifier.height(4.dp))
-            Text("₫${formatMoney(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = PrimaryBlue)
+            Text("₫${formatMoney(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextDark)
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Đã bán ${product.soldCount}", fontSize = 11.sp, color = TextGray)
@@ -260,7 +260,7 @@ private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
             Text(
                 "Doanh thu: ₫${formatMoney(stat.revenue)}",
                 fontSize = 11.sp,
-                color = GreenRevenue,
+                color = colorRevenue,
                 fontWeight = FontWeight.Medium
             )
         }
