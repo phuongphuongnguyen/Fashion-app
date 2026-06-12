@@ -104,8 +104,12 @@ class CreatePostViewModel : ViewModel() {
                     authorId = authorId,
                     caption = caption,
                     imageUris = imageUris,
-                    fallbackAuthorName = currentUser?.name.orEmpty(),
-                    fallbackAuthorAvt = currentUser?.avatarUrl.orEmpty()
+                    fallbackAuthorName = currentUser?.username.orEmpty().ifBlank {
+                        currentUser?.name.orEmpty()
+                    },
+                    fallbackAuthorAvt = currentUser?.avatarRef.orEmpty().ifBlank {
+                        currentUser?.avatarUrl.orEmpty()
+                    }
                 )
                 _uiState.value = CreatePostUiState(isSuccess = true)
             } catch (e: Exception) {
@@ -183,7 +187,9 @@ fun CreatePostScreen(
         ) {
             item {
                 PostComposerCard(
-                    authorName = currentUser?.name.orEmpty().ifBlank { if (authorId.isNullOrBlank()) settings.t("User", "Người dùng") else settings.t("Shop", "Cửa hàng") },
+                    authorName = currentUser?.username.orEmpty()
+                        .ifBlank { currentUser?.name.orEmpty() }
+                        .ifBlank { if (authorId.isNullOrBlank()) settings.t("User", "Người dùng") else settings.t("Shop", "Cửa hàng") },
                     authorAvatar = currentUser?.avatarUrl.orEmpty(),
                     isShopPost = !authorId.isNullOrBlank(),
                     caption = caption,

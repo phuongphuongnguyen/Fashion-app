@@ -5,7 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,12 +52,12 @@ fun SavedScreen(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            itemsIndexed(savedPosts, key = { _, post -> post.id }) { index, post ->
+            items(savedPosts, key = { post -> post.id }) { post ->
                 val imageUrl = post.imageUrls.firstOrNull()
                 if (imageUrl != null) {
                     Box(
                         modifier = Modifier
-                            .aspectRatio(if (index % 5 == 1) 0.62f else 0.78f)
+                            .aspectRatio(1f)
                             .clip(RoundedCornerShape(4.dp))
                             .background(Color(0xFFECECEC))
                             .clickable { navController.navigate(Screen.PostDetail.createRoute(post.id)) }

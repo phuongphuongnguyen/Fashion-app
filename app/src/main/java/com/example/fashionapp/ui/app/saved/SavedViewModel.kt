@@ -75,7 +75,9 @@ class SavedViewModel : ViewModel() {
 
                 if (post != null && post.authorId.isNotBlank() && post.authorId != userId) {
                     val userA = userRepository.getUserProfile(userId)
-                    val senderName = userA?.name ?: "Ai đó"
+                    val senderName = userA?.username?.takeIf { it.isNotBlank() }
+                        ?: userA?.name
+                        ?: "Ai đó"
                     val notificationRepo = com.example.fashionapp.data.notification.NotificationRepository()
                     notificationRepo.addNotification(
                         userId = post.authorId,

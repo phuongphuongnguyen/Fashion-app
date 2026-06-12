@@ -109,7 +109,9 @@ class HomeViewModel : ViewModel() {
                 )
                 val currentUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
                 if (!currentLiked && post.authorId.isNotBlank() && post.authorId != currentUid) {
-                    val senderName = currentState.user?.name ?: "Ai đó"
+                    val senderName = currentState.user?.username?.takeIf { it.isNotBlank() }
+                        ?: currentState.user?.name
+                        ?: "Ai đó"
                     NotificationRepository().addNotification(
                         userId = post.authorId,
                         message = "$senderName đã thích bài viết của bạn.",
@@ -128,7 +130,9 @@ class HomeViewModel : ViewModel() {
 
         val newComment = Comment(
             id = UUID.randomUUID().toString(),
-            username = user?.name ?: "You",
+            userId = user?.id.orEmpty(),
+            username = user?.username?.takeIf { it.isNotBlank() } ?: user?.name ?: "You",
+            avatarRef = user?.avatarRef.orEmpty(),
             avatarUrl = user?.avatarUrl ?: "",
             text = text,
             createdAt = Timestamp.now()
@@ -155,7 +159,9 @@ class HomeViewModel : ViewModel() {
             }.onSuccess {
                 val currentUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
                 if (post.authorId.isNotBlank() && post.authorId != currentUid) {
-                    val senderName = currentState.user?.name ?: "Ai đó"
+                    val senderName = currentState.user?.username?.takeIf { it.isNotBlank() }
+                        ?: currentState.user?.name
+                        ?: "Ai đó"
                     NotificationRepository().addNotification(
                         userId = post.authorId,
                         message = "$senderName đã bình luận: \"$text\" trên bài viết của bạn.",

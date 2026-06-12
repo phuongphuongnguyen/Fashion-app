@@ -23,7 +23,9 @@ data class Post(
 
 data class Comment(
     val id: String = "",
+    val userId: String = "",
     val username: String = "",
+    val avatarRef: String = "",
     val avatarUrl: String = "",
     val text: String = "",
     val createdAt: Timestamp? = null

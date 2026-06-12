@@ -7,31 +7,56 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 
-COMMENT_POOL = [
-    ("Mai Anh", "Set này phối màu đẹp quá."),
-    ("Linh Nguyen", "Mẫu này còn size M không shop?"),
-    ("Minh Khang", "Ảnh lên dáng ổn, nhìn rất dễ mặc."),
-    ("Thao Pham", "Mình thích kiểu này, lưu lại để mua sau."),
-    ("Hoang Tran", "Chất vải nhìn có vẻ mát."),
-    ("Ngoc Bich", "Shop tư vấn thêm màu khác được không?"),
-    ("Gia Huy", "Phối với sneaker trắng chắc hợp."),
-    ("Lan Chi", "Đơn giản mà sang."),
-    ("Quynh Nhu", "Có freeship cho mẫu này không ạ?"),
-    ("Duc Anh", "Form này hợp đi chơi cuối tuần."),
+COMMENT_TEXTS = [
+    "Set nay phoi mau dep qua.",
+    "Mau nay con size M khong shop?",
+    "Anh len dang on, nhin rat de mac.",
+    "Minh thich kieu nay, luu lai de mua sau.",
+    "Chat vai nhin co ve mat.",
+    "Shop tu van them mau khac duoc khong?",
+    "Phoi voi sneaker trang chac hop.",
+    "Don gian ma sang.",
+    "Co freeship cho mau nay khong a?",
+    "Form nay hop di choi cuoi tuan.",
 ]
 
 
-def build_comments(count: int) -> list[dict]:
-    selected = random.sample(COMMENT_POOL, k=min(count, len(COMMENT_POOL)))
+def load_users(db) -> list[dict]:
+    users = []
+    for doc in db.collection("users").stream():
+        data = doc.to_dict() or {}
+        name = (
+            or data.get("username")
+            or data.get("name")
+            or data.get("displayName")
+            or data.get("email")
+            or ""
+        )
+        if not name:
+            continue
+        users.append(
+            {
+                "id": doc.id,
+                "username": name,
+                "avatarRef": data.get("avatarRef") or "",
+            }
+        )
+    return users
+
+
+def build_comments(users: list[dict], count: int) -> list[dict]:
+    selected_users = random.sample(users, k=min(count, len(users)))
+    selected_texts = random.sample(COMMENT_TEXTS, k=min(count, len(COMMENT_TEXTS)))
     return [
         {
             "id": str(uuid.uuid4()),
-            "username": username,
-            "avatarUrl": "",
+            "userId": user["id"],
+            "username": user["username"],
+            "avatarRef": user["avatarRef"],
             "text": text,
             "createdAt": datetime.now(timezone.utc) - timedelta(minutes=index * 17),
         }
-        for index, (username, text) in enumerate(selected)
+        for index, (user, text) in enumerate(zip(selected_users, selected_texts))
     ]
 
 
@@ -54,6 +79,10 @@ def main() -> None:
     cred = credentials.Certificate(args.credentials)
     firebase_admin.initialize_app(cred, {"projectId": args.project})
     db = firestore.client()
+    users = load_users(db)
+
+    if not users:
+        raise SystemExit("No usable users found in Firestore users collection")
 
     scanned = 0
     updated = 0
@@ -63,19 +92,37 @@ def main() -> None:
     for doc in db.collection("posts").stream():
         scanned += 1
         data = doc.to_dict() or {}
-        existing = data.get("comments")
+        existing = data.get("comments") or list(
+            doc.reference.collection("comments").limit(1).stream()
+        )
         if existing and not args.overwrite:
             continue
 
+        if args.overwrite:
+            for old_comment in doc.reference.collection("comments").stream():
+                batch.delete(old_comment.reference)
+                pending += 1
+                if pending >= 450:
+                    batch.commit()
+                    batch = db.batch()
+                    pending = 0
+
         count = random.randint(args.min, args.max)
-        comments = build_comments(count)
-        batch.update(
-            doc.reference,
-            {
-                "comments": comments,
-                "commentCount": len(comments),
-            },
-        )
+        comments = build_comments(users, count)
+        for comment in comments:
+            comment_ref = doc.reference.collection("comments").document(comment["id"])
+            batch.set(comment_ref, comment)
+            pending += 1
+
+            if pending >= 450:
+                batch.commit()
+                batch = db.batch()
+                pending = 0
+
+        updates = {"commentCount": len(comments)}
+        if args.overwrite:
+            updates["comments"] = firestore.DELETE_FIELD
+        batch.update(doc.reference, updates)
         updated += 1
         pending += 1
 
@@ -87,6 +134,7 @@ def main() -> None:
     if pending:
         batch.commit()
 
+    print(f"Loaded users: {len(users)}")
     print(f"Scanned posts: {scanned}")
     print(f"Updated posts: {updated}")
 

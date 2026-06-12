@@ -397,7 +397,9 @@ class ShopViewModel : ViewModel() {
                     order = order,
                     rating = rating,
                     comment = comment,
-                    userName = currentUser?.name.orEmpty().ifBlank {
+                    userName = currentUser?.username.orEmpty().ifBlank {
+                        currentUser?.name.orEmpty()
+                    }.ifBlank {
                         auth.currentUser?.displayName.orEmpty().ifBlank {
                             auth.currentUser?.email.orEmpty()
                         }

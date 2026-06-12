@@ -40,8 +40,9 @@ def main() -> None:
                 ref,
                 {
                     "id": comment_id,
+                    "userId": comment.get("userId") or "",
                     "username": comment.get("username") or "",
-                    "avatarUrl": comment.get("avatarUrl") or "",
+                    "avatarRef": comment.get("avatarRef") or comment.get("avatarUrl") or "",
                     "text": text,
                     "createdAt": comment.get("createdAt") or firestore.SERVER_TIMESTAMP,
                 },

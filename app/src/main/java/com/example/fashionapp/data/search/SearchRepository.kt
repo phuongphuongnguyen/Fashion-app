@@ -72,20 +72,23 @@ object SearchRepository {
             val users = snap.documents.map { doc ->
                 async {
                     // Tên hiển thị có thể nằm ở 'name', 'displayName' hoặc 'username' tuỳ doc
-                    val name = (doc.getString("name")
-                        ?: doc.getString("displayName")
-                        ?: doc.getString("username"))
+                    val username = doc.getString("username").orEmpty()
+                    val name = (username.takeIf { it.isNotBlank() }
+                        ?: doc.getString("name")
+                        ?: doc.getString("displayName"))
                         .orEmpty()
                     if (name.isBlank()) return@async null
                     User(
                         id = doc.id,
                         name = name,
+                        avatarRef = doc.getString("avatarRef").orEmpty(),
                         avatarUrl = StorageUrlResolver.resolve(
                             doc.getString("avatarRef").orEmpty()
                         ),
                         email = doc.getString("email").orEmpty(),
                         followersCount = (doc.getLong("followersCount") ?: doc.getLong("followerCount"))?.toInt() ?: 0,
                         followingCount = doc.getLong("followingCount")?.toInt() ?: 0,
+                        username = username,
                     )
                 }
             }.awaitAll().filterNotNull()

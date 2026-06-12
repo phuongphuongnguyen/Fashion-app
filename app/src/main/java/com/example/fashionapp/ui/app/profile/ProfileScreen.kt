@@ -230,7 +230,9 @@ private fun ProfileHeader(
     onAddPost: () -> Unit
 ) {
     val settings = LocalAppSettings.current
-    val name = user?.name?.takeIf { it.isNotBlank() } ?: settings.t("User", "Người dùng")
+    val name = user?.username?.takeIf { it.isNotBlank() }
+        ?: user?.name?.takeIf { it.isNotBlank() }
+        ?: settings.t("User", "Người dùng")
     val avatar = user?.avatarUrl.orEmpty()
     val bio = user?.bio.orEmpty()
     val context = LocalContext.current
