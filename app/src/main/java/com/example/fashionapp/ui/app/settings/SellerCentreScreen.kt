@@ -18,28 +18,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.data.user.UserSession
+import com.example.fashionapp.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-private val PrimaryBlue = Color(0xFF3669C9)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SellerCentreScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color
+    onBack: () -> Unit
 ) {
     val settings = LocalAppSettings.current
     val scope = rememberCoroutineScope()
     val auth = FirebaseAuth.getInstance()
     val uid = auth.currentUser?.uid ?: ""
+
+    // Theme colors (auto light/dark)
+    val c = AppTheme.colors
+    val bgColor = c.background
+    val textColor = c.textPrimary
+    val subTextColor = c.textSecondary
+    val dividerColor = c.divider
+    val PrimaryBlue = MaterialTheme.colorScheme.secondary
+    val isDark = settings.isDarkMode
 
     // Form fields
     var shopName by remember { mutableStateOf("") }

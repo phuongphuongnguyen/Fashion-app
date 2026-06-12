@@ -25,33 +25,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.fashionapp.data.StorageUrlResolver
 import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.model.User
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-
-// ── Palette ──
-private val PrimaryBlue   = Color(0xFF3669C9)
-private val LightBlue     = Color(0xFFEEF2FF)
-private val DarkSelectionBg = Color(0xFF1D2D50)
-private val DangerRed     = Color(0xFFE53935)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,14 +63,14 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
 
-    // Dynamic Theme Colors
-    val isDark = settings.isDarkMode
-    val bgColor = if (isDark) Color(0xFF121212) else Color(0xFFF7F8FA)
-    val cardColor = if (isDark) Color(0xFF1E1E1E) else Color.White
-    val textColor = if (isDark) Color.White else Color(0xFF1A1A2E)
-    val subTextColor = if (isDark) Color(0xFFB0B0B0) else Color.Gray
-    val dividerColor = if (isDark) Color(0xFF2C2C2C) else Color(0xFFEEEEEE)
-    val topBarBgColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+    // Theme colors come from AppTheme.colors (auto light/dark)
+    val c = AppTheme.colors
+    val bgColor = c.background
+    val cardColor = c.surface
+    val textColor = c.textPrimary
+    val subTextColor = c.textSecondary
+    val dividerColor = c.divider
+    val dangerColor = c.danger
 
     AnimatedContent(
         targetState = currentSubScreen,
@@ -92,15 +84,7 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
         label = "settings_nav"
     ) { subScreen ->
         when (subScreen) {
-            SubScreen.PROFILE -> ProfileSubScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor
-            )
+            SubScreen.PROFILE -> ProfileSubScreen(onBack = { currentSubScreen = null })
             SubScreen.SHIPPING -> ShippingSubScreen(
                 onBack = {
                     if (initialSubScreen?.uppercase() == "SHIPPING") {
@@ -108,82 +92,18 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                     } else {
                         currentSubScreen = null
                     }
-                },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor
+                }
             )
-            SubScreen.PAYMENT -> PaymentSubScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor
-            )
-            SubScreen.LANGUAGE   -> LanguageScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor,
-                topBarBgColor = topBarBgColor
-            )
-            SubScreen.COUNTRY    -> CountryScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor,
-                topBarBgColor = topBarBgColor
-            )
-            SubScreen.NOTIFICATIONS -> NotificationScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor,
-                topBarBgColor = topBarBgColor
-            )
-            SubScreen.ABOUT      -> AboutScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor,
-                topBarBgColor = topBarBgColor
-            )
+            SubScreen.PAYMENT -> PaymentSubScreen(onBack = { currentSubScreen = null })
+            SubScreen.LANGUAGE   -> LanguageScreen(onBack = { currentSubScreen = null })
+            SubScreen.COUNTRY    -> CountryScreen(onBack = { currentSubScreen = null })
+            SubScreen.NOTIFICATIONS -> NotificationScreen(onBack = { currentSubScreen = null })
+            SubScreen.ABOUT      -> AboutScreen(onBack = { currentSubScreen = null })
             SubScreen.REGISTER_SHOP -> RegisterShopScreen(
                 onBack = { currentSubScreen = null },
-                onRegistered = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor
+                onRegistered = { currentSubScreen = null }
             )
-            SubScreen.SELLER_CENTRE -> SellerCentreScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor
-            )
+            SubScreen.SELLER_CENTRE -> SellerCentreScreen(onBack = { currentSubScreen = null })
             null -> {
                 // ── Main settings list ──
                 Scaffold(
@@ -224,70 +144,56 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
 
                         // ══ Personal ══
                         FlatSectionHeader(
-                            title = settings.t("Personal", "Cá nhân", "Personnel", "個人", "개인", "个人"),
-                            textColor = textColor
+                            title = settings.t("Personal", "Cá nhân", "Personnel", "個人", "개인", "个人")
                         )
                         FlatSettingRow(
                             label = settings.t("Profile", "Hồ sơ", "Profil", "プロフィール", "프로필", "个人资料"),
-                            onClick = { currentSubScreen = SubScreen.PROFILE },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
+                            onClick = { currentSubScreen = SubScreen.PROFILE }
                         )
                         FlatSettingRow(
                             label = settings.t("Shipping Address", "Địa chỉ giao hàng", "Adresse de livraison", "配送先住所", "배송 주소", "收货地址"),
-                            onClick = { currentSubScreen = SubScreen.SHIPPING },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
+                            onClick = { currentSubScreen = SubScreen.SHIPPING }
                         )
                         FlatSettingRow(
                             label = settings.t("Payment methods", "Phương thức thanh toán", "Modes de paiement", "支払い方法", "결제 수단", "支付方式"),
-                            onClick = { currentSubScreen = SubScreen.PAYMENT },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
+                            onClick = { currentSubScreen = SubScreen.PAYMENT }
                         )
                         FlatSettingRow(
                             label = settings.t("Notifications", "Thông báo", "Notifications", "通知", "알림", "通知"),
-                            onClick = { currentSubScreen = SubScreen.NOTIFICATIONS },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
+                            onClick = { currentSubScreen = SubScreen.NOTIFICATIONS }
                         )
                         // ── Dark Mode toggle in Personal ──
                         FlatSwitchRow(
                             label = settings.t("Dark Mode", "Chế độ tối", "Mode sombre", "ダークモード", "다크 모드", "深色模式"),
                             checked = settings.isDarkMode,
-                            onCheckedChange = { settings.updateDarkMode(it) },
-                            textColor = textColor,
-                            dividerColor = dividerColor
+                            onCheckedChange = { settings.updateDarkMode(it) }
                         )
 
                         Spacer(Modifier.height(24.dp))
 
                         // ══ Shop ══
                         FlatSectionHeader(
-                            title = settings.t("Shop", "Cửa hàng", "Boutique", "ショップ", "쇼핑", "商店"),
-                            textColor = textColor
+                            title = settings.t("Shop", "Cửa hàng", "Boutique", "ショップ", "쇼핑", "商店")
                         )
                         if (sessionUser?.role?.equals("shop", ignoreCase = true) == true) {
                             FlatSettingRow(
                                 label = settings.t("Seller Centre", "Kênh Người Bán", "Centre Vendeur", "販売者センター", "판매자 센터", "卖家中心"),
-                                onClick = { currentSubScreen = SubScreen.SELLER_CENTRE },
-                                textColor = textColor, subTextColor = subTextColor,
-                                dividerColor = dividerColor
+                                onClick = { currentSubScreen = SubScreen.SELLER_CENTRE }
                             )
                         } else {
                             FlatSettingRow(
                                 label = settings.t("Register as a Seller", "Đăng ký mở Cửa hàng", "S'inscrire comme vendeur", "販売者として登録", "판매자로 등록", "注册为卖家"),
-                                onClick = { currentSubScreen = SubScreen.REGISTER_SHOP },
-                                textColor = textColor, subTextColor = subTextColor,
-                                dividerColor = dividerColor
+                                onClick = { currentSubScreen = SubScreen.REGISTER_SHOP }
                             )
                         }
                         FlatSettingRow(
                             label = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"),
                             value = settings.country,
-                            onClick = { currentSubScreen = SubScreen.COUNTRY },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
+                            onClick = { currentSubScreen = SubScreen.COUNTRY }
+                        )
+                        FlatSettingRow(
+                            label = settings.t("Terms and Conditions", "Điều khoản và Điều kiện", "Conditions générales", "利用規約", "이용 약관", "条款与条件"),
+                            onClick = { /* Show T&C */ }
                         )
 //                        FlatSettingRow(
 //                            label = settings.t("Terms and Conditions", "Điều khoản và Điều kiện", "Conditions générales", "利用規約", "이용 약관", "条款与条件"),
@@ -300,15 +206,12 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
 
                         // ══ Account ══
                         FlatSectionHeader(
-                            title = settings.t("Account", "Tài khoản", "Compte", "アカウント", "계정", "账户"),
-                            textColor = textColor
+                            title = settings.t("Account", "Tài khoản", "Compte", "アカウント", "계정", "账户")
                         )
                         FlatSettingRow(
                             label = settings.t("Language", "Ngôn ngữ", "Langue", "言語", "언어", "语言"),
                             value = settings.language.nativeName,
-                            onClick = { currentSubScreen = SubScreen.LANGUAGE },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
+                            onClick = { currentSubScreen = SubScreen.LANGUAGE }
                         )
 //                        FlatSettingRow(
 //                            label = settings.t("About app", "Về app", "À propos de app", "Appについて", "App 정보", "关于 App"),
@@ -317,12 +220,14 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
 //                            dividerColor = dividerColor
 //                        )
                         FlatSettingRow(
+                            label = settings.t("About app", "Về app", "À propos de app", "Appについて", "App 정보", "关于 App"),
+                            onClick = { currentSubScreen = SubScreen.ABOUT }
+                        )
+                        FlatSettingRow(
                             label = settings.t("Log out", "Đăng xuất", "Se déconnecter", "ログアウト", "로그아웃", "退出登录"),
                             onClick = {
                                 showLogoutConfirmDialog = true
-                            },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
+                            }
                         )
 
                         Spacer(Modifier.height(20.dp))
@@ -330,7 +235,7 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                         // ── Delete Account ──
                         Text(
                             text = settings.t("Delete My Account", "Xóa tài khoản của tôi", "Supprimer mon compte", "アカウントを削除", "계정 삭제", "删除我的账户"),
-                            color = DangerRed,
+                            color = dangerColor,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Normal,
                             modifier = Modifier
@@ -398,7 +303,7 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                                 ) {
                                     Text(
                                         text = settings.t("Delete", "Xóa", "Supprimer", "削除", "삭제", "删除"),
-                                        color = DangerRed,
+                                        color = dangerColor,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -451,7 +356,7 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                                 ) {
                                     Text(
                                         text = settings.t("Log out", "Đăng xuất", "Se déconnecter", "ログアウト", "로그아웃", "退出登录"),
-                                        color = DangerRed,
+                                        color = dangerColor,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -482,20 +387,20 @@ private enum class SubScreen { PROFILE, SHIPPING, PAYMENT, LANGUAGE, COUNTRY, NO
 
 // ── Profile Sub-Screen ──
 @Composable
-private fun ProfileSubScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color
-) {
+private fun ProfileSubScreen(onBack: () -> Unit) {
     val settings = LocalAppSettings.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val auth = FirebaseAuth.getInstance()
     val user = auth.currentUser
+
+    val c = AppTheme.colors
+    val bgColor = c.background
+    val textColor = c.textPrimary
+    val subTextColor = c.textSecondary
+    val dividerColor = c.divider
+    val accent = MaterialTheme.colorScheme.secondary
+    val isDark = settings.isDarkMode
 
     // Đọc displayName & avatar từ UserSession (Firestore) để hiển thị đúng
     val sessionUser by UserSession.currentUser.collectAsState()
@@ -564,7 +469,7 @@ private fun ProfileSubScreen(
                         modifier = Modifier
                             .size(90.dp)
                             .clip(CircleShape)
-                            .border(2.dp, PrimaryBlue, CircleShape),
+                            .border(2.dp, accent, CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 } else {
@@ -588,7 +493,7 @@ private fun ProfileSubScreen(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(CircleShape)
-                        .background(PrimaryBlue)
+                        .background(accent)
                         .clickable { launcher.launch("image/*") },
                     contentAlignment = Alignment.Center
                 ) {
@@ -607,10 +512,7 @@ private fun ProfileSubScreen(
             FlatTextField(
                 value = displayName,
                 onValueChange = { displayName = it },
-                placeholder = settings.t("Name", "Tên", "Nom", "名前", "이름", "姓名"),
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor
+                placeholder = settings.t("Name", "Tên", "Nom", "名前", "이름", "姓名")
             )
 
             // Email field (read-only)
@@ -618,9 +520,7 @@ private fun ProfileSubScreen(
                 value = email,
                 onValueChange = {},
                 placeholder = settings.t("Email", "Email", "Email", "メール", "이메일", "邮箱"),
-                textColor = subTextColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor,
+                textColorOverride = subTextColor,
                 readOnly = true
             )
 
@@ -629,16 +529,14 @@ private fun ProfileSubScreen(
                 value = "••••••••••",
                 onValueChange = {},
                 placeholder = settings.t("Password", "Mật khẩu", "Mot de passe", "パスワード", "비밀번호", "密码"),
-                textColor = subTextColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor,
+                textColorOverride = subTextColor,
                 readOnly = true
             )
 
             if (saveError != null) {
                 Text(
                     text = saveError ?: "",
-                    color = DangerRed,
+                    color = c.danger,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                 )
@@ -717,7 +615,7 @@ private fun ProfileSubScreen(
                     .padding(horizontal = 20.dp, vertical = 24.dp)
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = accent),
                 enabled = !isSaving
             ) {
                 if (isSaving) {
@@ -736,22 +634,20 @@ private fun ProfileSubScreen(
 
 // ── Shipping Address Sub-Screen ──
 @Composable
-private fun ShippingSubScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color
-) {
+private fun ShippingSubScreen(onBack: () -> Unit) {
     val settings = LocalAppSettings.current
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("app_settings", android.content.Context.MODE_PRIVATE)
-    
+
+    val c = AppTheme.colors
+    val bgColor = c.background
+    val textColor = c.textPrimary
+    val subTextColor = c.textSecondary
+    val accent = MaterialTheme.colorScheme.secondary
+
     val sessionUser by UserSession.currentUser.collectAsState()
     val scope = rememberCoroutineScope()
-    
+
     var fullName by remember { mutableStateOf(sessionUser?.name ?: prefs.getString("ship_name", "") ?: "") }
     var address by remember { mutableStateOf(sessionUser?.address ?: prefs.getString("ship_address", "") ?: "") }
     var city by remember { mutableStateOf(prefs.getString("ship_city", "") ?: "") }
@@ -798,21 +694,16 @@ private fun ShippingSubScreen(
             Spacer(Modifier.height(24.dp))
 
             FlatTextField(value = fullName, onValueChange = { fullName = it; saved = false },
-                placeholder = settings.t("Full Name", "Họ và tên", "Nom complet", "氏名", "이름", "全名"),
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+                placeholder = settings.t("Full Name", "Họ và tên", "Nom complet", "氏名", "이름", "全名"))
             FlatTextField(value = address, onValueChange = { address = it; saved = false },
-                placeholder = settings.t("Address", "Địa chỉ", "Adresse", "住所", "주소", "地址"),
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+                placeholder = settings.t("Address", "Địa chỉ", "Adresse", "住所", "주소", "地址"))
             FlatTextField(value = city, onValueChange = { city = it; saved = false },
-                placeholder = settings.t("City", "Thành phố", "Ville", "都市", "도시", "城市"),
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+                placeholder = settings.t("City", "Thành phố", "Ville", "都市", "도시", "城市"))
             FlatTextField(value = zipCode, onValueChange = { zipCode = it; saved = false },
                 placeholder = settings.t("Zip Code", "Mã bưu điện", "Code postal", "郵便番号", "우편번호", "邮编"),
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
                 keyboardType = KeyboardType.Number)
             FlatTextField(value = phone, onValueChange = { phone = it; saved = false },
                 placeholder = settings.t("Phone Number", "Số điện thoại", "Téléphone", "電話番号", "전화번호", "电话号码"),
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
                 keyboardType = KeyboardType.Phone)
 
             Spacer(Modifier.weight(1f))
@@ -863,7 +754,7 @@ private fun ShippingSubScreen(
                     .padding(horizontal = 20.dp, vertical = 24.dp)
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = accent),
                 enabled = !isSaving
             ) {
                 if (isSaving) {
@@ -883,18 +774,17 @@ private fun ShippingSubScreen(
 
 // ── Payment Method Sub-Screen ──
 @Composable
-private fun PaymentSubScreen(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    bgColor: Color,
-    cardColor: Color,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color
-) {
+private fun PaymentSubScreen(onBack: () -> Unit) {
     val settings = LocalAppSettings.current
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("app_settings", android.content.Context.MODE_PRIVATE)
+
+    val c = AppTheme.colors
+    val bgColor = c.background
+    val textColor = c.textPrimary
+    val subTextColor = c.textSecondary
+    val accent = MaterialTheme.colorScheme.secondary
+
     var cardNumber by remember { mutableStateOf(prefs.getString("pay_card", "") ?: "") }
     var cardHolder by remember { mutableStateOf(prefs.getString("pay_holder", "") ?: "") }
     var expiry by remember { mutableStateOf(prefs.getString("pay_expiry", "") ?: "") }
@@ -932,17 +822,13 @@ private fun PaymentSubScreen(
 
             FlatTextField(value = cardNumber, onValueChange = { cardNumber = it },
                 placeholder = settings.t("Card Number", "Số thẻ", "Numéro de carte", "カード番号", "카드 번호", "卡号"),
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
                 keyboardType = KeyboardType.Number)
             FlatTextField(value = cardHolder, onValueChange = { cardHolder = it },
-                placeholder = settings.t("Card Holder Name", "Tên chủ thẻ", "Nom du titulaire", "カード名義人", "카드 소유자", "持卡人姓名"),
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+                placeholder = settings.t("Card Holder Name", "Tên chủ thẻ", "Nom du titulaire", "カード名義人", "카드 소유자", "持卡人姓名"))
             FlatTextField(value = expiry, onValueChange = { expiry = it },
-                placeholder = settings.t("Expiry Date (MM/YY)", "Ngày hết hạn (MM/YY)", "Date d'expiration", "有効期限", "만료일", "有效期"),
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor)
+                placeholder = settings.t("Expiry Date (MM/YY)", "Ngày hết hạn (MM/YY)", "Date d'expiration", "有効期限", "만료일", "有效期"))
             FlatTextField(value = cvv, onValueChange = { cvv = it },
                 placeholder = "CVV",
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor,
                 keyboardType = KeyboardType.NumberPassword)
 
             Spacer(Modifier.weight(1f))
@@ -962,7 +848,7 @@ private fun PaymentSubScreen(
                     .padding(horizontal = 20.dp, vertical = 24.dp)
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = accent)
             ) {
                 Text(
                     if (saved) settings.t("Saved ✓", "Đã lưu ✓", "Enregistré ✓", "保存済み ✓", "저장됨 ✓", "已保存 ✓")
@@ -977,12 +863,11 @@ private fun PaymentSubScreen(
 
 
 @Composable
-private fun LanguageScreen(
-    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
-    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
-) {
+private fun LanguageScreen(onBack: () -> Unit) {
     val settings = LocalAppSettings.current
-    Scaffold(containerColor = bgColor) { padding ->
+    val c = AppTheme.colors
+    val accent = MaterialTheme.colorScheme.secondary
+    Scaffold(containerColor = c.background) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 16.dp)
@@ -991,25 +876,23 @@ private fun LanguageScreen(
                 FlatSubScreenHeader(
                     onBack = onBack,
                     title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
-                    subtitle = settings.t("Language", "Ngôn ngữ", "Langue", "言語", "언어", "语言"),
-                    textColor = textColor, subTextColor = subTextColor
+                    subtitle = settings.t("Language", "Ngôn ngữ", "Langue", "言語", "언어", "语言")
                 )
             }
             items(AppLanguage.values()) { lang ->
                 val selected = settings.language == lang
                 FlatSelectableRow(
                     selected = selected,
-                    onClick = { settings.updateLanguage(lang) },
-                    textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+                    onClick = { settings.updateLanguage(lang) }
                 ) {
                     Text(lang.flag, fontSize = 24.sp)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(lang.nativeName, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
-                        Text(lang.displayName, fontSize = 13.sp, color = subTextColor)
+                        Text(lang.nativeName, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = c.textPrimary)
+                        Text(lang.displayName, fontSize = 13.sp, color = c.textSecondary)
                     }
                     if (selected) {
-                        Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.CheckCircle, null, tint = accent, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -1018,134 +901,46 @@ private fun LanguageScreen(
 }
 
 @Composable
-private fun CurrencyScreen(
-    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
-    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
-) {
+private fun CountryScreen(onBack: () -> Unit) {
     val settings = LocalAppSettings.current
-    Scaffold(containerColor = bgColor) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            item {
-                FlatSubScreenHeader(
-                    onBack = onBack,
-                    title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
-                    subtitle = settings.t("Currency", "Tiền tệ", "Devise", "通貨", "통화", "货币"),
-                    textColor = textColor, subTextColor = subTextColor
-                )
-            }
-            items(AppCurrency.values()) { cur ->
-                val selected = settings.currency == cur
-                FlatSelectableRow(
-                    selected = selected,
-                    onClick = { settings.updateCurrency(cur) },
-                    textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
-                ) {
-                    Text(cur.symbol, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(cur.displayName, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
-                        Text(cur.code, fontSize = 13.sp, color = subTextColor)
-                    }
-                    if (selected) {
-                        Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SizeSystemScreen(
-    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
-    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
-) {
-    val settings = LocalAppSettings.current
-    val descriptions = mapOf(
-        SizeSystem.UK to settings.t("Standard UK sizing (e.g. 6, 8, 10)", "Bảng size chuẩn Anh (ví dụ: 6, 8, 10)", "Taille standard Royaume-Uni (ex. 6, 8, 10)", "英国標準サイズ (例 6, 8, 10)", "영국 표준 사이즈 (예: 6, 8, 10)", "英国标准尺码 (例如 6, 8, 10)"),
-        SizeSystem.US to settings.t("Standard US sizing (e.g. 2, 4, 6)", "Bảng size chuẩn Mỹ (ví dụ: 2, 4, 6)", "Taille standard États-Unis (ex. 2, 4, 6)", "米国標準サイズ (例 2, 4, 6)", "미국 표준 사이즈 (예: 2, 4, 6)", "美国标准尺码 (例如 2, 4, 6)"),
-        SizeSystem.EU to settings.t("European sizing (e.g. 36, 38, 40)", "Bảng size chuẩn châu Âu (ví dụ: 36, 38, 40)", "Taille européenne (ex. 36, 38, 40)", "欧州サイズ (例 36, 38, 40)", "유럽 사이즈 (예: 36, 38, 40)", "欧洲尺码 (例如 36, 38, 40)"),
-        SizeSystem.ASIAN to settings.t("Asian sizing (e.g. S, M, L, XL)", "Bảng size chuẩn châu Á (ví dụ: S, M, L, XL)", "Taille asiatique (ex. S, M, L, XL)", "アジアサイズ (例 S, M, L, XL)", "아시아 사이즈 (예: S, M, L, XL)", "亚洲尺码 (例如 S, M, L, XL)")
-    )
-    Scaffold(containerColor = bgColor) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-        ) {
-            FlatSubScreenHeader(
-                onBack = onBack,
-                title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
-                subtitle = settings.t("Size System", "Hệ size", "Système de taille", "サイズ表記", "사이즈 체계", "尺码系统"),
-                textColor = textColor, subTextColor = subTextColor
-            )
-            SizeSystem.values().forEach { size ->
-                val selected = settings.sizeSystem == size
-                FlatSelectableRow(
-                    selected = selected,
-                    onClick = { settings.updateSizeSystem(size) },
-                    textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
-                ) {
-                    Text(size.label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("${size.label} Sizes", fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
-                        Text(descriptions[size] ?: "", fontSize = 12.sp, color = subTextColor)
-                    }
-                    if (selected) {
-                        Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CountryScreen(
-    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
-    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
-) {
-    val settings = LocalAppSettings.current
+    val c = AppTheme.colors
+    val accent = MaterialTheme.colorScheme.secondary
     var search by remember { mutableStateOf("") }
     val filtered = countryList.filter { it.contains(search, ignoreCase = true) }
 
-    Scaffold(containerColor = bgColor) { padding ->
+    Scaffold(containerColor = c.background) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             FlatSubScreenHeader(
                 onBack = onBack,
                 title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
-                subtitle = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"),
-                textColor = textColor, subTextColor = subTextColor
+                subtitle = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家")
             )
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
                 placeholder = { Text(settings.t("Search country...", "Tìm quốc gia...", "Rechercher un pays...", "国を検索...", "국가 검색...", "搜索国家...")) },
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = subTextColor) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = c.textSecondary) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = PrimaryBlue.copy(alpha = 0.4f),
-                    focusedTextColor = textColor, unfocusedTextColor = textColor,
+                    focusedBorderColor = accent,
+                    unfocusedBorderColor = accent.copy(alpha = 0.4f),
+                    focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
                     focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent
                 )
             )
             Spacer(Modifier.height(8.dp))
             LazyColumn {
-                items(filtered) { c ->
-                    val selected = settings.country == c
+                items(filtered) { country ->
+                    val selected = settings.country == country
                     FlatSelectableRow(
                         selected = selected,
-                        onClick = { settings.updateCountry(c) },
-                        textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+                        onClick = { settings.updateCountry(country) }
                     ) {
-                        Text(c, modifier = Modifier.weight(1f), fontSize = 15.sp, color = textColor)
+                        Text(country, modifier = Modifier.weight(1f), fontSize = 15.sp, color = c.textPrimary)
                         if (selected) {
-                            Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.CheckCircle, null, tint = accent, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
@@ -1155,26 +950,22 @@ private fun CountryScreen(
 }
 
 @Composable
-private fun NotificationScreen(
-    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
-    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
-) {
+private fun NotificationScreen(onBack: () -> Unit) {
     val settings = LocalAppSettings.current
-    Scaffold(containerColor = bgColor) { padding ->
+    val c = AppTheme.colors
+    Scaffold(containerColor = c.background) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         ) {
             FlatSubScreenHeader(
                 onBack = onBack,
                 title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
-                subtitle = settings.t("Notifications", "Thông báo", "Notifications", "通知", "알림", "通知"),
-                textColor = textColor, subTextColor = subTextColor
+                subtitle = settings.t("Notifications", "Thông báo", "Notifications", "通知", "알림", "通知")
             )
             FlatSwitchRow(
                 label = settings.t("Enable Notifications", "Bật thông báo", "Activer les notifications", "通知を有効化", "알림 허용", "启用通知"),
                 checked = settings.notificationsEnabled,
-                onCheckedChange = { settings.updateNotifications(it) },
-                textColor = textColor, dividerColor = dividerColor
+                onCheckedChange = { settings.updateNotifications(it) }
             )
             AnimatedVisibility(visible = settings.notificationsEnabled) {
                 Column {
@@ -1182,20 +973,17 @@ private fun NotificationScreen(
                     FlatSwitchRow(
                         label = settings.t("Device Notifications", "Thông báo thiết bị", "Notifications de l'appareil", "デバイス通知", "기기 알림", "设备通知"),
                         checked = settings.systemNotificationsEnabled,
-                        onCheckedChange = { settings.updateSystemNotifications(it) },
-                        textColor = textColor, dividerColor = dividerColor
+                        onCheckedChange = { settings.updateSystemNotifications(it) }
                     )
                     FlatSwitchRow(
                         label = settings.t("Order Updates", "Cập nhật đơn hàng", "Mises à jour de commande", "注文状況の更新", "주문 업데이트", "订单状态更新"),
                         checked = settings.orderUpdatesEnabled,
-                        onCheckedChange = { settings.updateOrderUpdates(it) },
-                        textColor = textColor, dividerColor = dividerColor
+                        onCheckedChange = { settings.updateOrderUpdates(it) }
                     )
                     FlatSwitchRow(
                         label = settings.t("Social Interactions", "Tương tác bài viết", "Interactions sociales", "ソーシャルインタラクション", "소셜 상호작용", "社交互动"),
                         checked = settings.socialInteractionsEnabled,
-                        onCheckedChange = { settings.updateSocialInteractions(it) },
-                        textColor = textColor, dividerColor = dividerColor
+                        onCheckedChange = { settings.updateSocialInteractions(it) }
                     )
                 }
             }
@@ -1204,42 +992,35 @@ private fun NotificationScreen(
 }
 
 @Composable
-private fun AboutScreen(
-    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
-    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
-) {
+private fun AboutScreen(onBack: () -> Unit) {
     val settings = LocalAppSettings.current
-    Scaffold(containerColor = bgColor) { padding ->
+    val c = AppTheme.colors
+    Scaffold(containerColor = c.background) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         ) {
             FlatSubScreenHeader(
                 onBack = onBack,
                 title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
-                subtitle = settings.t("About", "Giới thiệu", "À propos", "アプリについて", "정보", "关于"),
-                textColor = textColor, subTextColor = subTextColor
+                subtitle = settings.t("About", "Giới thiệu", "À propos", "アプリについて", "정보", "关于")
             )
 
             // App info rows
             FlatInfoRow(
                 label = settings.t("Developer", "Nhà phát triển", "Développeur", "開発元", "개발자", "开发者"),
-                value = "Team7",
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+                value = "Team7"
             )
             FlatInfoRow(
                 label = settings.t("University", "Trường", "Université", "大学", "대학교", "学校"),
-                value = "UET",
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+                value = "UET"
             )
             FlatInfoRow(
                 label = settings.t("Build", "Phiên bản build", "Build", "ビルド", "빌드", "构建版本"),
-                value = "2026.05.07",
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+                value = "2026.05.07"
             )
             FlatInfoRow(
                 label = settings.t("Platform", "Nền tảng", "Plateforme", "プラットフォーム", "플랫폼", "平台"),
-                value = "Android",
-                textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
+                value = "Android"
             )
 
             Spacer(Modifier.height(28.dp))
@@ -1253,7 +1034,7 @@ private fun AboutScreen(
                     "© 2026 Fashion App. 版权所有。"
                 ),
                 fontSize = 12.sp,
-                color = subTextColor,
+                color = c.textSecondary,
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
         }
@@ -1264,165 +1045,15 @@ private fun AboutScreen(
 // ── Shared UI Components ──
 // ══════════════════════════════════════════
 
-@Composable
-private fun SettingsSectionCard(
-    title: String,
-    cardColor: Color,
-    subTextColor: Color,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Text(
-            text = title.uppercase(java.util.Locale.ROOT),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = subTextColor,
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
-        )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = cardColor),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            Column(content = content)
-        }
-    }
-}
-
-@Composable
-private fun ArrowSettingRow(
-    icon: ImageVector,
-    iconTint: Color,
-    label: String,
-    value: String? = null,
-    onClick: () -> Unit,
-    textColor: Color,
-    subTextColor: Color
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(iconTint.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-        }
-        Spacer(Modifier.width(14.dp))
-        Text(label, modifier = Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.Medium, color = textColor)
-        if (value != null) {
-            Text(value, fontSize = 14.sp, color = subTextColor, modifier = Modifier.padding(end = 4.dp))
-        }
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = subTextColor.copy(alpha = 0.5f),
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Composable
-private fun SwitchSettingRow(
-    icon: ImageVector,
-    iconTint: Color,
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    textColor: Color
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(iconTint.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-        }
-        Spacer(Modifier.width(14.dp))
-        Text(label, modifier = Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.Medium, color = textColor)
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = PrimaryBlue)
-        )
-    }
-}
-
-@Composable
-private fun SelectableCard(
-    selected: Boolean,
-    onClick: () -> Unit,
-    isDark: Boolean,
-    cardColor: Color,
-    content: @Composable () -> Unit
-) {
-    val borderColor = if (selected) PrimaryBlue else Color.Transparent
-    val containerColor = if (selected) {
-        if (isDark) DarkSelectionBg else LightBlue
-    } else {
-        cardColor
-    }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp)),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 0.dp else 1.dp)
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String, textColor: Color, subTextColor: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, fontSize = 14.sp, color = subTextColor)
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = textColor)
-    }
-}
-
-@Composable
-private fun RowDivider(dividerColor: Color) {
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        thickness = 0.5.dp,
-        color = dividerColor
-    )
-}
-
 // ── Flat-style components (matching screenshot design) ──
 
 @Composable
-private fun FlatSectionHeader(title: String, textColor: Color) {
+private fun FlatSectionHeader(title: String) {
     Text(
         text = title,
         fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
-        color = textColor,
+        color = AppTheme.colors.textPrimary,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
     )
 }
@@ -1431,11 +1062,9 @@ private fun FlatSectionHeader(title: String, textColor: Color) {
 private fun FlatSettingRow(
     label: String,
     value: String? = null,
-    onClick: () -> Unit,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color
+    onClick: () -> Unit
 ) {
+    val c = AppTheme.colors
     Column {
         Row(
             modifier = Modifier
@@ -1448,27 +1077,27 @@ private fun FlatSettingRow(
                 text = label,
                 modifier = Modifier.weight(1f),
                 fontSize = 15.sp,
-                color = textColor
+                color = c.textPrimary
             )
             if (value != null) {
                 Text(
                     text = value,
                     fontSize = 14.sp,
-                    color = subTextColor,
+                    color = c.textSecondary,
                     modifier = Modifier.padding(end = 4.dp)
                 )
             }
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = subTextColor.copy(alpha = 0.4f),
+                tint = c.textSecondary.copy(alpha = 0.4f),
                 modifier = Modifier.size(20.dp)
             )
         }
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 20.dp),
             thickness = 0.5.dp,
-            color = dividerColor
+            color = c.divider
         )
     }
 }
@@ -1477,10 +1106,9 @@ private fun FlatSettingRow(
 private fun FlatSwitchRow(
     label: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    textColor: Color,
-    dividerColor: Color
+    onCheckedChange: (Boolean) -> Unit
 ) {
+    val c = AppTheme.colors
     Column {
         Row(
             modifier = Modifier
@@ -1492,21 +1120,21 @@ private fun FlatSwitchRow(
                 text = label,
                 modifier = Modifier.weight(1f),
                 fontSize = 15.sp,
-                color = textColor
+                color = c.textPrimary
             )
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = PrimaryBlue
+                    checkedTrackColor = MaterialTheme.colorScheme.secondary
                 )
             )
         }
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 20.dp),
             thickness = 0.5.dp,
-            color = dividerColor
+            color = c.divider
         )
     }
 }
@@ -1516,24 +1144,24 @@ private fun FlatTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color,
+    textColorOverride: Color? = null,
     readOnly: Boolean = false,
     keyboardType: KeyboardType = KeyboardType.Text
 ) {
+    val c = AppTheme.colors
+    val textColor = textColorOverride ?: c.textPrimary
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        placeholder = { Text(placeholder, color = subTextColor, fontSize = 15.sp) },
+        placeholder = { Text(placeholder, color = c.textSecondary, fontSize = 15.sp) },
         readOnly = readOnly,
         singleLine = true,
         textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = textColor),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = PrimaryBlue,
-            unfocusedBorderColor = PrimaryBlue.copy(alpha = 0.4f),
+            focusedBorderColor = MaterialTheme.colorScheme.secondary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f),
             focusedTextColor = textColor,
             unfocusedTextColor = textColor,
             focusedContainerColor = Color.Transparent,
@@ -1550,25 +1178,24 @@ private fun FlatTextField(
 private fun FlatSubScreenHeader(
     onBack: () -> Unit,
     title: String,
-    subtitle: String,
-    textColor: Color,
-    subTextColor: Color
+    subtitle: String
 ) {
+    val c = AppTheme.colors
     Spacer(Modifier.height(12.dp))
     IconButton(onClick = onBack, modifier = Modifier.padding(start = 8.dp)) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = textColor)
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = c.textPrimary)
     }
     Text(
         text = title,
         fontSize = 32.sp,
         fontWeight = FontWeight.Bold,
-        color = textColor,
+        color = c.textPrimary,
         modifier = Modifier.padding(horizontal = 20.dp)
     )
     Text(
         text = subtitle,
         fontSize = 14.sp,
-        color = subTextColor,
+        color = c.textSecondary,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
     )
     Spacer(Modifier.height(16.dp))
@@ -1578,9 +1205,6 @@ private fun FlatSubScreenHeader(
 private fun FlatSelectableRow(
     selected: Boolean,
     onClick: () -> Unit,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color,
     content: @Composable RowScope.() -> Unit
 ) {
     Column {
@@ -1596,7 +1220,7 @@ private fun FlatSelectableRow(
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 20.dp),
             thickness = 0.5.dp,
-            color = dividerColor
+            color = AppTheme.colors.divider
         )
     }
 }
@@ -1604,11 +1228,9 @@ private fun FlatSelectableRow(
 @Composable
 private fun FlatInfoRow(
     label: String,
-    value: String,
-    textColor: Color,
-    subTextColor: Color,
-    dividerColor: Color
+    value: String
 ) {
+    val c = AppTheme.colors
     Column {
         Row(
             modifier = Modifier
@@ -1619,20 +1241,20 @@ private fun FlatInfoRow(
             Text(
                 text = label,
                 fontSize = 15.sp,
-                color = textColor,
+                color = c.textPrimary,
                 modifier = Modifier.weight(1f)
             )
             Text(
                 text = value,
                 fontSize = 15.sp,
-                color = subTextColor,
+                color = c.textSecondary,
                 fontWeight = FontWeight.Medium
             )
         }
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 20.dp),
             thickness = 0.5.dp,
-            color = dividerColor
+            color = c.divider
         )
     }
 }
