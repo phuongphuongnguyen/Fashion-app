@@ -372,8 +372,8 @@ private fun ShopHeader(
                             Button(
                                 onClick = onFollowClick,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFE5EDFF),
-                                    contentColor = Color(0xFF1769FF)
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    contentColor = MaterialTheme.colorScheme.primary
                                 ),
                                 shape = RoundedCornerShape(16.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
@@ -384,7 +384,7 @@ private fun ShopHeader(
                         } else {
                             Button(
                                 onClick = onFollowClick,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 shape = RoundedCornerShape(16.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                 modifier = Modifier.height(30.dp)

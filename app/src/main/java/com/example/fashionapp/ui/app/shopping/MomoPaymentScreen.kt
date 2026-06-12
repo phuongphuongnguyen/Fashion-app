@@ -29,6 +29,7 @@ import androidx.navigation.NavController
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -206,10 +207,10 @@ fun MomoPaymentScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = settings.t("Back", "Quay lại"))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
-        containerColor = Color(0xFFF7F8FA)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -220,7 +221,7 @@ fun MomoPaymentScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = Color(0xFFAE2070))
                         Spacer(Modifier.height(12.dp))
-                        Text(settings.t("Generating QR Code...", "Đang tạo mã QR..."), color = Color.Gray)
+                        Text(settings.t("Generating QR Code...", "Đang tạo mã QR..."), color = AppTheme.colors.textSecondary)
                     }
                 }
 
@@ -254,7 +255,7 @@ fun MomoPaymentScreen(
                         Text(
                             "₫${formatAmount(amount)}",
                             fontSize = 18.sp,
-                            color = Color.Gray
+                            color = AppTheme.colors.textSecondary
                         )
                         Spacer(Modifier.height(32.dp))
                         Button(
@@ -281,7 +282,7 @@ fun MomoPaymentScreen(
                     ) {
                         Card(
                             shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -296,7 +297,7 @@ fun MomoPaymentScreen(
                                     color = Color(0xFFAE2070)
                                 )
                                 Spacer(Modifier.height(4.dp))
-                                Text(settings.t("Scan code to pay", "Quét mã để thanh toán"), fontSize = 13.sp, color = Color.Gray)
+                                Text(settings.t("Scan code to pay", "Quét mã để thanh toán"), fontSize = 13.sp, color = AppTheme.colors.textSecondary)
                                 Spacer(Modifier.height(20.dp))
 
                                 Box(
@@ -319,10 +320,10 @@ fun MomoPaymentScreen(
                                 }
 
                                 Spacer(Modifier.height(20.dp))
-                                HorizontalDivider(color = Color(0xFFEEEEEE))
+                                HorizontalDivider(color = AppTheme.colors.divider)
                                 Spacer(Modifier.height(16.dp))
 
-                                Text(settings.t("Amount to pay", "Số tiền thanh toán"), fontSize = 13.sp, color = Color.Gray)
+                                Text(settings.t("Amount to pay", "Số tiền thanh toán"), fontSize = 13.sp, color = AppTheme.colors.textSecondary)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     "₫${formatAmount(amount)}",
@@ -346,13 +347,13 @@ fun MomoPaymentScreen(
                                     color = Color(0xFFAE2070)
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text(settings.t("Waiting for payment...", "Đang chờ thanh toán..."), fontSize = 13.sp, color = Color.Gray)
+                                Text(settings.t("Waiting for payment...", "Đang chờ thanh toán..."), fontSize = 13.sp, color = AppTheme.colors.textSecondary)
                             }
                         } else {
                             Text(
                                 settings.t("Open MoMo Test app → Scan QR to pay", "Mở app MoMo Test → Quét QR để thanh toán"),
                                 fontSize = 13.sp,
-                                color = Color.Gray
+                                color = AppTheme.colors.textSecondary
                             )
                         }
                     }

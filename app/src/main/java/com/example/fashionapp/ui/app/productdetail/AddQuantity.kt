@@ -172,7 +172,7 @@ private fun SummaryRow(product: Product, selectedVariant: ProductVariant?) {
             modifier = Modifier
                 .size(80.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFFEEEEEE))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             AsyncImage(
                 model              = product.imageUrl.ifBlank { null },
