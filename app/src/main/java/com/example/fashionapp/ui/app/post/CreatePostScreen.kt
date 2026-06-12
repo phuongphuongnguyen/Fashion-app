@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -88,8 +89,12 @@ class CreatePostViewModel : ViewModel() {
                     authorId = authorId,
                     caption = caption,
                     imageUris = imageUris,
-                    fallbackAuthorName = currentUser?.name.orEmpty(),
-                    fallbackAuthorAvt = currentUser?.avatarUrl.orEmpty()
+                    fallbackAuthorName = currentUser?.username.orEmpty().ifBlank {
+                        currentUser?.name.orEmpty()
+                    },
+                    fallbackAuthorAvt = currentUser?.avatarRef.orEmpty().ifBlank {
+                        currentUser?.avatarUrl.orEmpty()
+                    }
                 )
                 _uiState.value = _uiState.value.copy(isSubmitting = false, isSuccess = true)
             } catch (e: Exception) {
@@ -153,12 +158,13 @@ fun CreatePostScreen(
 ) {
     val settings = LocalAppSettings.current
     val uiState by viewModel.uiState.collectAsState()
+    val currentUser by UserSession.currentUser.collectAsState()
     val context = LocalContext.current
 
     // Shared state
     var caption by remember { mutableStateOf("") }
     var imageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    
+
     // Product specific state
     var productName by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
@@ -223,6 +229,20 @@ fun CreatePostScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item {
+                PostComposerCard(
+                    authorName = currentUser?.username.orEmpty()
+                        .ifBlank { currentUser?.name.orEmpty() }
+                        .ifBlank { if (authorId.isNullOrBlank()) settings.t("User", "Người dùng") else settings.t("Shop", "Cửa hàng") },
+                    authorAvatar = currentUser?.avatarUrl.orEmpty(),
+                    isShopPost = !authorId.isNullOrBlank(),
+                    caption = caption,
+                    onCaptionChange = { caption = it },
+                    imageUris = imageUris,
+                    onPickImages = { imagePicker.launch("image/*") },
+                    onRemoveImage = { uri -> imageUris = imageUris.filterNot { it == uri } }
+                )
+            }
             // Mode Toggle (Only if authorId is present - i.e. it's a Shop)
             if (!authorId.isNullOrBlank()) {
                 item {
@@ -264,7 +284,7 @@ fun CreatePostScreen(
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp)
                         )
-                        
+
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = price,
@@ -336,6 +356,50 @@ fun CreatePostScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PostComposerCard(
+    authorName: String,
+    authorAvatar: String,
+    isShopPost: Boolean,
+    caption: String,
+    onCaptionChange: (String) -> Unit,
+    imageUris: List<Uri>,
+    onPickImages: () -> Unit,
+    onRemoveImage: (Uri) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            AsyncImage(
+                model = authorAvatar.ifBlank { null },
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                error = painterResource(com.example.fashionapp.R.drawable.ic_profile),
+                fallback = painterResource(com.example.fashionapp.R.drawable.ic_profile)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(text = authorName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(
+                text = if (isShopPost) "Posting as Shop" else "Public Post",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

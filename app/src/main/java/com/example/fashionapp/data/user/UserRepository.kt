@@ -20,12 +20,12 @@ class UserRepository {
             ?: snapshot.getString("displayName")
             ?: snapshot.getString("username"))
             .orEmpty()
+        val avatarRef = snapshot.getString("avatarRef").orEmpty()
         return User(
             id = snapshot.id,
             name = name,
-            avatarUrl = StorageUrlResolver.resolve(
-                snapshot.getString("avatarRef").orEmpty()
-            ),
+            avatarRef = avatarRef,
+            avatarUrl = StorageUrlResolver.resolve(avatarRef),
             email = snapshot.getString("email") ?: "",
             followersCount = (snapshot.getLong("followersCount") ?: snapshot.getLong("followerCount"))?.toInt() ?: 0,
             followingCount = snapshot.getLong("followingCount")?.toInt() ?: 0,

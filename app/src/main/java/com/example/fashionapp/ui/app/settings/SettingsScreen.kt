@@ -692,6 +692,7 @@ private fun ProfileSubScreen(
                             // 3. Cập nhật UserSession để các màn hình khác thấy ngay
                             val updatedUser = (sessionUser ?: User(id = uid)).copy(
                                 name = displayName,
+                                avatarRef = newAvatarRef.orEmpty().ifBlank { sessionUser?.avatarRef.orEmpty() },
                                 avatarUrl = displayAvatarUrl.ifBlank { currentAvatarUrl }
                             )
                             UserSession.updateCurrentUser(updatedUser)

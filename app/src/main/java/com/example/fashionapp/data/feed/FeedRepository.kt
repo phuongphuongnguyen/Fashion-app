@@ -93,10 +93,13 @@ class FeedRepository {
     private suspend fun parsePost(doc: DocumentSnapshot): Post? = coroutineScope {
         try {
             val authorId = doc.getString("authorId").orEmpty()
-            val authorName = doc.getString("authorName").orEmpty()
+            val storedAuthorName = doc.getString("authorName").orEmpty()
             val caption = doc.getString("caption").orEmpty()
             val likeCount = doc.getLong("likeCount") ?: 0L
             val createdAt = doc.getTimestamp("createdAt")
+            val authorNameDeferred = async {
+                resolveAuthorDisplayName(authorId, storedAuthorName)
+            }
 
             @Suppress("UNCHECKED_CAST")
             val rawComments = (doc.get("comments") as? List<*>) ?: emptyList<Any>()
@@ -104,8 +107,14 @@ class FeedRepository {
                 (item as? Map<*, *>)?.let { map ->
                     Comment(
                         id = map["id"] as? String ?: "",
+                        userId = map["userId"] as? String ?: "",
                         username = map["username"] as? String ?: "",
-                        avatarUrl = map["avatarUrl"] as? String ?: "",
+                        avatarRef = map["avatarRef"] as? String ?: "",
+                        avatarUrl = StorageUrlResolver.resolve(
+                            (map["avatarRef"] as? String ?: "").ifBlank {
+                                map["avatarUrl"] as? String ?: ""
+                            }
+                        ),
                         text = map["text"] as? String ?: "",
                         createdAt = map["createdAt"] as? com.google.firebase.Timestamp
                     )
@@ -151,7 +160,7 @@ class FeedRepository {
             Post(
                 id = doc.id,
                 authorId = authorId,
-                authorName = authorName,
+                authorName = authorNameDeferred.await(),
                 authorAvt = authorAvtDeferred.await(),
                 caption = caption,
                 imageUrls = imageUrlsDeferred.awaitAll().filter { it.isNotBlank() },
@@ -221,8 +230,9 @@ class FeedRepository {
             .document(comment.id.ifBlank { db.collection("posts").document().id })
         val data = mapOf(
             "id" to commentRef.id,
+            "userId" to comment.userId,
             "username" to comment.username,
-            "avatarUrl" to comment.avatarUrl,
+            "avatarRef" to comment.avatarRef,
             "text" to comment.text,
             "createdAt" to (comment.createdAt ?: com.google.firebase.Timestamp.now())
         )
@@ -247,8 +257,14 @@ class FeedRepository {
             val comments = snapshot.documents.mapNotNull { doc ->
                 Comment(
                     id = doc.getString("id").orEmpty().ifBlank { doc.id },
+                    userId = doc.getString("userId").orEmpty(),
                     username = doc.getString("username").orEmpty(),
-                    avatarUrl = doc.getString("avatarUrl").orEmpty(),
+                    avatarRef = doc.getString("avatarRef").orEmpty(),
+                    avatarUrl = StorageUrlResolver.resolve(
+                        doc.getString("avatarRef").orEmpty().ifBlank {
+                            doc.getString("avatarUrl").orEmpty()
+                        }
+                    ),
                     text = doc.getString("text").orEmpty(),
                     createdAt = doc.getTimestamp("createdAt")
                 ).takeIf { it.text.isNotBlank() }
@@ -319,7 +335,9 @@ class FeedRepository {
         }.getOrNull()
         if (shopDoc?.exists() == true) {
             return PostAuthorInfo(
-                name = shopDoc.getString("name").orEmpty().ifBlank { fallbackAuthorName.ifBlank { "Shop" } },
+                name = shopDoc.getString("username").orEmpty()
+                    .ifBlank { shopDoc.getString("name").orEmpty() }
+                    .ifBlank { fallbackAuthorName.ifBlank { "Shop" } },
                 avatarRef = fallbackAuthorAvt,
                 logoRef = shopDoc.getString("logoRef").orEmpty()
             )
@@ -329,10 +347,33 @@ class FeedRepository {
             db.collection("users").document(authorId).get().await()
         }.getOrNull()
         return PostAuthorInfo(
-            name = userDoc?.getString("name").orEmpty().ifBlank { fallbackAuthorName.ifBlank { "User" } },
+            name = userDoc?.getString("username").orEmpty()
+                .ifBlank { userDoc?.getString("name").orEmpty() }
+                .ifBlank { userDoc?.getString("displayName").orEmpty() }
+                .ifBlank { fallbackAuthorName.ifBlank { "User" } },
             avatarRef = userDoc?.getString("avatarRef").orEmpty().ifBlank { fallbackAuthorAvt },
             logoRef = ""
         )
+    }
+
+    private suspend fun resolveAuthorDisplayName(authorId: String, fallback: String): String {
+        if (authorId.isBlank()) return fallback
+        val userDoc = runCatching {
+            db.collection("users").document(authorId).get().await()
+        }.getOrNull()
+        if (userDoc?.exists() == true) {
+            return userDoc.getString("username").orEmpty()
+                .ifBlank { userDoc.getString("name").orEmpty() }
+                .ifBlank { userDoc.getString("displayName").orEmpty() }
+                .ifBlank { fallback }
+        }
+
+        val shopDoc = runCatching {
+            db.collection("shops").document(authorId).get().await()
+        }.getOrNull()
+        return shopDoc?.getString("username").orEmpty()
+            .ifBlank { shopDoc?.getString("name").orEmpty() }
+            .ifBlank { fallback }
     }
 
     private data class PostAuthorInfo(
