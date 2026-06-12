@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.firstOrNull
 
 data class SavedUiState(
     val savedPosts: List<Post> = emptyList(),
@@ -61,10 +62,27 @@ class SavedViewModel : ViewModel() {
         val userId = currentUserId() ?: return
         val currentIds = _uiState.value.savedPostIds
         viewModelScope.launch {
+            val willSave = !currentIds.contains(postId)
             if (currentIds.contains(postId)) {
                 userRepository.unsavePost(userId, postId)
             } else {
                 userRepository.savePost(userId, postId)
+            }
+
+            if (willSave) {
+                val post = _uiState.value.savedPosts.find { it.id == postId }
+                    ?: feedRepository.getPostsFlow().firstOrNull()?.find { it.id == postId }
+
+                if (post != null && post.authorId.isNotBlank() && post.authorId != userId) {
+                    val userA = userRepository.getUserProfile(userId)
+                    val senderName = userA?.name ?: "Ai đó"
+                    val notificationRepo = com.example.fashionapp.data.notification.NotificationRepository()
+                    notificationRepo.addNotification(
+                        userId = post.authorId,
+                        message = "$senderName đã lưu bài viết của bạn.",
+                        type = "SAVE"
+                    )
+                }
             }
         }
     }

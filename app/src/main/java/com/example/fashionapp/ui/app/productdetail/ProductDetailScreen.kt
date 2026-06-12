@@ -15,9 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
@@ -25,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -156,9 +154,7 @@ fun ProductDetailScreen(
                 ImageSection(
                     imageUrls       = product.imageUrls,
                     selectedIndex   = state.selectedImageIndex,
-                    isWishlisted    = state.isWishlisted,
                     onBack          = { navController.popBackStack() },
-                    onWishlist      = { viewModel.toggleWishlist() },
                     onImageSelected = { viewModel.selectImage(it) }
                 )
             }
@@ -284,9 +280,7 @@ fun ProductReviewsScreen(
 private fun ImageSection(
     imageUrls: List<String>,
     selectedIndex: Int,
-    isWishlisted: Boolean,
     onBack: () -> Unit,
-    onWishlist: () -> Unit,
     onImageSelected: (Int) -> Unit,
 ) {
     val pagerState = rememberPagerState(
@@ -347,37 +341,6 @@ private fun ImageSection(
                 .background(Color.White.copy(alpha = 0.85f))
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = TextDark)
-        }
-
-        // Wishlist + Share buttons
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            IconButton(
-                onClick  = onWishlist,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.85f))
-            ) {
-                Icon(
-                    imageVector = if (isWishlisted) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = "Wishlist",
-                    tint = if (isWishlisted) Color(0xFFF04957) else TextDark
-                )
-            }
-            IconButton(
-                onClick  = { },
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.85f))
-            ) {
-                Icon(Icons.Default.Share, null, tint = TextDark, modifier = Modifier.size(18.dp))
-            }
         }
 
         // Dot indicator
@@ -808,13 +771,38 @@ private fun formatReviewDate(timestampMillis: Long): String {
 private fun StarRow(rating: Float) {
     Row {
         val full = rating.toInt()
+        val hasHalf = rating - full >= 0.5f && full < 5
         repeat(5) { i ->
-            Icon(
-                imageVector = if (i < full) Icons.Filled.Star else Icons.Outlined.StarOutline,
-                contentDescription = null,
-                tint = StarYellow,
-                modifier = Modifier.size(18.dp)
-            )
+            Box(modifier = Modifier.size(18.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.StarOutline,
+                    contentDescription = null,
+                    tint = StarYellow,
+                    modifier = Modifier.size(18.dp)
+                )
+                if (i < full) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = StarYellow,
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else if (i == full && hasHalf) {
+                    Box(
+                        modifier = Modifier
+                            .width(9.dp)
+                            .height(18.dp)
+                            .clipToBounds()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            tint = StarYellow,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -910,9 +898,7 @@ private fun PopularProductCard(product: Product, onClick: () -> Unit) {
                     .padding(horizontal = 5.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("❤", fontSize = 9.sp)
-                Spacer(Modifier.width(2.dp))
-                Text("${product.soldCount}", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text("Đã bán ${product.soldCount}", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.height(5.dp))

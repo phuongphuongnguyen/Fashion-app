@@ -455,6 +455,15 @@ private fun checkMomoStatus(orderId: String): Int {
 
 // ── Local Notification ────────────────────────────────────────────────────────
 private fun showPaymentNotification(context: Context, amount: Long) {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+    val prefix = if (uid.isBlank()) "" else "${uid}_"
+
+    val prefs = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+    val isMasterEnabled = prefs.getBoolean("${prefix}notifications", prefs.getBoolean("notifications", true))
+    val isSystemEnabled = prefs.getBoolean("${prefix}system_notifications", prefs.getBoolean("system_notifications", true))
+    val isOrderEnabled = prefs.getBoolean("${prefix}order_updates", prefs.getBoolean("order_updates", true))
+    if (!isMasterEnabled || !isSystemEnabled || !isOrderEnabled) return
+
     val channelId = "payment_channel"
     val manager   = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 

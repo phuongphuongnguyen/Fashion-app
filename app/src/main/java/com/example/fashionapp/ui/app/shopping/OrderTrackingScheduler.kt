@@ -6,6 +6,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
+import com.google.firebase.auth.FirebaseAuth
 
 /**
  * Lên lịch 3 notification theo dõi đơn hàng sau khi thanh toán thành công.
@@ -48,6 +49,15 @@ object OrderTrackingScheduler {
     }
 
     fun showPaymentNotification(context: Context, amount: Long) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+        val prefix = if (uid.isBlank()) "" else "${uid}_"
+
+        val prefs = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+        val isMasterEnabled = prefs.getBoolean("${prefix}notifications", prefs.getBoolean("notifications", true))
+        val isSystemEnabled = prefs.getBoolean("${prefix}system_notifications", prefs.getBoolean("system_notifications", true))
+        val isOrderEnabled = prefs.getBoolean("${prefix}order_updates", prefs.getBoolean("order_updates", true))
+        if (!isMasterEnabled || !isSystemEnabled || !isOrderEnabled) return
+
         val channelId = "payment_channel"
         val manager   = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
 

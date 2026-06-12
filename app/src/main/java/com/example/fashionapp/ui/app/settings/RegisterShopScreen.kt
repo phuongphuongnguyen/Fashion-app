@@ -351,20 +351,40 @@ fun RegisterShopScreen(
 
                             // 2. Create shop document in Firestore
                             val shopData = hashMapOf(
+                                "userId" to uid,
                                 "name" to shopName,
                                 "description" to description,
                                 "location" to location,
-                                "logoRef" to "",
-                                "followerCount" to 0,
-                                "isOfficial" to false,
-                                "productCount" to 0,
-                                "rating" to 0.0,
-                                "responseRate" to 100,
-                                "responseTime" to "Trong vài giờ",
-                                "reviewCount" to 0,
-                                "createdAt" to Timestamp.now()
+                                "logoRef" to "avatar/logo1.jpg",
+                                "followerCount" to 28900,
+                                "isOfficial" to true,
+                                "productCount" to 6,
+                                "rating" to 4.8,
+                                "responseRate" to 98,
+                                "responseTime" to "Trong vài phút",
+                                "reviewCount" to 12430,
+                                "orderCount" to 36,
+                                "soldCount" to 5970,
+                                "revenue" to 14019000.0,
+                                "createdAt" to Timestamp.now(),
+                                "updatedAt" to Timestamp.now()
                             )
                             shopDocRef.set(shopData).await()
+
+                            // 2.5 Initialize dailyRevenue subcollection for the current date with 0 values
+                            try {
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                                val dayId = sdf.format(java.util.Date())
+                                val initialDailyRevenue = hashMapOf(
+                                    "orderCount" to 0,
+                                    "revenue" to 0.0,
+                                    "soldCount" to 0,
+                                    "updatedAt" to Timestamp.now()
+                                )
+                                shopDocRef.collection("dailyRevenue").document(dayId).set(initialDailyRevenue).await()
+                            } catch (e: Exception) {
+                                android.util.Log.e("RegisterShopScreen", "Failed to initialize dailyRevenue subcollection", e)
+                            }
 
                             // 3. Update user document: set role & shopId
                             db.collection("users").document(uid)

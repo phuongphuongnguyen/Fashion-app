@@ -1,5 +1,9 @@
 package com.example.fashionapp.ui.components
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -29,6 +34,9 @@ import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Post
 import com.example.fashionapp.model.ProductTag
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -38,14 +46,17 @@ fun FeedPostItem(
     isLiked: Boolean,
     isSaved: Boolean,
     isVerified: Boolean = false,
+    isLikePending: Boolean = false,
     onLikeClick: () -> Unit,
     onSaveClick: () -> Unit,
     onCommentClick: () -> Unit,
     onHeaderClick: () -> Unit = {},
     onProductClick: (String) -> Unit = {}
 ) {
+    val context = LocalContext.current
     Column {
         PostHeader(
+            postId = post.id,
             avatarUrl = post.authorAvt,
             username = post.authorName,
             isVerified = isVerified,
@@ -63,9 +74,16 @@ fun FeedPostItem(
         ActionRow(
             isLiked = isLiked,
             isSaved = isSaved,
+            isLikePending = isLikePending,
             onLikeClick = onLikeClick,
             onSaveClick = onSaveClick,
             onCommentClick = onCommentClick,
+            onShareClick = {
+                shareText(
+                    context = context,
+                    text = "${post.authorName}: ${post.caption}".trim()
+                )
+            },
             imageCount = post.imageUrls.size
         )
 
@@ -90,11 +108,15 @@ fun FeedPostItem(
 
 @Composable
 fun PostHeader(
+    postId: String,
     avatarUrl: String,
     username: String,
     isVerified: Boolean = false,
     onHeaderClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    var showMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -119,10 +141,67 @@ fun PostHeader(
             Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Color(0xFF0057FF), modifier = Modifier.size(14.dp))
         }
         Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = { }) {
+        Box {
+        IconButton(onClick = { showMenu = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = null)
         }
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Report") },
+                    onClick = {
+                        showMenu = false
+                        reportPost(
+                            postId = postId,
+                            onSuccess = {
+                                Toast.makeText(context, "Report submitted", Toast.LENGTH_SHORT).show()
+                            },
+                            onFailure = {
+                                Toast.makeText(context, "Could not submit report", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Copy link") },
+                    onClick = {
+                        showMenu = false
+                        copyPostLink(clipboardManager, postId)
+                        Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        }
     }
+}
+
+private fun reportPost(
+    postId: String,
+    onSuccess: () -> Unit,
+    onFailure: () -> Unit
+) {
+    if (postId.isBlank()) {
+        onFailure()
+        return
+    }
+
+    val userId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+    val data = hashMapOf(
+        "postId" to postId,
+        "reporterId" to userId,
+        "type" to "post",
+        "status" to "open",
+        "createdAt" to FieldValue.serverTimestamp()
+    )
+    FirebaseFirestore.getInstance()
+        .collection("reports")
+        .add(data)
+        .addOnSuccessListener { onSuccess() }
+        .addOnFailureListener { onFailure() }
+}
+
+private fun copyPostLink(clipboardManager: ClipboardManager, postId: String) {
+    val link = "fashion-app://post/$postId"
+    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(link))
 }
 
 @Composable
@@ -182,14 +261,16 @@ fun ProductTagsRow(tags: List<ProductTag>, onProductClick: (String) -> Unit = {}
 fun ActionRow(
     isLiked: Boolean,
     isSaved: Boolean,
+    isLikePending: Boolean,
     onLikeClick: () -> Unit,
     onSaveClick: () -> Unit,
     onCommentClick: () -> Unit,
+    onShareClick: () -> Unit,
     imageCount: Int
 ) {
     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
         Row(modifier = Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onLikeClick) {
+            IconButton(onClick = onLikeClick, enabled = !isLikePending) {
                 Icon(
                     painter = painterResource(if (isLiked) R.drawable.ic_like_full else R.drawable.ic_like),
                     contentDescription = null,
@@ -200,7 +281,7 @@ fun ActionRow(
             IconButton(onClick = onCommentClick) {
                 Icon(painter = painterResource(R.drawable.ic_comment), contentDescription = null, modifier = Modifier.size(24.dp))
             }
-            IconButton(onClick = { }) {
+            IconButton(onClick = onShareClick) {
                 Icon(painter = painterResource(R.drawable.ic_share), contentDescription = null, modifier = Modifier.size(24.dp))
             }
         }
@@ -215,6 +296,14 @@ fun ActionRow(
             Icon(painter = painterResource(if (isSaved) R.drawable.ic_bookmark_full else R.drawable.ic_bookmark), contentDescription = null, modifier = Modifier.size(22.dp))
         }
     }
+}
+
+private fun shareText(context: android.content.Context, text: String) {
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text.ifBlank { "Fashion app post" })
+    }
+    context.startActivity(Intent.createChooser(sendIntent, "Share"))
 }
 
 @Composable

@@ -71,8 +71,9 @@ fun SearchScreen(
     navController: NavController,
     initialQuery: String = "",
     initialCategoryId: String? = null,
+    initialSort: String? = null,
     viewModel: SearchViewModel = viewModel(
-        factory = SearchViewModelFactory(initialQuery, initialCategoryId, LocalContext.current)
+        factory = SearchViewModelFactory(initialQuery, initialCategoryId, initialSort, LocalContext.current)
     )
 ) {
     val state        by viewModel.uiState.collectAsState()
@@ -103,7 +104,7 @@ fun SearchScreen(
                 focusManager.clearFocus()
             },
             onCameraClick  = {
-                Toast.makeText(context, "Tìm bằng hình ảnh đang được phát triển", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Image search is coming soon", Toast.LENGTH_SHORT).show()
             }
         )
 
@@ -160,6 +161,7 @@ fun SearchScreen(
                         ResultsHeader(
                             query              = state.submittedQuery,
                             selectedCategoryId = state.selectedCategoryId,
+                            sortMode           = state.sortMode,
                             subCategories      = state.subCategories,
                             resultCount        = 0,
                         )
@@ -170,6 +172,7 @@ fun SearchScreen(
                             products           = state.products,
                             query              = state.submittedQuery,
                             selectedCategoryId = state.selectedCategoryId,
+                            sortMode           = state.sortMode,
                             subCategories      = state.subCategories,
                             onUserClick        = { user ->
                                 if (user.id.isNotBlank()) {
@@ -231,7 +234,7 @@ private fun SearchTopBar(
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(focusRequester),
-            placeholder = { Text("Tìm kiếm", fontSize = 14.sp) },
+            placeholder = { Text("Search", fontSize = 14.sp) },
             trailingIcon = {
                 if (textState.isNotEmpty()) {
                     IconButton(onClick = {
@@ -278,16 +281,18 @@ private fun SearchTopBar(
 private fun ResultsHeader(
     query: String,
     selectedCategoryId: String?,
+    sortMode: String?,
     subCategories: List<SubCategory>,
     resultCount: Int,
 ) {
     val title = when {
-        query.isNotBlank() -> "Kết quả cho \"$query\""
+        query.isNotBlank() -> "Results for \"$query\""
+        sortMode == "popular" -> "Most Popular"
         selectedCategoryId != null -> {
-            val name = subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: "Danh mục"
-            "Danh mục: $name"
+            val name = subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: "Category"
+            "Category: $name"
         }
-        else -> "Tất cả sản phẩm"
+        else -> "All products"
     }
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
@@ -297,7 +302,7 @@ private fun ResultsHeader(
             color      = TextDark
         )
         Text(
-            text     = "$resultCount sản phẩm",
+            text     = "$resultCount products",
             fontSize = 12.sp,
             color    = TextGray,
         )
@@ -331,13 +336,13 @@ private fun SuggestionsContent(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "Tìm kiếm gần đây",
+                    "Recent searches",
                     fontWeight = FontWeight.Bold,
                     fontSize   = 15.sp,
                     color      = TextDark
                 )
                 Text(
-                    "Xoá tất cả",
+                    "Clear all",
                     fontSize = 13.sp,
                     color    = PrimaryBlue,
                     modifier = Modifier
@@ -372,7 +377,7 @@ private fun SuggestionsContent(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    "Tìm kiếm phổ biến",
+                    "Popular searches",
                     fontWeight = FontWeight.Bold,
                     fontSize   = 15.sp,
                     color      = TextDark
@@ -537,6 +542,7 @@ private fun SearchResults(
     products: List<Product>,
     query: String,
     selectedCategoryId: String?,
+    sortMode: String?,
     subCategories: List<SubCategory>,
     onUserClick: (User) -> Unit,
     onProductClick: (Product) -> Unit,
@@ -566,12 +572,14 @@ private fun SearchResults(
         if (products.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 val title = when {
-                    query.isNotBlank()         -> "Sản phẩm"
+                    query.isNotBlank()         -> "Products"
+                    sortMode == "new"          -> "New Items"
+                    sortMode == "popular"      -> "Most Popular"
                     selectedCategoryId != null ->
-                        subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: "Sản phẩm"
-                    else                       -> "Sản phẩm"
+                        subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: "Products"
+                    else                       -> "Products"
                 }
-                SectionTitle(title, "${products.size} sản phẩm")
+                SectionTitle(title, "${products.size} products")
             }
             itemsIndexed(products, key = { _, p -> p.id }) { index, product ->
                 ProductGridCard(
@@ -710,7 +718,7 @@ private fun ProductGridCard(
         Spacer(Modifier.height(4.dp))
 
         Text(
-            text       = "₫${formatPrice(product.price)}",
+            text       = "VND ${formatPrice(product.price)}",
             fontWeight = FontWeight.Bold,
             fontSize   = 15.sp,
             color      = TextDark
@@ -727,7 +735,7 @@ private fun ProductGridCard(
                 )
                 Spacer(Modifier.width(3.dp))
                 Text("${product.rating}", fontSize = 11.sp, color = TextGray)
-                Text(" • ${product.soldCount} đã bán", fontSize = 11.sp, color = TextGray)
+                Text(" • ${product.soldCount} sold", fontSize = 11.sp, color = TextGray)
             }
         }
     }
@@ -747,10 +755,10 @@ private fun EmptyState(query: String) {
     ) {
         Spacer(Modifier.height(16.dp))
         if (query.isBlank()) {
-            Text("Không có sản phẩm nào", color = TextGray, fontSize = 15.sp)
+            Text("No products found", color = TextGray, fontSize = 15.sp)
         } else {
             Text(
-                "Không tìm thấy kết quả cho",
+                "No results found for",
                 color    = TextGray,
                 fontSize = 14.sp
             )
@@ -762,7 +770,7 @@ private fun EmptyState(query: String) {
                 color      = TextDark
             )
             Spacer(Modifier.height(8.dp))
-            Text("Thử tìm với từ khoá khác", color = TextGray, fontSize = 13.sp)
+            Text("Try another keyword", color = TextGray, fontSize = 13.sp)
         }
     }
 }

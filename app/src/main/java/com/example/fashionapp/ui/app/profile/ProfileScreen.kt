@@ -57,8 +57,10 @@ fun ProfileScreen(
 
     var selectedPostId by remember { mutableStateOf<String?>(null) }
     var showComments by remember { mutableStateOf(false) }
-    var localLikedPosts by remember { mutableStateOf(setOf<String>()) }
+    var showBioDialog by remember { mutableStateOf(false) }
+    var bioDraft by remember { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
@@ -82,6 +84,75 @@ fun ProfileScreen(
         containerColor = Color.White,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
+        LaunchedEffect(uiState.bioError) {
+            uiState.bioError?.let { message ->
+                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                profileViewModel.consumeBioError()
+            }
+        }
+
+        if (showBioDialog) {
+            val bioSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { showBioDialog = false },
+                sheetState = bioSheetState,
+                containerColor = Color.White,
+                dragHandle = { BottomSheetDefaults.DragHandle() }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 32.dp)
+                ) {
+                    Text(
+                        text = "Edit Bio",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    OutlinedTextField(
+                        value = bioDraft,
+                        onValueChange = { bioDraft = it.take(160) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 5,
+                        placeholder = { Text("Tell people about yourself", color = Color.Gray) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Black,
+                            unfocusedBorderColor = Color(0xFFE0E0E0),
+                            focusedContainerColor = Color(0xFFFAFAFA),
+                            unfocusedContainerColor = Color(0xFFFAFAFA)
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    )
+                    Text(
+                        text = "${bioDraft.length}/160",
+                        fontSize = 13.sp,
+                        color = Color.Gray,
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(top = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = {
+                            profileViewModel.updateBio(bioDraft)
+                            showBioDialog = false
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    ) {
+                        Text("Save Changes", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    }
+                }
+            }
+        }
+
 
         if (showComments && selectedPostId != null) {
             profilePosts.find { it.id == selectedPostId }?.let { post ->
@@ -108,6 +179,10 @@ fun ProfileScreen(
                     isOwnProfile = isOwnProfile,
                     isFollowing = uiState.isFollowing,
                     onFollowClick = { profileViewModel.toggleFollow() },
+                    onEditBio = {
+                        bioDraft = uiState.user?.bio.orEmpty()
+                        showBioDialog = true
+                    },
                     onAddPost = { navController.navigate(Screen.CreatePost.createRoute()) }
                 )
             }
@@ -115,18 +190,11 @@ fun ProfileScreen(
             items(profilePosts, key = { it.id }) { post ->
                 FeedPostItem(
                     post = post,
-                    isLiked = (homeState.likedPosts[post.id] ?: false) || localLikedPosts.contains(post.id),
+                    isLiked = homeState.likedPosts[post.id] ?: false,
                     isSaved = savedUiState.savedPostIds.contains(post.id),
                     isVerified = post.authorName == "mina",
-                    onLikeClick = {
-                        if (homeState.posts.any { it.id == post.id }) {
-                            homeViewModel.toggleLike(post.id)
-                        } else {
-                            localLikedPosts =
-                                if (localLikedPosts.contains(post.id)) localLikedPosts - post.id
-                                else localLikedPosts + post.id
-                        }
-                    },
+                    isLikePending = post.id in homeState.pendingLikePostIds,
+                    onLikeClick = { homeViewModel.toggleLike(post.id) },
                     onSaveClick = { savedViewModel.toggleSave(post.id) },
                     onCommentClick = {
                         selectedPostId = post.id
@@ -156,10 +224,12 @@ private fun ProfileHeader(
     isOwnProfile: Boolean,
     isFollowing: Boolean,
     onFollowClick: () -> Unit,
+    onEditBio: () -> Unit,
     onAddPost: () -> Unit
 ) {
     val name = user?.name?.takeIf { it.isNotBlank() } ?: "User"
     val avatar = user?.avatarUrl.orEmpty()
+    val bio = user?.bio.orEmpty()
     val context = LocalContext.current
     val followers = user?.followersCount ?: 0
     val following = user?.followingCount ?: 0
@@ -204,13 +274,18 @@ private fun ProfileHeader(
                         Spacer(Modifier.width(8.dp))
                         if (isFollowing) {
                             // Đang theo dõi: chỉ chữ xanh, không button (vẫn bấm được để bỏ theo dõi)
-                            Text(
-                                "Following",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF1769FF),
-                                modifier = Modifier.clickable { onFollowClick() }
-                            )
+                            Button(
+                                onClick = onFollowClick,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFE5EDFF),
+                                    contentColor = Color(0xFF1769FF)
+                                ),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text("Following", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
                         } else {
                             Button(
                                 onClick = onFollowClick,
@@ -228,6 +303,27 @@ private fun ProfileHeader(
                             }
                         }
                     }
+                }
+                if (bio.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        bio,
+                        fontSize = 12.sp,
+                        color = Color(0xFF555555),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (isOwnProfile) {
+                    Text(
+                        text = if (bio.isBlank()) "Add bio" else "Edit bio",
+                        color = Color(0xFF1769FF),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .clickable { onEditBio() }
+                    )
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

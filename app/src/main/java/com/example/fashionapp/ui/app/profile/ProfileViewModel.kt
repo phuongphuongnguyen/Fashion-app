@@ -19,7 +19,8 @@ data class ProfileUiState(
     val user: User? = null,
     val isLoading: Boolean = true,
     val isOwnProfile: Boolean = true,
-    val isFollowing: Boolean = false
+    val isFollowing: Boolean = false,
+    val bioError: String? = null
 )
 
 // viewedUserId = null → xem trang của chính mình. Khác → xem trang user khác (read-only + Follow).
@@ -92,6 +93,20 @@ class ProfileViewModel(
         viewModelScope.launch {
             runCatching { userRepository.setFollowing(myUid, targetId, shouldFollow) }
         }
+    }
+
+    fun updateBio(bio: String) {
+        if (!isOwn || myUid.isBlank()) return
+        viewModelScope.launch {
+            runCatching { userRepository.updateUserBio(myUid, bio) }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(bioError = "Could not update bio")
+                }
+        }
+    }
+
+    fun consumeBioError() {
+        _uiState.value = _uiState.value.copy(bioError = null)
     }
 }
 

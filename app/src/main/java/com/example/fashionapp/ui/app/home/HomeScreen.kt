@@ -100,6 +100,7 @@ fun HomeScreen(
                             isLiked = uiState.likedPosts[post.id] ?: false,
                             isSaved = savedUiState.savedPostIds.contains(post.id),
                             isVerified = post.authorName == "mina",
+                            isLikePending = post.id in uiState.pendingLikePostIds,
                             onLikeClick = { viewModel.toggleLike(post.id) },
                             onSaveClick = { savedViewModel.toggleSave(post.id) },
                             onCommentClick = {

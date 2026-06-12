@@ -21,12 +21,15 @@ import com.example.fashionapp.ui.theme.FashionAppTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
+import com.example.fashionapp.data.notification.NotificationListenerHelper
+
 class MainActivity : ComponentActivity(), ImageLoaderFactory {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         StorageUrlResolver.init(applicationContext)
-        
+        NotificationListenerHelper.init(applicationContext)
+
         // Theo dõi trạng thái đăng nhập và nạp Profile vào UserSession
         val auth = FirebaseAuth.getInstance()
         val userRepository = com.example.fashionapp.data.user.UserRepository()

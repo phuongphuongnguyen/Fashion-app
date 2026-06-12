@@ -11,7 +11,8 @@ data class User(
     val shopId: String = "",
     val username: String = "",
     val phoneNumber: String = "",
-    val address: String = ""
+    val address: String = "",
+    val bio: String = ""
 ) {
     val image: String
         get() = avatarUrl

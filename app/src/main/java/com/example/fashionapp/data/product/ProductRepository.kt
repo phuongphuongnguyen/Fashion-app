@@ -100,6 +100,10 @@ object ProductRepository {
                 stock           = safeInt(doc.get("stock")),
                 freeShipping    = doc.getBoolean("freeShipping") ?: false,
                 tags            = @Suppress("UNCHECKED_CAST") (doc.get("tags") as? List<String>) ?: emptyList(),
+                createdAtMillis = doc.getTimestamp("createdAt")?.toDate()?.time
+                    ?: (doc.get("createdAtMillis") as? Number)?.toLong()
+                    ?: (doc.get("updatedAtMillis") as? Number)?.toLong()
+                    ?: 0L,
                 specifications  = specs,
             )
         } catch (_: Exception) { null }

@@ -265,6 +265,12 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                             textColor = textColor, subTextColor = subTextColor,
                             dividerColor = dividerColor
                         )
+                        FlatSettingRow(
+                            label = settings.t("Notifications", "Thông báo", "Notifications", "通知", "알림", "通知"),
+                            onClick = { currentSubScreen = SubScreen.NOTIFICATIONS },
+                            textColor = textColor, subTextColor = subTextColor,
+                            dividerColor = dividerColor
+                        )
                         // ── Dark Mode toggle in Personal ──
 //                        FlatSwitchRow(
 //                            label = settings.t("Dark Mode", "Chế độ tối", "Mode sombre", "ダークモード", "다크 모드", "深色模式"),
@@ -1205,15 +1211,21 @@ private fun NotificationScreen(
                 Column {
                     Spacer(Modifier.height(8.dp))
                     FlatSwitchRow(
+                        label = settings.t("Device Notifications", "Thông báo thiết bị", "Notifications de l'appareil", "デバイス通知", "기기 알림", "设备通知"),
+                        checked = settings.systemNotificationsEnabled,
+                        onCheckedChange = { settings.updateSystemNotifications(it) },
+                        textColor = textColor, dividerColor = dividerColor
+                    )
+                    FlatSwitchRow(
                         label = settings.t("Order Updates", "Cập nhật đơn hàng", "Mises à jour de commande", "注文状況の更新", "주문 업데이트", "订单状态更新"),
                         checked = settings.orderUpdatesEnabled,
                         onCheckedChange = { settings.updateOrderUpdates(it) },
                         textColor = textColor, dividerColor = dividerColor
                     )
                     FlatSwitchRow(
-                        label = settings.t("Promotions & Deals", "Khuyến mãi & Ưu đãi", "Promotions & Offres", "セールとオファー", "프로모션 및 혜택", "促销与优惠"),
-                        checked = settings.promotionsEnabled,
-                        onCheckedChange = { settings.updatePromotions(it) },
+                        label = settings.t("Social Interactions", "Tương tác bài viết", "Interactions sociales", "ソーシャルインタラクション", "소셜 상호작용", "社交互动"),
+                        checked = settings.socialInteractionsEnabled,
+                        onCheckedChange = { settings.updateSocialInteractions(it) },
                         textColor = textColor, dividerColor = dividerColor
                     )
                 }

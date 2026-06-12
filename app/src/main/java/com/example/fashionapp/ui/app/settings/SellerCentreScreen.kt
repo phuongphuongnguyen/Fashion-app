@@ -336,7 +336,8 @@ fun SellerCentreScreen(
                                         mapOf(
                                             "name" to shopName,
                                             "description" to description,
-                                            "location" to location
+                                            "location" to location,
+                                            "updatedAt" to com.google.firebase.Timestamp.now()
                                         )
                                     ).await()
 

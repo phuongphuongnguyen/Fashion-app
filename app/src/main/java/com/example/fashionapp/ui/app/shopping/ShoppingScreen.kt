@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -39,8 +38,6 @@ private val BgGray       = Color(0xFFF7F8FA)
 private val CardBg       = Color(0xFFEEEEEE)
 private val TextDark     = Color(0xFF1A1A1A)
 private val TextGray     = Color(0xFF888888)
-private val FlashStart   = Color(0xFFFF9500)
-private val FlashEnd     = Color(0xFFFFCC00)
 
 // ── Fallback categories khi Firestore trả về rỗng ─────────────────────────────
 private val fallbackCategories = listOf(
@@ -92,18 +89,15 @@ fun ShoppingScreen(
 
         LazyColumn(
             modifier        = Modifier.padding(innerPadding),
-            contentPadding  = PaddingValues(bottom = 32.dp),
+            contentPadding  = PaddingValues(top = 16.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // ── Flash Sale Banner ──────────────────────────────────────────
-            item { FlashSaleBanner() }
-
             // ── Categories ────────────────────────────────────────────────
             item {
                 val cats = state.categories.ifEmpty { fallbackCategories }
                 SectionHeader(
                     title = "Categories",
-                    onSeeAll = {}
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute()) }
                 )
                 Spacer(Modifier.height(12.dp))
                 CategoriesGrid(
@@ -116,7 +110,10 @@ fun ShoppingScreen(
 
             // ── New Items ─────────────────────────────────────────────────
             item {
-                SectionHeader(title = "New Items", onSeeAll = {})
+                SectionHeader(
+                    title = "New Items",
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute(sort = "new")) }
+                )
                 Spacer(Modifier.height(12.dp))
                 ProductRow(
                     products = state.newItems,
@@ -130,7 +127,7 @@ fun ShoppingScreen(
             item {
                 SectionHeader(
                     title = "Most Popular",
-                    onSeeAll = {}
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute(sort = "popular")) }
                 )
                 Spacer(Modifier.height(12.dp))
                 ProductRow(
@@ -166,54 +163,6 @@ fun ShoppingScreen(
                 )
             }
         }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  FLASH SALE BANNER
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun FlashSaleBanner() {
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth()
-            .height(120.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(Brush.horizontalGradient(listOf(FlashStart, FlashEnd)))
-    ) {
-        // Nội dung bên trái
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 20.dp)
-        ) {
-            Text(
-                "Flash Sale",
-                color      = Color.White,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize   = 22.sp
-            )
-            Text(
-                "Up to 50%",
-                color    = Color.White.copy(alpha = 0.92f),
-                fontSize = 13.sp
-            )
-            Spacer(Modifier.height(8.dp))
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color.White.copy(alpha = 0.28f)
-            ) {
-                Text(
-                    "Happening Now",
-                    color    = Color.White,
-                    fontSize = 10.sp,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                )
-            }
-        }
-
     }
 }
 
@@ -432,9 +381,8 @@ private fun ProductCardVertical(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Text("❤", fontSize = 9.sp)
                         Text(
-                            text     = "${product.soldCount}",
+                            text     = "Đã bán ${product.soldCount}",
                             color    = Color.White,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
