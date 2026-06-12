@@ -1,379 +1,127 @@
 package com.example.fashionapp.ui.app.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
-import androidx.compose.ui.res.painterResource
-import com.example.fashionapp.R
-import com.example.fashionapp.data.mock.MockDataProvider
-import com.example.fashionapp.data.model.Post
-import com.example.fashionapp.data.model.Story
-import com.example.fashionapp.data.model.User
-import java.util.Locale
+import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.navigation.openProfileOrShop
+import com.example.fashionapp.ui.app.saved.SavedViewModel
+import com.example.fashionapp.ui.components.CommentBottomSheet
+import com.example.fashionapp.ui.components.FeedPostItem
+import com.example.fashionapp.ui.components.FeedPostSkeleton
+import com.example.fashionapp.ui.components.HomeTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Feed",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp
-                        )
-                    )
-                },
-                actions = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(0.dp),
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        IconButton(onClick = { /* TODO */ }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_cart),
-                                contentDescription = "Cart",
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        IconButton(onClick = { /* TODO */ }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_messages),
-                                contentDescription = "Messages",
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        IconButton(onClick = { /* TODO */ }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_notify),
-                                contentDescription = "Notifications",
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
-            )
-        }
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF8F8F8))
-                .padding(innerPadding)
-        ) {
-            // Danh sách Feed Bài đăng
-            items(MockDataProvider.feedPosts) { post ->
-                val author = MockDataProvider.getUserById(post.authorId)
-                author?.let {
-                    PostItem(post = post, author = it)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-            
-            // Khoảng trống dưới cùng
-            item { 
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    }
-}
+fun HomeScreen(
+    navController: NavController,
+    viewModel: HomeViewModel = viewModel(),
+    savedViewModel: SavedViewModel = viewModel()
+) {
+    val settings = LocalAppSettings.current
+    val uiState by viewModel.uiState.collectAsState()
+    val savedUiState by savedViewModel.uiState.collectAsState()
 
-
-
-
-
-@Composable
-fun PostItem(post: Post, author: User) {
-    var isLiked by remember { mutableStateOf(post.isLiked) }
-    var likeCount by remember { mutableStateOf(post.likeCount) }
-    var isSaved by remember { mutableStateOf(post.isSaved) }
     var showComments by remember { mutableStateOf(false) }
+    var selectedPostId by remember { mutableStateOf<String?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(0.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AsyncImage(
-                    model = author.avatar,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            HomeTopBar(
+                scrollBehavior = scrollBehavior,
+                onSearchClick = {
+                    navController.navigate(Screen.Search.createRoute())
+                },
+                onMessClick = {
+                    navController.navigate(Screen.Messages.route)
+                }
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { innerPadding ->
+
+        if (showComments && selectedPostId != null) {
+            val post = uiState.posts.find { it.id == selectedPostId }
+            if (post != null) {
+                CommentBottomSheet(
+                    post = post,
+                    sheetState = sheetState,
+                    currentUserAvatarUrl = uiState.user?.avatarUrl.orEmpty(),
+                    onDismiss = { showComments = false },
+                    onSendComment = { text ->
+                        viewModel.addComment(post.id, text)
+                    }
                 )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = author.username,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
-                        )
-                        if (author.isVerified) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = "Verified",
-                                tint = Color(0xFF3897F0),
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    }
-                    if (author.location.isNotEmpty()) {
-                        Text(
-                            text = author.location,
-                            style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = { /* TODO */ }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More")
-                }
             }
+        }
 
-            // Image Carousel
-            val pagerState = rememberPagerState(pageCount = { post.images.size })
-            Box(contentAlignment = Alignment.BottomCenter) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(0.85f)
-                ) { page ->
-                    AsyncImage(
-                        model = post.images[page],
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                
-                // Indicators
-                if (post.images.size > 1) {
-                    Row(
-                        Modifier
-                            .height(24.dp)
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        repeat(post.images.size) { iteration ->
-                            val color = if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.5f)
-                            Box(
-                                modifier = Modifier
-                                    .padding(2.dp)
-                                    .clip(CircleShape)
-                                    .background(color)
-                                    .size(6.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Tagged Products Row (Small circles below image)
-            if (post.taggedProducts.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+        when {
+            uiState.isLoading -> {
+                LazyColumn(
+                    modifier = Modifier.padding(innerPadding),
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    items(post.taggedProducts) { taggedProduct ->
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(Color.White)
-                                .border(1.5.dp, Color(0xFFEEEEEE), CircleShape)
-                                .padding(3.dp)
-                                .clickable { /* TODO: Navigate to taggedProduct.productId */ }
-                        ) {
-                            AsyncImage(
-                                model = taggedProduct.thumbnailUrl,
-                                contentDescription = taggedProduct.label,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
+                    items(3) {
+                        FeedPostSkeleton()
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     }
                 }
             }
 
-            // Actions
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = {
-                    isLiked = !isLiked
-                    if (isLiked) likeCount++ else likeCount--
-                }) {
-                    Icon(
-                        painter = painterResource(
-                            id = if (isLiked)
-                                R.drawable.ic_like_fill
-                            else
-                                R.drawable.ic_like
-                        ),
-                        contentDescription = "Like",
-                        tint = if (isLiked) Color.Red else Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                IconButton(onClick = { showComments = !showComments }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_comment),
-                        contentDescription = "Comment",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                IconButton(onClick = { /* TODO */ }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_share),
-                        contentDescription = "Share",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = { isSaved = !isSaved }) {
-                    Icon(
-                        painter = painterResource(
-                            id = if (isSaved)
-                                R.drawable.ic_bookmark_fill
-                            else
-                                R.drawable.ic_bookmark
-                        ),
-                        contentDescription = "Save",
-                        tint = if (isSaved) Color.Black else Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
+            uiState.posts.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(settings.t("No posts yet", "Chưa có bài đăng nào"), color = AppTheme.colors.textSecondary)
                 }
             }
 
-            // Likes & Caption
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .padding(bottom = 12.dp)
-            ) {
-                Text(
-                    text = "${String.format(Locale.getDefault(), "%,d", likeCount).replace(',', '.')} Likes",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val annotatedCaption = buildAnnotatedString {
-                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(author.username)
-                    }
-                    append(" ")
-                    append(post.caption)
-                }
-                
-                Text(
-                    text = annotatedCaption,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 3
-                )
-
-                if (post.tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = post.tags.joinToString(" ") { "#$it" },
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF00376B)),
-                        modifier = Modifier.clickable { /* TODO */ }
-                    )
-                }
-
-                if (post.commentCount > 0) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (showComments) "Hide comments" else "View all ${post.commentCount} comments",
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
-                        modifier = Modifier.clickable { showComments = !showComments }
-                    )
-                }
-
-                if (showComments) {
-                    val comments = MockDataProvider.getCommentsForPost(post.id)
-                    Column(modifier = Modifier.padding(top = 8.dp)) {
-                        comments.forEach { comment ->
-                            val commentAuthor = MockDataProvider.getUserById(comment.authorId)
-                            Text(
-                                text = buildAnnotatedString {
-                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                        append(commentAuthor?.username ?: "user")
-                                    }
-                                    append(" ")
-                                    append(comment.content)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            )
-                        }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.padding(innerPadding),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(uiState.posts, key = { it.id }) { post ->
+                        FeedPostItem(
+                            post = post,
+                            isLiked = uiState.likedPosts[post.id] ?: false,
+                            isSaved = savedUiState.savedPostIds.contains(post.id),
+                            isVerified = post.authorName == "mina",
+                            isLikePending = post.id in uiState.pendingLikePostIds,
+                            onLikeClick = { viewModel.toggleLike(post.id) },
+                            onSaveClick = { savedViewModel.toggleSave(post.id) },
+                            onCommentClick = {
+                                selectedPostId = post.id
+                                showComments = true
+                            },
+                            onHeaderClick = {
+                                if (post.authorId.isNotBlank()) {
+                                    navController.openProfileOrShop(post.authorId)
+                                }
+                            },
+                            onProductClick = { productId ->
+                                navController.navigate(Screen.ProductDetail.createRoute(productId))
+                            }
+                        )
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = post.createdAt,
-                    style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray, fontSize = 10.sp)
-                )
             }
         }
     }

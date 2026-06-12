@@ -1,0 +1,554 @@
+package com.example.fashionapp.ui.app.shopping
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import com.example.fashionapp.R
+import com.example.fashionapp.model.Category
+import com.example.fashionapp.model.Product
+import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.ui.components.ShoppingTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
+
+// ── Fallback categories khi Firestore trả về rỗng ─────────────────────────────
+private val fallbackCategories = listOf(
+    Category("c1", "Clothing"),
+    Category("c2", "Shoes"),
+    Category("c3", "Bags"),
+    Category("c4", "Lingerie"),
+    Category("c5", "Watch"),
+    Category("c6", "Hoodies"),
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShoppingScreen(
+    navController: NavController,
+    viewModel: ShoppingViewModel = viewModel()
+) {
+    val settings = LocalAppSettings.current
+    val state by viewModel.uiState.collectAsState()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar    = { 
+            ShoppingTopBar(
+                scrollBehavior = scrollBehavior,
+                onSearchClick = {
+                    navController.navigate(Screen.Search.createRoute())
+                },
+                onCartClick = {
+                    navController.navigate(Screen.Cart.route)
+                }
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { innerPadding ->
+
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary) }
+            return@Scaffold
+        }
+
+        LazyColumn(
+            modifier        = Modifier.padding(innerPadding),
+            contentPadding  = PaddingValues(top = 16.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // ── Categories ────────────────────────────────────────────────
+            item {
+                val cats = state.categories.ifEmpty { fallbackCategories }
+                SectionHeader(
+                    title = settings.t("Categories", "Danh mục"),
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute()) }
+                )
+                Spacer(Modifier.height(12.dp))
+                CategoriesGrid(
+                    categories = cats,
+                    onCategoryClick = { cat ->
+                        navController.navigate(Screen.Search.createRoute(query = cat.name))
+                    }
+                )
+            }
+
+            // ── New Items ─────────────────────────────────────────────────
+            item {
+                SectionHeader(
+                    title = settings.t("New Items", "Sản phẩm mới"),
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute(sort = "new")) }
+                )
+                Spacer(Modifier.height(12.dp))
+                ProductRow(
+                    products = state.newItems,
+                    onProductClick = { p ->
+                        navController.navigate(Screen.ProductDetail.createRoute(p.id))
+                    }
+                )
+            }
+
+            // ── Most Popular ──────────────────────────────────────────────
+            item {
+                SectionHeader(
+                    title = settings.t("Most Popular", "Phổ biến nhất"),
+                    onSeeAll = { navController.navigate(Screen.Search.createRoute(sort = "popular")) }
+                )
+                Spacer(Modifier.height(12.dp))
+                ProductRow(
+                    products = state.mostPopular,
+                    showBadge = true,
+                    onProductClick = { p ->
+                        navController.navigate(Screen.ProductDetail.createRoute(p.id))
+                    }
+                )
+            }
+
+            // ── Just For You ──────────────────────────────────────────────
+            item {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text       = settings.t("Just For You", "Dành cho bạn"),
+                        fontWeight = FontWeight.Bold,
+                        fontSize   = 18.sp,
+                        color      = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("⭐", fontSize = 15.sp)
+                }
+                Spacer(Modifier.height(12.dp))
+                ForYouGrid(
+                    products = state.forYou,
+                    onProductClick = { p ->
+                        navController.navigate(Screen.ProductDetail.createRoute(p.id))
+                    }
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SECTION HEADER
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SectionHeader(title: String, onSeeAll: () -> Unit) {
+    val settings = LocalAppSettings.current
+    Row(
+        modifier              = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment     = Alignment.CenterVertically
+    ) {
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onBackground)
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier          = Modifier.clickable { onSeeAll() }
+        ) {
+            Text(settings.t("See All", "Xem tất cả"), color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier            = Modifier
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondary),
+                contentAlignment    = Alignment.Center
+            ) {
+                Icon(
+                    imageVector        = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint               = Color.White,
+                    modifier           = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CATEGORIES GRID (2 cột)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CategoriesGrid(
+    categories: List<Category>,
+    onCategoryClick: (Category) -> Unit = {}
+) {
+    Column(
+        modifier            = Modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        categories.chunked(2).forEach { row ->
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                row.forEach { cat ->
+                    CategoryCard(
+                        category = cat,
+                        modifier = Modifier.weight(1f),
+                        onClick  = { onCategoryClick(cat) }
+                    )
+                }
+                if (row.size < 2) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryCard(
+    category: Category,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    Surface(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp)
+        ) {
+            // Grid 2x2 Preview Images
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(modifier = Modifier.weight(1f)) {
+                        PreviewImage(category.previewImages.getOrNull(0), Modifier.weight(1f))
+                        Spacer(Modifier.width(2.dp))
+                        PreviewImage(category.previewImages.getOrNull(1), Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Row(modifier = Modifier.weight(1f)) {
+                        PreviewImage(category.previewImages.getOrNull(2), Modifier.weight(1f))
+                        Spacer(Modifier.width(2.dp))
+                        PreviewImage(category.previewImages.getOrNull(3), Modifier.weight(1f))
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text       = category.name,
+                fontWeight = FontWeight.Bold,
+                fontSize   = 16.sp,
+                color      = MaterialTheme.colorScheme.onSurface,
+                maxLines   = 1,
+                overflow   = TextOverflow.Ellipsis,
+                modifier   = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreviewImage(url: String?, modifier: Modifier) {
+    if (url.isNullOrBlank()) {
+        Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+    } else {
+        AsyncImage(
+            model           = url,
+            contentDescription = null,
+            modifier        = modifier.fillMaxSize(),
+            contentScale    = ContentScale.Crop
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  HORIZONTAL PRODUCT ROW  (New Items / Most Popular)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ProductRow(
+    products: List<Product>,
+    showBadge: Boolean = false,
+    onProductClick: (Product) -> Unit = {}
+) {
+    if (products.isEmpty()) {
+        // Skeleton placeholder khi chưa có data
+        LazyRow(
+            contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(4) { SkeletonProductCard() }
+        }
+        return
+    }
+
+    LazyRow(
+        contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(products, key = { it.id }) { product ->
+            ProductCardVertical(
+                product = product,
+                showBadge = showBadge,
+                onClick = { onProductClick(product) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProductCardVertical(
+    product: Product,
+    showBadge: Boolean,
+    onClick: () -> Unit = {}
+) {
+    val settings = LocalAppSettings.current
+    Surface(
+        modifier = Modifier
+            .width(145.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 3.dp
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                AsyncImage(
+                    model              = product.imageUrl.ifBlank { null },
+                    contentDescription = product.name,
+                    modifier           = Modifier.fillMaxSize(),
+                    contentScale       = ContentScale.Crop,
+                    error              = painterResource(R.drawable.ic_shopping)
+                )
+                // Badge: sold count + label
+                if (showBadge) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text     = settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"),
+                            color    = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (product.isSale) {
+                            Text(
+                                text     = "• Sale",
+                                color    = Color(0xFFFFCC00),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text     = product.name,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color    = AppTheme.colors.textSecondary,
+                lineHeight = 16.sp
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text       = "₫${formatPrice(product.price)}",
+                fontWeight = FontWeight.Bold,
+                fontSize   = 14.sp,
+                color      = MaterialTheme.colorScheme.onBackground
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  JUST FOR YOU GRID  (2 cột)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ForYouGrid(
+    products: List<Product>,
+    onProductClick: (Product) -> Unit = {}
+) {
+    if (products.isEmpty()) {
+        Column(
+            modifier            = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            repeat(2) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    repeat(2) { SkeletonProductCardGrid(Modifier.weight(1f)) }
+                }
+            }
+        }
+        return
+    }
+
+    Column(
+        modifier            = Modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        products.chunked(2).forEach { row ->
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                row.forEach { product ->
+                    ProductCardGrid(
+                        product = product,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onProductClick(product) }
+                    )
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductCardGrid(
+    product: Product,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    Surface(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 3.dp
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.85f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                AsyncImage(
+                    model              = product.imageUrl.ifBlank { null },
+                    contentDescription = product.name,
+                    modifier           = Modifier.fillMaxSize(),
+                    contentScale       = ContentScale.Crop,
+                    error              = painterResource(R.drawable.ic_shopping)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text     = product.name,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color    = AppTheme.colors.textSecondary,
+                lineHeight = 16.sp
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text       = "₫${formatPrice(product.price)}",
+                fontWeight = FontWeight.Bold,
+                fontSize   = 14.sp,
+                color      = MaterialTheme.colorScheme.onBackground
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SKELETON PLACEHOLDERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SkeletonProductCard() {
+    Column(modifier = Modifier.width(140.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        )
+        Spacer(Modifier.height(7.dp))
+        Box(Modifier.fillMaxWidth(0.8f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.fillMaxWidth(0.5f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+    }
+}
+
+@Composable
+private fun SkeletonProductCardGrid(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.82f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        )
+        Spacer(Modifier.height(7.dp))
+        Box(Modifier.fillMaxWidth(0.8f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.fillMaxWidth(0.5f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+    }
+}
+
+private fun formatPrice(price: Double): String =
+    "%.0f".format(price).reversed().chunked(3).joinToString(".").reversed()
