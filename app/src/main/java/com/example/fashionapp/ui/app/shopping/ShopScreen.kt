@@ -62,6 +62,7 @@ import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.navigation.openProfileOrShop
 import com.example.fashionapp.ui.app.home.HomeViewModel
 import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
@@ -76,7 +77,7 @@ fun ShopScreen(
     shopId: String,
     navController: NavController,
     homeViewModel: HomeViewModel = viewModel(),
-    shopViewModel: ShopViewModel = viewModel(),
+    shopViewModel: ShopViewModel = viewModel(key = "shop_$shopId"),
     savedViewModel: SavedViewModel = viewModel()
 ) {
     val homeState by homeViewModel.uiState.collectAsState()
@@ -93,9 +94,11 @@ fun ShopScreen(
     // id thật của chủ tài khoản (resolve trong ViewModel) — dùng cho follow / đăng bài
     val ownerId = shopState.shopUser?.id ?: shopId
 
+    // Products chỉ theo đúng productShopId đã resolve (rỗng = không phải shop → không có sản phẩm).
     val shopProducts = remember(shopState.products, shopState.productShopId) {
-        val sid = shopState.productShopId.ifBlank { shopId }
-        shopState.products.filter { it.shopId == sid }
+        val sid = shopState.productShopId
+        if (sid.isBlank()) emptyList()
+        else shopState.products.filter { it.shopId == sid }
     }
 
     var selectedTab by remember { mutableStateOf("Posts") }
@@ -269,7 +272,7 @@ fun ShopScreen(
                             },
                             onHeaderClick = {
                                 if (post.authorId != shopId) {
-                                    navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
+                                    navController.openProfileOrShop(post.authorId)
                                 }
                             },
                             onProductClick = { productId ->
@@ -315,17 +318,28 @@ private fun ShopHeader(
     onAddPost: () -> Unit
 ) {
     val settings = LocalAppSettings.current
-    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
+            // Avatar: user thường → vòng ring hồng; shop → viền xám (giữ UI như cũ của từng loại)
+            val avatarModifier = if (isShop) {
+                Modifier
                     .size(68.dp)
                     .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface),
+                    .background(MaterialTheme.colorScheme.surface)
+            } else {
+                Modifier
+                    .size(68.dp)
+                    .border(2.dp, Color(0xFFFF5F5F), CircleShape)
+                    .padding(3.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+            }
+            Box(
+                modifier = avatarModifier,
                 contentAlignment = Alignment.Center
             ) {
-                if (avatarUrl.isNotBlank()) {
+                if (avatarUrl.isNotBlank() || !isShop) {
                     AsyncImage(
                         model = avatarUrl.ifBlank { null },
                         contentDescription = shopName,
@@ -340,23 +354,59 @@ private fun ShopHeader(
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    shopName,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // displayName + nút Follow cùng một hàng (giống user thường)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        shopName,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (!isOwnProfile) {
+                        Spacer(Modifier.width(8.dp))
+                        if (isFollowing) {
+                            // Đang theo dõi: chỉ chữ xanh (vẫn bấm được để bỏ theo dõi)
+                            Button(
+                                onClick = onFollowClick,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFE5EDFF),
+                                    contentColor = Color(0xFF1769FF)
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(settings.t("Following", "Đang theo dõi"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        } else {
+                            Button(
+                                onClick = onFollowClick,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(
+                                    settings.t("Follow", "Theo dõi"),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
-                    Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
-                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
+                    Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = AppTheme.colors.textSecondary)
                     Spacer(Modifier.width(12.dp))
-                    Text(followerCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
-                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
+                    Text(followerCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary)
                     Spacer(Modifier.width(12.dp))
                     Icon(
                         Icons.Default.Star,
@@ -367,42 +417,8 @@ private fun ShopHeader(
                     Text(
                         " ${"%.1f".format(rating)}",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        softWrap = false,
-                        maxLines = 1
+                        fontWeight = FontWeight.Bold
                     )
-                }
-            }
-            if (!isOwnProfile) {
-                if (isFollowing) {
-                    // Đang theo dõi: chỉ chữ xanh, không button (vẫn bấm được để bỏ theo dõi)
-                    Button(
-                        onClick = onFollowClick,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE5EDFF),
-                            contentColor = Color(0xFF1769FF)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Text(settings.t("Following", "Đang theo dõi"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                } else {
-                    Button(
-                        onClick = onFollowClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
-                        shape = RoundedCornerShape(16.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Text(
-                            settings.t("Follow", "Theo dõi"),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
                 }
             }
         }

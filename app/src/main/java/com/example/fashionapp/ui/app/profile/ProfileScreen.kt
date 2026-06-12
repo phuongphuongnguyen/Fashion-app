@@ -30,6 +30,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.navigation.openProfileOrShop
 import com.example.fashionapp.ui.app.home.HomeViewModel
 import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
@@ -162,7 +163,7 @@ fun ProfileScreen(
                 CommentBottomSheet(
                     post = post,
                     sheetState = sheetState,
-                    currentUserAvatarUrl = homeState.user?.avatarUrl.orEmpty(),
+                    currentUserAvatarUrl = uiState.user?.avatarUrl.orEmpty(),
                     onDismiss = { showComments = false },
                     onSendComment = { text -> homeViewModel.addComment(post.id, text) }
                 )
@@ -205,7 +206,7 @@ fun ProfileScreen(
                     },
                     onHeaderClick = {
                         if (post.authorId.isNotBlank()) {
-                            navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
+                            navController.openProfileOrShop(post.authorId)
                         }
                     },
                     onProductClick = { productId ->
@@ -245,7 +246,7 @@ private fun ProfileHeader(
             .build()
     }
 
-    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         // ── Hàng thông tin (bố cục giống ShopScreen): avatar | name + stats | Follow ──
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
@@ -263,60 +264,94 @@ private fun ProfileHeader(
                 fallback = painterResource(R.drawable.ic_profile)
             )
             Spacer(Modifier.width(14.dp))
-            // ── name + stats (giống ShopScreen) ──
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    softWrap = false
-                )
+                // displayName + nút Follow cùng một hàng
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        name,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (!isOwnProfile) {
+                        Spacer(Modifier.width(8.dp))
+                        if (isFollowing) {
+                            // Đang theo dõi: chỉ chữ xanh, không button (vẫn bấm được để bỏ theo dõi)
+                            Button(
+                                onClick = onFollowClick,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFE5EDFF),
+                                    contentColor = Color(0xFF1769FF)
+                                ),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(settings.t("Following", "Đang theo dõi"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        } else {
+                            Button(
+                                onClick = onFollowClick,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(
+                                    settings.t("Follow", "Theo dõi"),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
-                    Text(postsCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
-                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
+                    Text(postsCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = AppTheme.colors.textSecondary)
                     Spacer(Modifier.width(12.dp))
-                    Text(followers.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
-                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
+                    Text(followers.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary)
                     Spacer(Modifier.width(12.dp))
-                    Text(following.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
-                    Text(settings.t(" Following", " Đang theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
+                    Text(following.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(settings.t(" Following", " Đang theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary)
                 }
             }
-            // ── Follow button (chỉ trang người khác) ──
-            if (!isOwnProfile) {
-                if (isFollowing) {
-                    Button(
-                        onClick = onFollowClick,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE5EDFF),
-                            contentColor = Color(0xFF1769FF)
-                        ),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Text(settings.t("Following", "Đang theo dõi"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                } else {
-                    Button(
-                        onClick = onFollowClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Text(
-                            settings.t("Follow", "Theo dõi"),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
+        }
+
+        if (bio.isNotBlank() || isOwnProfile) {
+            Spacer(Modifier.height(12.dp))
+            if (bio.isNotBlank()) {
+                Text(
+                    text = bio,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    lineHeight = 20.sp
+                )
+            }
+            if (isOwnProfile) {
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = onEditBio,
+                    modifier = Modifier.fillMaxWidth().height(36.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text(
+                        text = settings.t("Edit Profile", "Chỉnh sửa trang cá nhân"),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }

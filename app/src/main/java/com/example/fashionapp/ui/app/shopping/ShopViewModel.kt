@@ -59,6 +59,7 @@ class ShopViewModel : ViewModel() {
     private var cartJob: Job? = null
     private var ordersJob: Job? = null
     private var userJob: Job? = null
+    private var shopJob: Job? = null   // gom tất cả collector của loadShopUser để huỷ khi load profile khác
     private val authStateListener = AuthStateListener { firebaseAuth ->
         loadUserShoppingData(firebaseAuth.currentUser?.uid)
     }
@@ -127,13 +128,29 @@ class ShopViewModel : ViewModel() {
     // Resolve về đúng chủ tài khoản để mọi lối vào đều ra cùng một trang.
     fun loadShopUser(navId: String) {
         if (navId.isBlank()) return
-        viewModelScope.launch {
+
+        // Huỷ collector của profile trước + reset state để KHÔNG trộn dữ liệu giữa 2 người
+        // (header của người này, list của người kia).
+        shopJob?.cancel()
+        _uiState.value = _uiState.value.copy(
+            shopUser = null,
+            posts = emptyList(),
+            shopLogoUrl = "",
+            shopRating = 0f,
+            isOwnProfile = false,
+            isFollowing = false,
+            productShopId = ""
+        )
+
+        shopJob = viewModelScope.launch {
             // 1) navId là userId? thử đọc trực tiếp. 2) nếu không, navId là shopId → tìm chủ shop.
             val owner = userRepository.getUserProfile(navId)
                 ?: userRepository.findUserByShopId(navId)
             val ownerId = owner?.id ?: navId
-            // shopId để lọc products: ưu tiên field shopId của user, nếu không có thì chính navId
-            val productShopId = owner?.shopId?.takeIf { it.isNotBlank() } ?: navId
+            // shopId để lọc products LẤY ĐÚNG TỪ owner — không fallback về navId để tránh
+            // products của 1 shop trong khi header lại là người khác. User thường (shopId rỗng)
+            // sẽ có productShopId rỗng → không hiện tab Products.
+            val productShopId = owner?.shopId.orEmpty()
 
             val currentUid = auth.currentUser?.uid.orEmpty()
             val isOwn = currentUid.isNotBlank() && currentUid == ownerId
@@ -154,16 +171,17 @@ class ShopViewModel : ViewModel() {
                     _uiState.value = _uiState.value.copy(shopUser = user)
                 }
             }
-            // Logo shop theo productShopId (doc shops/{shopId})
-            launch {
-                repository.getShopLogoUrlFlow(productShopId).collect { logoUrl ->
-                    _uiState.value = _uiState.value.copy(shopLogoUrl = logoUrl)
+            // Logo + rating shop chỉ load khi là shop thật (có shopId)
+            if (productShopId.isNotBlank()) {
+                launch {
+                    repository.getShopLogoUrlFlow(productShopId).collect { logoUrl ->
+                        _uiState.value = _uiState.value.copy(shopLogoUrl = logoUrl)
+                    }
                 }
-            }
-            // Rating shop
-            launch {
-                repository.getShopRatingFlow(productShopId).collect { rating ->
-                    _uiState.value = _uiState.value.copy(shopRating = rating)
+                launch {
+                    repository.getShopRatingFlow(productShopId).collect { rating ->
+                        _uiState.value = _uiState.value.copy(shopRating = rating)
+                    }
                 }
             }
             // Trạng thái follow

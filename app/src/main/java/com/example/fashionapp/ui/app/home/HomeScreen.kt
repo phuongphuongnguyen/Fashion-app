@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.navigation.openProfileOrShop
 import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
@@ -111,7 +112,7 @@ fun HomeScreen(
                             },
                             onHeaderClick = {
                                 if (post.authorId.isNotBlank()) {
-                                    navController.navigate(Screen.ShopDetail.createRoute(post.authorId))
+                                    navController.openProfileOrShop(post.authorId)
                                 }
                             },
                             onProductClick = { productId ->

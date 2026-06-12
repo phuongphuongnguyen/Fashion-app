@@ -43,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.example.fashionapp.data.StorageUrlResolver
 import com.example.fashionapp.data.shop.ShopRepository
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.navigation.openProfileOrShop
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -174,7 +175,7 @@ fun ProductDetailScreen(
             item {
                 ShopSection(
                     shopId   = product.shopId,
-                    onVisitShop = { navController.navigate(Screen.ShopDetail.createRoute(product.shopId)) }
+                    onVisitShop = { navController.openProfileOrShop(product.shopId) }
                 )
             }
 
