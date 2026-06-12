@@ -355,17 +355,17 @@ fun RegisterShopScreen(
                                 "name" to shopName,
                                 "description" to description,
                                 "location" to location,
-                                "logoRef" to "avatar/logo1.jpg",
+                                "logoRef" to UserSession.currentUser.value?.avatarRef.orEmpty(),
                                 "followerCount" to 28900,
                                 "isOfficial" to true,
-                                "productCount" to 6,
-                                "rating" to 4.8,
-                                "responseRate" to 98,
+                                "productCount" to 0,
+                                "rating" to 0.0,
+                                "responseRate" to 0,
                                 "responseTime" to "Trong vài phút",
-                                "reviewCount" to 12430,
-                                "orderCount" to 36,
-                                "soldCount" to 5970,
-                                "revenue" to 14019000.0,
+                                "reviewCount" to 0,
+                                "orderCount" to 0,
+                                "soldCount" to 0,
+                                "revenue" to 0.0,
                                 "createdAt" to Timestamp.now(),
                                 "updatedAt" to Timestamp.now()
                             )
@@ -390,7 +390,7 @@ fun RegisterShopScreen(
                             db.collection("users").document(uid)
                                 .update(
                                     mapOf(
-                                        "role" to "SHOP",
+                                        "role" to "shop",
                                         "shopId" to shopId
                                     )
                                 ).await()
@@ -399,7 +399,7 @@ fun RegisterShopScreen(
                             val currentUser = UserSession.currentUser.value
                             if (currentUser != null) {
                                 UserSession.updateCurrentUser(
-                                    currentUser.copy(role = "SHOP", shopId = shopId)
+                                    currentUser.copy(role = "shop", shopId = shopId)
                                 )
                             }
 

@@ -42,6 +42,7 @@ class FirebaseAuthBackend(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) : AuthBackend {
+    // Đăng ký tài khoản người dùng mới bằng Email, Password và lưu thông tin vào Firestore
     override suspend fun register(
         email: String,
         password: String,
@@ -71,6 +72,7 @@ class FirebaseAuthBackend(
         }
     }
 
+    // Đăng nhập người dùng bằng Email và Password thông qua Firebase Authentication
     override suspend fun login(email: String, password: String): AuthResult {
         return try {
             auth.signInWithEmailAndPassword(email.trim(), password).await()
@@ -82,6 +84,7 @@ class FirebaseAuthBackend(
         }
     }
 
+    // Tạo mã OTP ngẫu nhiên, lưu vào Firestore và gửi email khôi phục mật khẩu qua API Brevo
     override suspend fun sendPasswordResetCode(email: String): AuthResult {
         return try {
             val normalizedEmail = email.trim()
@@ -156,6 +159,7 @@ class FirebaseAuthBackend(
         }
     }
 
+    // Xác minh mã OTP khôi phục mật khẩu do người dùng nhập có khớp và còn hạn hay không
     override suspend fun verifyPasswordResetCode(email: String, code: String): AuthResult {
         return try {
             val normalizedEmail = email.trim()
@@ -195,6 +199,7 @@ class FirebaseAuthBackend(
         }
     }
 
+    // Thực hiện đặt lại mật khẩu mới cho người dùng sau khi xác thực OTP thành công
     override suspend fun resetPassword(
         email: String,
         code: String,
@@ -242,6 +247,7 @@ class FirebaseAuthBackend(
         }
     }
 
+    // Chuyển đổi mã lỗi của Firebase Authentication sang thông báo tiếng Việt dễ hiểu
     private fun mapFirebaseAuthError(errorCode: String): String {
         return when (errorCode) {
             "ERROR_INVALID_EMAIL" -> "Email khong hop le"
@@ -256,21 +262,26 @@ class FirebaseAuthBackend(
 }
 
 class AuthRepository(private val backend: AuthBackend) {
+    // Gọi hàm đăng ký tài khoản từ backend
     suspend fun register(
         email: String,
         password: String,
         phoneNumber: String
     ): AuthResult = backend.register(email, password, phoneNumber)
 
+    // Gọi hàm đăng nhập tài khoản từ backend
     suspend fun login(email: String, password: String): AuthResult =
         backend.login(email, password)
 
+    // Gọi hàm gửi mã OTP khôi phục mật khẩu từ backend
     suspend fun sendPasswordResetCode(email: String): AuthResult =
         backend.sendPasswordResetCode(email)
 
+    // Gọi hàm xác minh mã OTP khôi phục mật khẩu từ backend
     suspend fun verifyPasswordResetCode(email: String, code: String): AuthResult =
         backend.verifyPasswordResetCode(email, code)
 
+    // Gọi hàm đặt lại mật khẩu mới từ backend
     suspend fun resetPassword(
         email: String,
         code: String,

@@ -420,7 +420,7 @@ fun AppBottomBar(
             BottomNavItem(
                 screen = Screen.Saved,
                 label = if (isShop) settings.t("Analytics", "Thống kê") else settings.t("Saved", "Đã lưu"),
-                iconRes = if (isShop) R.drawable.ic_charts else R.drawable.ic_saved
+                iconRes = if (isShop) R.drawable.ic_charts else R.drawable.ic_bookmark
             ),
             BottomNavItem(Screen.Profile, settings.t("Profile", "Cá nhân"), R.drawable.ic_profile)
         )

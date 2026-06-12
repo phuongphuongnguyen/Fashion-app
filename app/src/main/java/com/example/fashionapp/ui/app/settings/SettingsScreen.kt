@@ -289,12 +289,12 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                             textColor = textColor, subTextColor = subTextColor,
                             dividerColor = dividerColor
                         )
-                        FlatSettingRow(
-                            label = settings.t("Terms and Conditions", "Điều khoản và Điều kiện", "Conditions générales", "利用規約", "이용 약관", "条款与条件"),
-                            onClick = { /* Show T&C */ },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
-                        )
+//                        FlatSettingRow(
+//                            label = settings.t("Terms and Conditions", "Điều khoản và Điều kiện", "Conditions générales", "利用規約", "이용 약관", "条款与条件"),
+//                            onClick = { /* Show T&C */ },
+//                            textColor = textColor, subTextColor = subTextColor,
+//                            dividerColor = dividerColor
+//                        )
 
                         Spacer(Modifier.height(24.dp))
 
@@ -310,12 +310,12 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                             textColor = textColor, subTextColor = subTextColor,
                             dividerColor = dividerColor
                         )
-                        FlatSettingRow(
-                            label = settings.t("About app", "Về app", "À propos de app", "Appについて", "App 정보", "关于 App"),
-                            onClick = { currentSubScreen = SubScreen.ABOUT },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
-                        )
+//                        FlatSettingRow(
+//                            label = settings.t("About app", "Về app", "À propos de app", "Appについて", "App 정보", "关于 App"),
+//                            onClick = { currentSubScreen = SubScreen.ABOUT },
+//                            textColor = textColor, subTextColor = subTextColor,
+//                            dividerColor = dividerColor
+//                        )
                         FlatSettingRow(
                             label = settings.t("Log out", "Đăng xuất", "Se déconnecter", "ログアウト", "로그아웃", "退出登录"),
                             onClick = {
@@ -354,7 +354,7 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                settings.t("Version 1.0 April, 2020", "Phiên bản 1.0 Tháng 4, 2020", "Version 1.0 Avril 2020", "バージョン 1.0 2020年4月", "버전 1.0 2020년 4월", "版本 1.0 2020年4月"),
+                                settings.t("Version 3.6 June, 2026", "Phiên bản 3.6 Tháng 6, 2026", "Version 1.0 Avril 2020", "バージョン 1.0 2020年4月", "버전 1.0 2020년 4월", "版本 1.0 2020年4月"),
                                 fontSize = 13.sp,
                                 color = subTextColor
                             )
@@ -849,6 +849,8 @@ private fun ShippingSubScreen(
                                 .apply()
 
                             saved = true
+//                            kotlinx.coroutines.delay(500)
+//                            onBack()
                         } catch (e: Exception) {
                             // Handle error
                         } finally {
