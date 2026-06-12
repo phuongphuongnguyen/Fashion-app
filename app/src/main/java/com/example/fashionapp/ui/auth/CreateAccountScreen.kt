@@ -38,6 +38,7 @@ import com.example.fashionapp.data.auth.AuthRepository
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
+// Màn hình tiếp nhận thông tin email, mật khẩu và số điện thoại để đăng ký tài khoản thành viên mới trong ứng dụng
 @Composable
 fun CreateAccountScreen(
     authRepository: AuthRepository,

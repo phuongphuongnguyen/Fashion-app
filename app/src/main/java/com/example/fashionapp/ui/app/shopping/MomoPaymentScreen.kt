@@ -53,6 +53,7 @@ private const val QUERY_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/
 private const val REDIRECT_URL   = "https://webhook.site/momo-redirect"
 private const val IPN_URL        = "https://webhook.site/momo-ipn"
 
+// Màn hình hiển thị mã QR thanh toán qua ví điện tử MoMo Sandbox và theo dõi trạng thái giao dịch để tự động xác nhận đơn hàng
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MomoPaymentScreen(
@@ -363,6 +364,7 @@ fun MomoPaymentScreen(
 }
 
 // ── Tạo QR MoMo ──────────────────────────────────────────────────────────────
+// Gửi yêu cầu khởi tạo giao dịch tới cổng thanh toán MoMo Sandbox và lấy liên kết chứa mã QR thanh toán
 private fun createMomoQR(amount: Long): Pair<String, String> {
     val orderId   = "ORDER_${UUID.randomUUID()}"
     val requestId = UUID.randomUUID().toString()
@@ -419,7 +421,7 @@ private fun createMomoQR(amount: Long): Pair<String, String> {
     return Pair(json.getString("qrCodeUrl"), orderId)
 }
 
-// ── Query trạng thái MoMo ─────────────────────────────────────────────────────
+// Gửi yêu cầu truy vấn trạng thái thanh toán của đơn hàng theo ID tới cổng Sandbox của MoMo
 private fun checkMomoStatus(orderId: String): Int {
     val requestId    = UUID.randomUUID().toString()
     val rawSignature = "accessKey=$ACCESS_KEY" +
@@ -454,7 +456,7 @@ private fun checkMomoStatus(orderId: String): Int {
     return JSONObject(response).getInt("resultCode")
 }
 
-// ── Local Notification ────────────────────────────────────────────────────────
+// Khởi tạo và hiển thị thông báo hệ thống cục bộ (Local Notification) khi người dùng hoàn tất thanh toán đơn hàng
 private fun showPaymentNotification(context: Context, amount: Long, settings: com.example.fashionapp.ui.app.settings.AppSettingsViewModel) {
     val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
     val prefix = if (uid.isBlank()) "" else "${uid}_"
@@ -483,7 +485,7 @@ private fun showPaymentNotification(context: Context, amount: Long, settings: co
     manager.notify(System.currentTimeMillis().toInt(), notification)
 }
 
-// ── Generate QR Bitmap ────────────────────────────────────────────────────────
+// Sử dụng thư viện ZXing để tạo mã QR dạng ảnh Bitmap hiển thị lên màn hình từ chuỗi dữ liệu URL nhận được
 fun generateQrBitmap(content: String, size: Int = 512): Bitmap {
     val writer = QRCodeWriter()
     val matrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size)
@@ -494,7 +496,7 @@ fun generateQrBitmap(content: String, size: Int = 512): Bitmap {
     return bmp
 }
 
-// ── HMAC SHA256 ───────────────────────────────────────────────────────────────
+// Sử dụng thuật toán mã hóa HmacSHA256 để tạo chữ ký số (Signature) xác thực tính bảo mật cho giao dịch MoMo
 private fun hmacSHA256(secret: String, data: String): String {
     val mac = Mac.getInstance("HmacSHA256")
     mac.init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8), "HmacSHA256"))

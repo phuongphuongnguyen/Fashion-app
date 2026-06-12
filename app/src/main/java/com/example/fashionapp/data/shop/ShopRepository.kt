@@ -52,6 +52,7 @@ object ShopRepository {
     private fun safeDouble(value: Any?): Double = (value as? Number)?.toDouble() ?: 0.0
     private fun safeInt(value: Any?): Int = (value as? Number)?.toInt() ?: 0
 
+    // Lấy danh sách sản phẩm theo thời gian thực (realtime flow) từ bộ sưu tập products trong Firestore
     fun getProductsFlow(): Flow<List<Product>> = callbackFlow {
         val listener = db.collection("products")
             .addSnapshotListener { snapshot, error ->
@@ -71,6 +72,7 @@ object ShopRepository {
         cachedProducts?.let { emit(it) }
     }
 
+    // Lấy danh sách các danh mục sản phẩm nổi bật và phân giải các liên kết hình ảnh tương ứng
     suspend fun getCategories(): List<Category> = coroutineScope {
         categoriesCache?.let { return@coroutineScope it }
         val targetIds = listOf("cat001a", "cat002", "cat003", "cat004", "cat005", "cat006")
@@ -96,6 +98,7 @@ object ShopRepository {
         } catch (_: Exception) { emptyList() }
     }
 
+    // Lấy danh sách 8 sản phẩm mới nhất được đăng tải trên hệ thống cửa hàng
     suspend fun getNewItems(): List<Product> {
         newItemsCache?.let { return it }
         val result = fetchProducts(
@@ -105,6 +108,7 @@ object ShopRepository {
         return result
     }
 
+    // Lấy danh sách 8 sản phẩm có số lượng bán cao nhất (bán chạy nhất) trên hệ thống
     suspend fun getMostPopular(): List<Product> {
         mostPopularCache?.let { return it }
         val result = fetchProducts(
@@ -114,6 +118,7 @@ object ShopRepository {
         return result
     }
 
+    // Lấy danh sách sản phẩm gợi ý ngẫu nhiên dành riêng cho người dùng hiện tại
     suspend fun getForYou(): List<Product> {
         forYouCache?.let { return it }
         val result = fetchProducts(
@@ -224,6 +229,7 @@ object ShopRepository {
         cachedCartItems?.let { emit(CartItemsSnapshot(it)) }
     }
 
+    // Thêm một sản phẩm mới hoặc tăng thêm số lượng sản phẩm sẵn có trong giỏ hàng (Cart) của người dùng
     suspend fun addToCart(userId: String, cartItem: CartItem): String {
         if (userId.isBlank()) return ""
         val cartDoc = db.collection("carts").document(userId)
@@ -282,6 +288,7 @@ object ShopRepository {
         return cartItem.id
     }
 
+    // Cập nhật số lượng của một sản phẩm trong giỏ hàng hiện tại, kiểm tra giới hạn tồn kho qua Firestore Transaction
     suspend fun updateCartItemQuantity(userId: String, cartItemId: String, newQuantity: Int) {
         if (userId.isBlank()) return
         if (newQuantity <= 0) {
@@ -309,6 +316,7 @@ object ShopRepository {
         }
     }
 
+    // Khôi phục lại sản phẩm đã bị xóa hoặc mua nhầm vào giỏ hàng của người dùng
     suspend fun restoreCartItem(userId: String, cartItem: CartItem) {
         if (userId.isBlank() || cartItem.id.isBlank()) return
         val data = hashMapOf(
@@ -339,6 +347,7 @@ object ShopRepository {
         }.await()
     }
 
+    // Xóa hàng loạt sản phẩm được chỉ định ra khỏi giỏ hàng của người dùng sau khi đã tiến hành mua hàng thành công
     suspend fun clearCart(userId: String, cartItems: List<CartItem>) {
         if (userId.isBlank()) return
         val batch = db.batch()
@@ -514,6 +523,7 @@ object ShopRepository {
         }.toMap()
     }
 
+    // Thực hiện đặt hàng từ danh sách sản phẩm trong giỏ, cập nhật giảm số lượng tồn kho và tạo đơn hàng qua Transaction
     suspend fun placeOrder(
         userId: String,
         cartItems: List<CartItem>,
@@ -601,6 +611,7 @@ object ShopRepository {
         return orderRef.id
     }
 
+    // Hủy đơn hàng đang xử lý, hoàn trả số lượng tồn kho của sản phẩm và cập nhật doanh thu
     suspend fun cancelOrder(userId: String, order: ReviewOrder) {
         if (userId.isBlank() || order.id.isBlank()) return
         if (order.status.equals("Cancelled", ignoreCase = true)) return
@@ -947,6 +958,7 @@ object ShopRepository {
         )
     }
 
+    // Gửi đánh giá sản phẩm của người dùng và cập nhật tự động điểm đánh giá trung bình của sản phẩm cũng như cửa hàng qua Transaction
     suspend fun submitProductReview(
         userId: String,
         order: ReviewOrder,

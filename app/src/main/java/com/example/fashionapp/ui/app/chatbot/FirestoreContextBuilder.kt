@@ -10,6 +10,7 @@ object FirestoreContextBuilder {
     private val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     // ── Fetch tất cả data liên quan → tạo context string ─────────────────────
+    // Truy vấn toàn bộ dữ liệu từ Firestore (Sản phẩm, Danh mục, Vouchers, Đơn hàng, Shops) để xây dựng ngữ cảnh (Context) cho Chatbot
     suspend fun buildContext(): String {
         val sb = StringBuilder()
 
@@ -107,6 +108,7 @@ object FirestoreContextBuilder {
         return sb.toString()
     }
 
+    // Định dạng số tiền kiểu Long sang chuỗi ký tự hiển thị phân cách phần nghìn tiền tệ (ví dụ: 100.000)
     private fun formatPrice(price: Long): String =
         price.toString().reversed().chunked(3).joinToString(".").reversed()
 }

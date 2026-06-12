@@ -128,6 +128,7 @@ import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 
+// Màn hình khởi đầu giới thiệu của ứng dụng hỗ trợ điều hướng đăng nhập hoặc bắt đầu khám phá cửa hàng
 @Composable
 fun StartScreen(
     onGetStarted: () -> Unit,

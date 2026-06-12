@@ -27,6 +27,7 @@ import kotlinx.coroutines.tasks.await
 // ── Palette (same as SettingsScreen) ──
 private val PrimaryBlue = Color(0xFF3669C9)
 
+// Màn hình cho phép người dùng đăng ký tài khoản bán hàng (Shop) riêng, tải logo và cập nhật hồ sơ bán hàng lên Firestore
 @Composable
 fun RegisterShopScreen(
     onBack: () -> Unit,

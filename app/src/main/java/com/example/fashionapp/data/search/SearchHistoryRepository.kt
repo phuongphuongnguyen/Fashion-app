@@ -6,12 +6,14 @@ class SearchHistoryRepository(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    // Lấy danh sách lịch sử các từ khóa tìm kiếm đã lưu từ bộ nhớ cục bộ SharedPreferences
     fun getHistory(): List<String> {
         val raw = prefs.getString(KEY_HISTORY, null).orEmpty()
         if (raw.isBlank()) return emptyList()
         return raw.split(SEPARATOR).filter { it.isNotBlank() }
     }
 
+    // Thêm một từ khóa tìm kiếm mới vào lịch sử, giới hạn số lượng lưu tối đa và sắp xếp lên đầu danh sách
     fun addQuery(query: String) {
         val trimmed = query.trim()
         if (trimmed.isBlank()) return
@@ -22,11 +24,13 @@ class SearchHistoryRepository(context: Context) {
         save(updated)
     }
 
+    // Xóa một từ khóa cụ thể khỏi danh sách lịch sử tìm kiếm cục bộ của người dùng
     fun removeQuery(query: String) {
         val updated = getHistory().filterNot { it.equals(query, ignoreCase = true) }
         save(updated)
     }
 
+    // Xóa sạch toàn bộ lịch sử tìm kiếm của người dùng trong bộ nhớ cục bộ
     fun clear() {
         prefs.edit().remove(KEY_HISTORY).apply()
     }

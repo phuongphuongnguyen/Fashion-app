@@ -32,6 +32,7 @@ import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// Màn hình xác minh mã OTP gồm 4 chữ số được gửi tới email của người dùng để cấp quyền đặt lại mật khẩu mới
 @Composable
 fun VerifyResetCodeScreen(
     authRepository: AuthRepository,

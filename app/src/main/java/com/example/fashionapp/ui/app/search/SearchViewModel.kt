@@ -63,6 +63,7 @@ class SearchViewModel(
         }
     }
 
+    // Thực hiện tìm kiếm sản phẩm và người dùng song song dựa trên từ khóa, danh mục và sắp xếp
     private fun runSearch(query: String, categoryId: String?, sortMode: String? = _uiState.value.sortMode) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSearching = true) }
@@ -86,12 +87,12 @@ class SearchViewModel(
 
     // ── Public actions ────────────────────────────────────────────────────
 
-    // Chỉ cập nhật text — KHÔNG search ngay
+    // Cập nhật chuỗi truy vấn hiện tại khi người dùng đang nhập vào thanh tìm kiếm
     fun onQueryChange(newQuery: String) {
         _uiState.update { it.copy(query = newQuery) }
     }
 
-    // Bấm Enter trên bàn phím → search
+    // Lưu từ khóa vào lịch sử tìm kiếm và kích hoạt thực hiện tìm kiếm khi người dùng nhấn nút submit
     fun onSearchSubmit() {
         val q = _uiState.value.query.trim()
         if (q.isNotBlank()) {
@@ -102,7 +103,7 @@ class SearchViewModel(
         runSearch(q, _uiState.value.selectedCategoryId, null)
     }
 
-    // Click category → search ngay
+    // Xử lý sự kiện chọn hoặc bỏ chọn danh mục trên thanh lọc kết quả
     fun onCategorySelected(categoryId: String?) {
         val newId = if (_uiState.value.selectedCategoryId == categoryId) null else categoryId
         _uiState.update { it.copy(selectedCategoryId = newId) }
@@ -115,6 +116,7 @@ class SearchViewModel(
         }
     }
 
+    // Xóa từ khóa tìm kiếm hiện tại, hiển thị lại các gợi ý hoặc kết quả của phân mục đang chọn
     fun clearQuery() {
         _uiState.update { it.copy(query = "") }
         val cat = _uiState.value.selectedCategoryId
@@ -125,7 +127,7 @@ class SearchViewModel(
         }
     }
 
-    // Click vào gợi ý/lịch sử → search ngay
+    // Kích hoạt tìm kiếm lập tức khi người dùng bấm chọn một từ khóa từ lịch sử hoặc từ khóa phổ biến
     fun onPickSuggestion(text: String) {
         val trimmed = text.trim()
         if (trimmed.isBlank()) return
@@ -140,16 +142,19 @@ class SearchViewModel(
         runSearch(trimmed, _uiState.value.selectedCategoryId, null)
     }
 
+    // Xóa một mục cụ thể khỏi danh sách lịch sử tìm kiếm của người dùng
     fun removeHistoryItem(item: String) {
         historyRepo.removeQuery(item)
         _uiState.update { it.copy(history = historyRepo.getHistory()) }
     }
 
+    // Xóa toàn bộ lịch sử tìm kiếm hiện tại trong bộ nhớ cục bộ và UI
     fun clearHistory() {
         historyRepo.clear()
         _uiState.update { it.copy(history = emptyList()) }
     }
 
+    // Xóa bộ nhớ đệm và thực hiện tìm kiếm lại để cập nhật dữ liệu mới nhất từ Firestore
     fun refresh() {
         SearchRepository.clearCache()
         val s = _uiState.value
@@ -160,6 +165,7 @@ class SearchViewModel(
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
+    // Reset trạng thái UI để hiển thị lại màn hình danh mục gợi ý và lịch sử tìm kiếm mặc định
     private fun resetToSuggestions() {
         _uiState.update {
             it.copy(
@@ -172,6 +178,7 @@ class SearchViewModel(
         }
     }
 
+    // Tải danh sách các danh mục con phục vụ thanh trượt lọc sản phẩm
     private fun loadSubCategories() {
         viewModelScope.launch {
             val subs = SearchRepository.getSubCategories()
@@ -179,6 +186,7 @@ class SearchViewModel(
         }
     }
 
+    // Sắp xếp danh sách sản phẩm kết quả theo các bộ lọc như lượt bán phổ biến hoặc thời gian đăng mới nhất
     private fun sortProducts(products: List<Product>, sortMode: String?): List<Product> {
         return when (sortMode) {
             "popular" -> products.sortedWith(

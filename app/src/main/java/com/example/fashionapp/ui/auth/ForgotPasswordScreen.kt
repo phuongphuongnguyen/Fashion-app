@@ -30,6 +30,7 @@ import com.example.fashionapp.data.auth.AuthRepository
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
+// Màn hình tiếp nhận email yêu cầu khôi phục mật khẩu để gửi mã xác nhận OTP qua dịch vụ gửi mail
 @Composable
 fun ForgotPasswordScreen(
     authRepository: AuthRepository,
