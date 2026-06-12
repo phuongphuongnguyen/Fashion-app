@@ -28,14 +28,9 @@ import com.example.fashionapp.R
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
-// ── Palette ───────────────────────────────────────────────────────────────────
-private val PrimaryBlue  = Color(0xFF3669C9)
-private val TextDark     = Color(0xFF1A1A1A)
-private val ChipBg       = Color(0xFFF0F2F8)
-private val DisabledBg   = Color(0xFFE8EAF0)
-private val DisabledText = Color(0xFFB0B5C0)
-private val GreenStock   = Color(0xFF00B248)
+// ── Palette (accent màu tồn kho — không phụ thuộc theme) ──────────────────────
 private val OrangeStock  = Color(0xFFFF9500)
 private val RedStock     = Color(0xFFFF3B30)
 
@@ -76,14 +71,14 @@ fun AddQuantity(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor   = Color.White,
+        containerColor   = MaterialTheme.colorScheme.surface,
         dragHandle       = { BottomSheetDefaults.DragHandle() },
         shape            = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(Modifier.height(8.dp))
@@ -142,8 +137,8 @@ fun AddQuantity(
                     .height(54.dp),
                 shape  = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor         = Color(0xFF1A1A1A),
-                    disabledContainerColor = DisabledBg
+                    containerColor         = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
                 Text(
@@ -151,7 +146,7 @@ fun AddQuantity(
                     fontWeight = FontWeight.SemiBold,
                     fontSize   = 16.sp,
                     color      = if (selectedVariant != null && (selectedVariant?.stock ?: 0) > 0)
-                        Color.White else DisabledText
+                        MaterialTheme.colorScheme.onPrimary else AppTheme.colors.textSecondary
                 )
             }
 
@@ -196,7 +191,7 @@ private fun SummaryRow(product: Product, selectedVariant: ProductVariant?) {
                 "₫${formatPrice(product.price)}",
                 fontWeight = FontWeight.ExtraBold,
                 fontSize   = 26.sp,
-                color      = TextDark
+                color      = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(Modifier.height(6.dp))
@@ -220,10 +215,10 @@ private fun SummaryRow(product: Product, selectedVariant: ProductVariant?) {
                 },
                 fontSize = 11.sp,
                 color    = when {
-                    selectedVariant == null -> Color(0xFF888888)
+                    selectedVariant == null -> AppTheme.colors.textSecondary
                     stock <= 0  -> RedStock
                     stock <= 5  -> OrangeStock
-                    else        -> GreenStock
+                    else        -> AppTheme.colors.success
                 }
             )
         }
@@ -232,12 +227,12 @@ private fun SummaryRow(product: Product, selectedVariant: ProductVariant?) {
 
 @Composable
 private fun MiniChip(text: String) {
-    Surface(shape = RoundedCornerShape(8.dp), color = ChipBg) {
+    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Text(
             text       = text,
             fontSize   = 13.sp,
             fontWeight = FontWeight.Medium,
-            color      = TextDark,
+            color      = MaterialTheme.colorScheme.onSurface,
             modifier   = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
         )
     }
@@ -267,10 +262,10 @@ private fun ColorOptionsRow(
                     .clip(RoundedCornerShape(12.dp))
                     .border(
                         width = if (isSelected) 2.5.dp else 0.dp,
-                        color = if (isSelected) PrimaryBlue else Color.Transparent,
+                        color = if (isSelected) MaterialTheme.colorScheme.secondary else Color.Transparent,
                         shape = RoundedCornerShape(12.dp)
                     )
-                    .background(Color(0xFFEEEEEE))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onSelect(color) }
             ) {
                 AsyncImage(
@@ -287,7 +282,7 @@ private fun ColorOptionsRow(
                             .padding(5.dp)
                             .size(22.dp)
                             .clip(CircleShape)
-                            .background(PrimaryBlue)
+                            .background(MaterialTheme.colorScheme.secondary)
                             .align(Alignment.BottomStart),
                         contentAlignment = Alignment.Center
                     ) {
@@ -326,14 +321,14 @@ private fun SizeRow(
                     .clip(RoundedCornerShape(10.dp))
                     .background(
                         when {
-                            isSelected   -> Color.White
-                            outOfStock   -> DisabledBg
-                            else         -> ChipBg
+                            isSelected   -> MaterialTheme.colorScheme.surface
+                            outOfStock   -> MaterialTheme.colorScheme.surfaceVariant
+                            else         -> MaterialTheme.colorScheme.surfaceVariant
                         }
                     )
                     .border(
                         width = if (isSelected) 1.5.dp else 0.dp,
-                        color = if (isSelected) PrimaryBlue else Color.Transparent,
+                        color = if (isSelected) MaterialTheme.colorScheme.secondary else Color.Transparent,
                         shape = RoundedCornerShape(10.dp)
                     )
                     .clickable(enabled = !outOfStock) { onSelect(v) }
@@ -345,9 +340,9 @@ private fun SizeRow(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     fontSize   = 14.sp,
                     color      = when {
-                        isSelected  -> PrimaryBlue
-                        outOfStock  -> DisabledText
-                        else        -> TextDark
+                        isSelected  -> MaterialTheme.colorScheme.secondary
+                        outOfStock  -> AppTheme.colors.textSecondary
+                        else        -> MaterialTheme.colorScheme.onSurface
                     }
                 )
             }
@@ -376,7 +371,7 @@ private fun QuantityRow(
             fontWeight = FontWeight.Bold,
             fontSize   = 16.sp,
             modifier   = Modifier.weight(1f),
-            color      = TextDark
+            color      = MaterialTheme.colorScheme.onSurface
         )
 
         Row(
@@ -387,7 +382,7 @@ private fun QuantityRow(
             CircleBtn(enabled = quantity > 1, onClick = onDecrease) {
                 Icon(
                     Icons.Default.Remove, null,
-                    tint     = if (quantity > 1) PrimaryBlue else DisabledText,
+                    tint     = if (quantity > 1) MaterialTheme.colorScheme.secondary else AppTheme.colors.textSecondary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -397,14 +392,14 @@ private fun QuantityRow(
                 modifier = Modifier
                     .size(56.dp, 44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(ChipBg),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     "$quantity",
                     fontWeight = FontWeight.Bold,
                     fontSize   = 18.sp,
-                    color      = TextDark
+                    color      = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -412,7 +407,7 @@ private fun QuantityRow(
             CircleBtn(enabled = quantity < maxStock && maxStock > 0, onClick = onIncrease) {
                 Icon(
                     Icons.Default.Add, null,
-                    tint     = if (quantity < maxStock && maxStock > 0) PrimaryBlue else DisabledText,
+                    tint     = if (quantity < maxStock && maxStock > 0) MaterialTheme.colorScheme.secondary else AppTheme.colors.textSecondary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -432,7 +427,7 @@ private fun CircleBtn(
             .clip(CircleShape)
             .border(
                 width = 1.5.dp,
-                color = if (enabled) PrimaryBlue else DisabledBg,
+                color = if (enabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
                 shape = CircleShape
             )
             .clickable(enabled = enabled) { onClick() },
@@ -447,7 +442,7 @@ private fun CircleBtn(
 
 @Composable
 private fun SectionLabel(text: String) {
-    Text(text, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextDark)
+    Text(text, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
 }
 
 private fun formatPrice(price: Double): String =

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import com.example.fashionapp.ui.theme.AppTheme
 
 @Composable
 fun ReviewDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
@@ -29,7 +30,7 @@ fun ReviewDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Column(
@@ -49,7 +50,7 @@ fun ReviewDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text("Bonnie Green", fontWeight = FontWeight.Medium)
-                        Text("Order #654321", color = Color.Gray, fontSize = 12.sp)
+                        Text("Order #654321", color = AppTheme.colors.textSecondary, fontSize = 12.sp)
                     }
                 }
 
@@ -61,7 +62,7 @@ fun ReviewDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                             Icon(
                                 if (index < rating) Icons.Default.Star else Icons.Outlined.StarOutline,
                                 contentDescription = null,
-                                tint = if (index < rating) Color(0xFFFFD700) else Color.LightGray
+                                tint = if (index < rating) AppTheme.colors.star else AppTheme.colors.textSecondary
                             )
                         }
                     }
@@ -75,8 +76,8 @@ fun ReviewDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                     placeholder = { Text("Your Comment") },
                     modifier = Modifier.fillMaxWidth().height(100.dp),
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFF5F5F5),
-                        unfocusedContainerColor = Color(0xFFF5F5F5),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ),
@@ -89,7 +90,7 @@ fun ReviewDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                     onClick = onConfirm,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Sent It")
                 }
@@ -103,7 +104,7 @@ fun ReviewDoneDialog(onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Column(
@@ -113,20 +114,20 @@ fun ReviewDoneDialog(onDismiss: () -> Unit) {
                 Icon(
                     Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint = Color(0xFF0056FF),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(64.dp)
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text("Done!", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                Text("Thank you for your review", color = Color.Gray, fontSize = 14.sp)
+                Text("Thank you for your review", color = AppTheme.colors.textSecondary, fontSize = 14.sp)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row {
                     repeat(5) {
-                        Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD700))
+                        Icon(Icons.Default.Star, contentDescription = null, tint = AppTheme.colors.star)
                     }
                 }
             }

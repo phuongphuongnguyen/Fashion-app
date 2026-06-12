@@ -427,7 +427,7 @@ fun AppBottomBar(
     }
 
     Surface(
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp
     ) {
         Row(
@@ -476,7 +476,7 @@ fun BottomNavItemView(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        val tint = if (isSelected) Color.Black else Color.Unspecified
+        val tint = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Unspecified
         Icon(
             painter = painterResource(id = item.iconRes),
             contentDescription = item.label,
@@ -489,7 +489,7 @@ fun BottomNavItemView(
                 .width(20.dp)
                 .height(3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(if (isSelected) Color.Black else Color.Transparent)
+                .background(if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent)
         )
     }
 }

@@ -4,12 +4,16 @@ import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
 import com.example.fashionapp.data.StorageUrlResolver
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.storage.FirebaseStorage
+import android.net.Uri
 import kotlinx.coroutines.tasks.await
 
 object ProductRepository {
     private val db = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
 
     // ── In-Memory Cache ──────────────────────────────────────────────────────
     private val productCache = mutableMapOf<String, Product>()
@@ -107,6 +111,95 @@ object ProductRepository {
                 specifications  = specs,
             )
         } catch (_: Exception) { null }
+    }
+
+    suspend fun createProduct(
+        shopId: String,
+        name: String,
+        description: String,
+        price: Double,
+        stock: Int,
+        categoryId: String,
+        imageUris: List<Uri>,
+        variants: List<ProductVariant>
+    ) {
+        if (shopId.isBlank()) error("Missing shopId")
+        if (name.isBlank()) error("Missing product name")
+
+        val productRef = db.collection("products").document()
+        
+        // Upload images to Storage
+        val imagePaths = imageUris.mapIndexed { index, uri ->
+            val path = "products/${productRef.id}/image_$index.jpg"
+            storage.reference.child(path).putFile(uri).await()
+            path
+        }
+
+        val data = mutableMapOf<String, Any>(
+            "shopId" to shopId,
+            "name" to name.trim(),
+            "description" to description.trim(),
+            "price" to price,
+            "originalPrice" to price,
+            "discountPercent" to 0,
+            "stock" to stock,
+            "categoryId" to categoryId,
+            "images" to imagePaths,
+            "imageUrl" to (imagePaths.firstOrNull() ?: ""),
+            "rating" to 0.0,
+            "reviewCount" to 0,
+            "soldCount" to 0,
+            "revenue" to 0.0,
+            "freeShipping" to true,
+            "isActive" to true,
+            "tags" to emptyList<String>(),
+            "specifications" to mapOf(
+                "Xuất xứ" to "Việt Nam",
+                "Chất liệu" to "Cotton"
+            ),
+            "variants" to variants.map { v ->
+                mapOf(
+                    "id" to v.id.ifBlank { "v_${System.currentTimeMillis()}_${v.size}" },
+                    "size" to v.size,
+                    "color" to v.color,
+                    "colorHex" to v.colorHex,
+                    "stock" to v.stock,
+                    "additionalPrice" to v.additionalPrice
+                )
+            },
+            "createdAt" to FieldValue.serverTimestamp(),
+            "updatedAt" to FieldValue.serverTimestamp()
+        )
+
+        productRef.set(data).await()
+    }
+
+    suspend fun updateProductPrice(productId: String, newPrice: Double) {
+        db.collection("products").document(productId).update(
+            "price", newPrice,
+            "updatedAt", FieldValue.serverTimestamp()
+        ).await()
+        productCache.remove(productId)
+    }
+
+    suspend fun updateProductStock(productId: String, variants: List<ProductVariant>) {
+        val totalStock = variants.sumOf { it.stock }
+        val variantData = variants.map { v ->
+            mapOf(
+                "id" to v.id,
+                "size" to v.size,
+                "color" to v.color,
+                "colorHex" to v.colorHex,
+                "stock" to v.stock,
+                "additionalPrice" to v.additionalPrice
+            )
+        }
+        db.collection("products").document(productId).update(
+            "stock", totalStock,
+            "variants", variantData,
+            "updatedAt", FieldValue.serverTimestamp()
+        ).await()
+        productCache.remove(productId)
     }
 
     fun clearCache() {

@@ -45,6 +45,7 @@ data class ShopUiState(
     val cartError: String? = null,
     val orderError: String? = null,
     val reviewError: String? = null,
+    val bioError: String? = null,
     val isPlacingOrder: Boolean = false,
     val isSubmittingReview: Boolean = false
 )
@@ -423,5 +424,21 @@ class ShopViewModel : ViewModel() {
 
     fun consumeReviewError() {
         _uiState.value = _uiState.value.copy(reviewError = null)
+    }
+
+    fun updateBio(newBio: String) {
+        val currentUid = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            val result = runCatching { userRepository.updateUserBio(currentUid, newBio) }
+            if (result.isFailure) {
+                _uiState.value = _uiState.value.copy(
+                    bioError = result.exceptionOrNull()?.message ?: "Failed to update bio"
+                )
+            }
+        }
+    }
+
+    fun consumeBioError() {
+        _uiState.value = _uiState.value.copy(bioError = null)
     }
 }

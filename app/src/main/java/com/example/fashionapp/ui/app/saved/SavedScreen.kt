@@ -11,7 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -40,7 +39,7 @@ fun SavedScreen(
                 scrollBehavior = scrollBehavior
             )
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         LazyVerticalGrid(
@@ -59,7 +58,7 @@ fun SavedScreen(
                         modifier = Modifier
                             .aspectRatio(if (index % 5 == 1) 0.62f else 0.78f)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFECECEC))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .clickable { navController.navigate(Screen.PostDetail.createRoute(post.id)) }
                     ) {
                         AsyncImage(

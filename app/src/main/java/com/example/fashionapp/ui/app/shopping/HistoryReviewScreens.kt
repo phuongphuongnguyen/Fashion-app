@@ -29,6 +29,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -63,6 +64,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 import kotlinx.coroutines.delay
 
 private const val ONGOING_DURATION_MILLIS = 10 * 60 * 1000L
@@ -125,7 +127,7 @@ fun HistoryScreen(
                         viewModel.cancelOrder(context, orderId)
                     }
                 ) {
-                    Text(settings.t("Cancel order", "Hủy đơn hàng"), color = Color(0xFFE53935), fontWeight = FontWeight.Bold)
+                    Text(settings.t("Cancel order", "Hủy đơn hàng"), color = AppTheme.colors.danger, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -133,7 +135,7 @@ fun HistoryScreen(
                     Text(settings.t("Keep order", "Giữ đơn hàng"))
                 }
             },
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -176,7 +178,7 @@ fun HistoryScreen(
                     ) {
                         Text(
                             if (selectedTab == "Ongoing") settings.t("No ongoing orders", "Không có đơn hàng đang xử lý") else settings.t("No order history", "Không có lịch sử đơn hàng"),
-                            color = Color.Gray
+                            color = AppTheme.colors.textSecondary
                         )
                     }
                 }
@@ -186,7 +188,7 @@ fun HistoryScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF9F9F9))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -196,7 +198,7 @@ fun HistoryScreen(
                             modifier = Modifier
                                 .size(72.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFFF1F1F1)),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentScale = ContentScale.Crop,
                             error = painterResource(R.drawable.ic_shopping)
                         )
@@ -206,11 +208,11 @@ fun HistoryScreen(
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 settings.t("Order #", "Đơn hàng #") + order.id.takeLast(6),
-                                color = Color.Gray,
+                                color = AppTheme.colors.textSecondary,
                                 fontSize = 12.sp
                             )
                             Spacer(Modifier.height(4.dp))
-                            Text(order.orderDate, color = Color(0xFF0057FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text(order.orderDate, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
                         if (selectedTab == "History") {
                             val review = uiState.reviewsByOrderId[order.id]
@@ -229,9 +231,9 @@ fun HistoryScreen(
                                 else -> settings.t("Reviewed - edit expired", "Đã đánh giá - Hết hạn sửa")
                             }
                             val reviewActionColor = if (review == null || canEditReview) {
-                                Color(0xFF0057FF)
+                                MaterialTheme.colorScheme.primary
                             } else {
-                                Color.Gray
+                                AppTheme.colors.textSecondary
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Button(
@@ -241,10 +243,10 @@ fun HistoryScreen(
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFE5EDFF),
-                                        contentColor = Color(0xFF0057FF),
-                                        disabledContainerColor = Color(0xFFF1F1F1),
-                                        disabledContentColor = Color.Gray
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.primary,
+                                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        disabledContentColor = AppTheme.colors.textSecondary
                                      ),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                     modifier = Modifier.height(34.dp),
@@ -267,13 +269,13 @@ fun HistoryScreen(
                             }
                         } else {
                             Column(horizontalAlignment = Alignment.End) {
-                                Text(settings.t("Ongoing", "Đang xử lý"), color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Text(settings.t("Ongoing", "Đang xử lý"), color = AppTheme.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                                 Spacer(Modifier.height(6.dp))
                                 Button(
                                     onClick = { pendingCancelOrderId = order.id },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFFFEBEE),
-                                        contentColor = Color(0xFFE53935)
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = AppTheme.colors.danger
                                     ),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                     modifier = Modifier.height(32.dp),
@@ -302,7 +304,7 @@ fun CartHistoryTabs(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 4.dp, bottom = 16.dp)
-            .background(Color(0xFFF5F5F5), RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
             .padding(4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -317,14 +319,14 @@ private fun SegmentPill(text: String, selected: Boolean, onClick: () -> Unit, mo
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) Color.White else Color.Transparent)
+            .background(if (selected) MaterialTheme.colorScheme.surface else Color.Transparent)
             .clickable { onClick() }
             .padding(vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text,
-            color = if (selected) Color.Black else Color.Gray,
+            color = if (selected) MaterialTheme.colorScheme.onSurface else AppTheme.colors.textSecondary,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             fontSize = 14.sp
         )
@@ -379,7 +381,7 @@ fun ReviewScreen(
                 onBackClick = { navController.popBackStack() }
             )
         },
-        containerColor = Color(0xFFF9F9F9)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -387,7 +389,7 @@ fun ReviewScreen(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
@@ -415,7 +417,7 @@ fun ReviewScreen(
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(productToReview.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                                Text(settings.t("Order #", "Đơn hàng #") + orderId.takeLast(6), color = Color.Gray, fontSize = 12.sp)
+                                Text(settings.t("Order #", "Đơn hàng #") + orderId.takeLast(6), color = AppTheme.colors.textSecondary, fontSize = 12.sp)
                             }
                         }
                     }
@@ -431,7 +433,7 @@ fun ReviewScreen(
                             Icon(
                                 imageVector = if (starIndex <= rating) Icons.Filled.Star else Icons.Outlined.StarBorder,
                                 contentDescription = null,
-                                tint = if (starIndex <= rating) Color(0xFFFFB300) else Color.Gray,
+                                tint = if (starIndex <= rating) AppTheme.colors.star else AppTheme.colors.textSecondary,
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clickable(enabled = canEditReview) { rating = starIndex }
@@ -443,7 +445,7 @@ fun ReviewScreen(
                         Spacer(Modifier.height(12.dp))
                         Text(
                             settings.t("You can edit this review once within 7 days.", "Bạn có thể chỉnh sửa đánh giá này một lần trong vòng 7 ngày."),
-                            color = Color(0xFF0057FF),
+                            color = MaterialTheme.colorScheme.primary,
                             fontSize = 13.sp,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -456,7 +458,7 @@ fun ReviewScreen(
                                 existingReview?.editCount ?: 0 >= 1 -> settings.t("Review can only be edited once.", "Chỉ có thể chỉnh sửa đánh giá một lần.")
                                 else -> settings.t("Review can only be edited within 7 days.", "Chỉ có thể chỉnh sửa đánh giá trong vòng 7 ngày.")
                             },
-                            color = Color.Gray,
+                            color = AppTheme.colors.textSecondary,
                             fontSize = 13.sp,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -468,12 +470,12 @@ fun ReviewScreen(
                         value = comment,
                         onValueChange = { comment = it },
                         modifier = Modifier.fillMaxWidth().height(120.dp),
-                        placeholder = { Text(settings.t("Share your thoughts about this product...", "Chia sẻ suy nghĩ của bạn về sản phẩm này..."), color = Color.Gray, fontSize = 14.sp) },
+                        placeholder = { Text(settings.t("Share your thoughts about this product...", "Chia sẻ suy nghĩ của bạn về sản phẩm này..."), color = AppTheme.colors.textSecondary, fontSize = 14.sp) },
                         enabled = canEditReview,
                         shape = RoundedCornerShape(16.dp),
                         colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFFF5F5F5),
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
                         )
@@ -498,7 +500,7 @@ fun ReviewScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF)),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(25.dp),
                         enabled = productToReview != null && canEditReview && !isSubmitting && !uiState.isSubmittingReview
                     ) {
@@ -550,7 +552,7 @@ fun ReviewDoneScreen(navController: NavController) {
             ) {
                 Card(
                     modifier = Modifier.padding(top = 28.dp).fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Column(
@@ -559,11 +561,11 @@ fun ReviewDoneScreen(navController: NavController) {
                     ) {
                         Text(settings.t("Success!", "Thành công!"), fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
                         Spacer(Modifier.height(8.dp))
-                        Text(settings.t("Thank you for your feedback!", "Cảm ơn ý kiến đóng góp của bạn!"), color = Color.Gray, fontSize = 14.sp)
+                        Text(settings.t("Thank you for your feedback!", "Cảm ơn ý kiến đóng góp của bạn!"), color = AppTheme.colors.textSecondary, fontSize = 14.sp)
                         Spacer(Modifier.height(20.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             repeat(5) {
-                                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(30.dp))
+                                Icon(Icons.Default.Star, contentDescription = null, tint = AppTheme.colors.star, modifier = Modifier.size(30.dp))
                             }
                         }
                     }
@@ -573,7 +575,7 @@ fun ReviewDoneScreen(navController: NavController) {
                     modifier = Modifier.size(56.dp).clip(CircleShape).background(Color.White).padding(4.dp)
                 ) {
                     Box(
-                        modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color(0xFF0057FF)),
+                        modifier = Modifier.fillMaxSize().clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(32.dp))

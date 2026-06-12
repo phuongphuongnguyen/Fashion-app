@@ -36,6 +36,7 @@ import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
@@ -92,7 +93,7 @@ fun PaymentScreen(
             )
         },
         bottomBar = {
-            Surface(shadowElevation = 16.dp, color = Color.White) {
+            Surface(shadowElevation = 16.dp, color = MaterialTheme.colorScheme.surface) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -104,12 +105,12 @@ fun PaymentScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(settings.t("Order Total", "Tổng thanh toán"), color = Color.Gray, fontSize = 14.sp)
+                        Text(settings.t("Order Total", "Tổng thanh toán"), color = AppTheme.colors.textSecondary, fontSize = 14.sp)
                         Text(
                             "₫${formatPrice(total)}",
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 20.sp,
-                            color = Color(0xFF1A1A1A)
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                     Button(
@@ -148,7 +149,7 @@ fun PaymentScreen(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF)),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         enabled = checkoutItems.isNotEmpty() &&
@@ -165,7 +166,7 @@ fun PaymentScreen(
                 }
             }
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -181,7 +182,7 @@ fun PaymentScreen(
                         modifier = Modifier.fillMaxWidth().padding(top = 120.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Color(0xFF0056FF))
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 return@LazyColumn
@@ -220,19 +221,19 @@ fun PaymentScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF7F8FB), RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                         .padding(16.dp)
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(recipientName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Spacer(Modifier.height(4.dp))
                         if (recipientPhone.isNotBlank()) {
-                            Text(recipientPhone, color = Color.Gray, fontSize = 12.sp)
+                            Text(recipientPhone, color = AppTheme.colors.textSecondary, fontSize = 12.sp)
                             Spacer(Modifier.height(2.dp))
                         }
                         Text(
                             shippingAddress.ifBlank { settings.t("Add a shipping address in your profile", "Thêm địa chỉ giao hàng trong trang cá nhân") },
-                            color = if (hasShippingAddress) Color.Gray else Color(0xFFB3261E),
+                            color = if (hasShippingAddress) AppTheme.colors.textSecondary else Color(0xFFB3261E),
                             fontSize = 13.sp
                         )
                     }
@@ -240,13 +241,13 @@ fun PaymentScreen(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFE5EDFF))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .clickable {
                                 navController.navigate(Screen.Settings.createRoute("shipping"))
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Edit, null, tint = Color(0xFF0056FF), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -257,12 +258,12 @@ fun PaymentScreen(
                     Text(settings.t("Items", "Sản phẩm"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(Modifier.width(8.dp))
                     Surface(
-                        color = Color(0xFFE5EDFF),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = CircleShape,
                         modifier = Modifier.size(22.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text("${checkoutItems.size}", color = Color(0xFF0056FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("${checkoutItems.size}", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -275,14 +276,14 @@ fun PaymentScreen(
                         AsyncImage(
                             model = item.product.imageUrl.ifBlank { null },
                             contentDescription = null,
-                            modifier = Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF5F5F5)),
+                            modifier = Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
                             contentScale = ContentScale.Crop,
                             error = painterResource(R.drawable.ic_shopping)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(item.product.name, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                            Text("${item.color} | ${item.size} x ${item.quantity}", fontSize = 12.sp, color = Color.Gray)
+                            Text("${item.color} | ${item.size} x ${item.quantity}", fontSize = 12.sp, color = AppTheme.colors.textSecondary)
                         }
                         Text("₫${formatPrice(item.totalPrice)}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
@@ -320,8 +321,8 @@ fun PaymentScreen(
                         id = "visa",
                         selectedId = selectedPaymentMethod,
                         badgeText = "VISA",
-                        badgeColor = Color(0xFFE5EDFF),
-                        badgeTextColor = Color(0xFF0056FF),
+                        badgeColor = MaterialTheme.colorScheme.surfaceVariant,
+                        badgeTextColor = MaterialTheme.colorScheme.primary,
                         title = "Visa",
                         subtitle = "**** **** **** 4567",
                         onSelected = { selectedPaymentMethod = it }
@@ -357,11 +358,11 @@ private fun CheckoutMessage(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(message, color = Color.Gray, fontSize = 14.sp)
+        Text(message, color = AppTheme.colors.textSecondary, fontSize = 14.sp)
         Button(
             onClick = onBackToCart,
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF))
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text(settings.t("Back to Cart", "Quay lại giỏ hàng"), fontWeight = FontWeight.Bold)
         }
@@ -398,8 +399,8 @@ private fun PaymentMethodOption(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) Color(0xFFF0F7FF) else Color(0xFFF7F8FB))
-            .border(1.dp, if (selected) Color(0xFF0056FF) else Color.Transparent, RoundedCornerShape(12.dp))
+            .background(if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
             .clickable { onSelected(id) }
             .padding(16.dp)
     ) {
@@ -407,7 +408,7 @@ private fun PaymentMethodOption(
             modifier = Modifier.size(52.dp, 32.dp),
             shape = RoundedCornerShape(6.dp),
             color = badgeColor,
-            border = if (selected) BorderStroke(1.dp, Color(0xFF0056FF)) else null
+            border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(badgeText, fontSize = 10.sp, fontWeight = FontWeight.Black, color = badgeTextColor)
@@ -416,12 +417,12 @@ private fun PaymentMethodOption(
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, fontSize = 12.sp, color = Color.Gray)
+            Text(subtitle, fontSize = 12.sp, color = AppTheme.colors.textSecondary)
         }
         Icon(
             imageVector = if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
             contentDescription = null,
-            tint = if (selected) Color(0xFF0056FF) else Color.LightGray,
+            tint = if (selected) MaterialTheme.colorScheme.primary else AppTheme.colors.textSecondary,
             modifier = Modifier.size(22.dp)
         )
     }
@@ -434,7 +435,7 @@ private fun SectionHeader(title: String) {
         fontWeight = FontWeight.Bold,
         fontSize = 17.sp,
         modifier = Modifier.padding(bottom = 12.dp),
-        color = Color(0xFF1A1A1A)
+        color = MaterialTheme.colorScheme.onBackground
     )
 }
 
@@ -453,8 +454,8 @@ private fun ShippingOption(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) Color(0xFFF0F7FF) else Color(0xFFF7F8FB))
-            .border(1.dp, if (selected) Color(0xFF0056FF) else Color.Transparent, RoundedCornerShape(12.dp))
+            .background(if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
             .clickable { onSelected(id) }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -462,16 +463,16 @@ private fun ShippingOption(
         Icon(
             imageVector = if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
             contentDescription = null,
-            tint = if (selected) Color(0xFF0056FF) else Color.LightGray,
+            tint = if (selected) MaterialTheme.colorScheme.primary else AppTheme.colors.textSecondary,
             modifier = Modifier.size(22.dp)
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text(time, color = if (selected) Color(0xFF0056FF) else Color.Gray, fontSize = 12.sp)
+            Text(time, color = if (selected) MaterialTheme.colorScheme.primary else AppTheme.colors.textSecondary, fontSize = 12.sp)
         }
         val isFree = price == settings.t("FREE", "Miễn phí")
-        Text(price, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (isFree) Color(0xFF00B248) else Color.Black)
+        Text(price, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (isFree) AppTheme.colors.success else MaterialTheme.colorScheme.onSurface)
     }
 }
 

@@ -54,14 +54,7 @@ import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.User
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
-
-// ── Palette ───────────────────────────────────────────────────────────────────
-private val PrimaryBlue  = Color(0xFF3669C9)
-private val SearchBg     = Color(0xFFEBEEF8)
-private val TextDark     = Color(0xFF1A1A1A)
-private val TextGray     = Color(0xFF888888)
-private val ChipBg       = Color(0xFFF3F5FA)
-private val StarYellow   = Color(0xFFFFC107)
+import com.example.fashionapp.ui.theme.AppTheme
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  SCREEN
@@ -91,7 +84,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         // ── Top Search Bar ───────────────────────────────────────────────
@@ -114,8 +107,8 @@ fun SearchScreen(
         if (state.isSearching && !state.isLoadingInitial) {
             LinearProgressIndicator(
                 modifier  = Modifier.fillMaxWidth(),
-                color     = PrimaryBlue,
-                trackColor = SearchBg
+                color     = MaterialTheme.colorScheme.secondary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
 
@@ -141,7 +134,7 @@ fun SearchScreen(
                 // Lần đầu fetch Firestore
                 state.isLoadingInitial -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = PrimaryBlue)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                     }
                 }
                 // Gợi ý khi chưa nhập gì và chưa chọn category
@@ -219,7 +212,7 @@ private fun SearchTopBar(
             Icon(
                 Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                tint     = TextDark,
+                tint     = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -251,13 +244,13 @@ private fun SearchTopBar(
             singleLine = true,
             shape = RoundedCornerShape(22.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = SearchBg,
-                unfocusedContainerColor = SearchBg,
-                disabledContainerColor = SearchBg,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent,
-                focusedTextColor = TextDark,
-                unfocusedTextColor = TextDark
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -269,7 +262,7 @@ private fun SearchTopBar(
             Icon(
                 painter            = painterResource(R.drawable.ic_camera),
                 contentDescription = "Camera search",
-                tint               = PrimaryBlue,
+                tint               = MaterialTheme.colorScheme.secondary,
                 modifier           = Modifier.size(24.dp)
             )
         }
@@ -303,12 +296,12 @@ private fun ResultsHeader(
             text       = title,
             fontWeight = FontWeight.Bold,
             fontSize   = 18.sp,
-            color      = TextDark
+            color      = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text     = settings.t("$resultCount products", "$resultCount sản phẩm"),
             fontSize = 12.sp,
-            color    = TextGray,
+            color    = AppTheme.colors.textSecondary,
         )
     }
 }
@@ -344,12 +337,12 @@ private fun SuggestionsContent(
                     settings.t("Recent searches", "Tìm kiếm gần đây"),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 15.sp,
-                    color      = TextDark
+                    color      = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     settings.t("Clear all", "Xóa tất cả"),
                     fontSize = 13.sp,
-                    color    = PrimaryBlue,
+                    color    = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .clickable { onClearAll() }
@@ -378,14 +371,14 @@ private fun SuggestionsContent(
                 Icon(
                     Icons.AutoMirrored.Filled.TrendingUp,
                     contentDescription = null,
-                    tint     = PrimaryBlue,
+                    tint     = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
                     settings.t("Popular searches", "Tìm kiếm phổ biến"),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 15.sp,
-                    color      = TextDark
+                    color      = MaterialTheme.colorScheme.onBackground
                 )
             }
             Spacer(Modifier.height(10.dp))
@@ -418,14 +411,14 @@ private fun HistoryRow(
         Icon(
             Icons.Default.History,
             contentDescription = null,
-            tint     = TextGray,
+            tint     = AppTheme.colors.textSecondary,
             modifier = Modifier.size(18.dp)
         )
         Spacer(Modifier.width(12.dp))
         Text(
             text       = text,
             fontSize   = 14.sp,
-            color      = TextDark,
+            color      = MaterialTheme.colorScheme.onBackground,
             maxLines   = 1,
             overflow   = TextOverflow.Ellipsis,
             modifier   = Modifier.weight(1f)
@@ -434,7 +427,7 @@ private fun HistoryRow(
             Icon(
                 Icons.Default.Close,
                 contentDescription = settings.t("Close", "Xóa"),
-                tint     = TextGray,
+                tint     = AppTheme.colors.textSecondary,
                 modifier = Modifier.size(14.dp)
             )
         }
@@ -446,12 +439,12 @@ private fun KeywordChip(text: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(ChipBg)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, fontSize = 13.sp, color = TextDark)
+        Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground)
     }
 }
 
@@ -495,9 +488,9 @@ private fun SubCategoryItem(
             modifier = Modifier
                 .size(68.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFF0F2F5))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .then(
-                    if (isSelected) Modifier.border(2.5.dp, PrimaryBlue, CircleShape)
+                    if (isSelected) Modifier.border(2.5.dp, MaterialTheme.colorScheme.secondary, CircleShape)
                     else Modifier
                 )
         ) {
@@ -521,7 +514,7 @@ private fun SubCategoryItem(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape)
-                    .border(3.dp, Color.White, CircleShape)
+                    .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
             )
         }
 
@@ -531,7 +524,7 @@ private fun SubCategoryItem(
             text       = sub.name,
             fontSize   = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color      = if (isSelected) PrimaryBlue else TextDark,
+            color      = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
             maxLines   = 1,
             overflow   = TextOverflow.Ellipsis
         )
@@ -606,12 +599,12 @@ private fun SectionTitle(title: String, subtitle: String) {
             text       = title,
             fontWeight = FontWeight.Bold,
             fontSize   = 18.sp,
-            color      = TextDark
+            color      = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text     = subtitle,
             fontSize = 12.sp,
-            color    = TextGray,
+            color    = AppTheme.colors.textSecondary,
         )
     }
 }
@@ -631,7 +624,7 @@ private fun UserResultRow(user: User, onClick: () -> Unit) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFEEEEEE))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             AsyncImage(
                 model              = user.avatarUrl.ifBlank { null },
@@ -648,14 +641,14 @@ private fun UserResultRow(user: User, onClick: () -> Unit) {
                 text       = user.name,
                 fontWeight = FontWeight.SemiBold,
                 fontSize   = 15.sp,
-                color      = TextDark,
+                color      = MaterialTheme.colorScheme.onBackground,
                 maxLines   = 1,
                 overflow   = TextOverflow.Ellipsis
             )
             Text(
                 text     = settings.t("${user.followersCount} followers", "${user.followersCount} người theo dõi"),
                 fontSize = 12.sp,
-                color    = TextGray,
+                color    = AppTheme.colors.textSecondary,
             )
         }
     }
@@ -684,7 +677,7 @@ private fun ProductGridCard(
                 .fillMaxWidth()
                 .height(imageHeight)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFEEEEEE))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             AsyncImage(
                 model              = product.imageUrl.ifBlank { null },
@@ -718,7 +711,7 @@ private fun ProductGridCard(
         Text(
             text      = product.name,
             fontSize  = 13.sp,
-            color     = TextDark,
+            color     = MaterialTheme.colorScheme.onBackground,
             maxLines  = 2,
             overflow  = TextOverflow.Ellipsis,
             lineHeight= 18.sp
@@ -727,10 +720,10 @@ private fun ProductGridCard(
         Spacer(Modifier.height(4.dp))
 
         Text(
-            text       = "VND ${formatPrice(product.price)}",
+            text       = "₫${formatPrice(product.price)}",
             fontWeight = FontWeight.Bold,
             fontSize   = 15.sp,
-            color      = TextDark
+            color      = MaterialTheme.colorScheme.onBackground
         )
 
         if (product.rating > 0) {
@@ -739,12 +732,12 @@ private fun ProductGridCard(
                 Icon(
                     painter            = painterResource(R.drawable.ic_like_full),
                     contentDescription = null,
-                    tint               = StarYellow,
+                    tint               = AppTheme.colors.star,
                     modifier           = Modifier.size(11.dp)
                 )
                 Spacer(Modifier.width(3.dp))
-                Text("${product.rating}", fontSize = 11.sp, color = TextGray)
-                Text(" • " + settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"), fontSize = 11.sp, color = TextGray)
+                Text("${product.rating}", fontSize = 11.sp, color = AppTheme.colors.textSecondary)
+                Text(" • " + settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"), fontSize = 11.sp, color = AppTheme.colors.textSecondary)
             }
         }
     }
@@ -765,11 +758,11 @@ private fun EmptyState(query: String) {
     ) {
         Spacer(Modifier.height(16.dp))
         if (query.isBlank()) {
-            Text(settings.t("No products found", "Không tìm thấy sản phẩm nào"), color = TextGray, fontSize = 15.sp)
+            Text(settings.t("No products found", "Không tìm thấy sản phẩm nào"), color = AppTheme.colors.textSecondary, fontSize = 15.sp)
         } else {
             Text(
                 settings.t("No results found for", "Không tìm thấy kết quả cho"),
-                color    = TextGray,
+                color    = AppTheme.colors.textSecondary,
                 fontSize = 14.sp
             )
             Spacer(Modifier.height(4.dp))
@@ -777,10 +770,10 @@ private fun EmptyState(query: String) {
                 "\"$query\"",
                 fontWeight = FontWeight.Bold,
                 fontSize   = 16.sp,
-                color      = TextDark
+                color      = MaterialTheme.colorScheme.onBackground
             )
             Spacer(Modifier.height(8.dp))
-            Text(settings.t("Try another keyword", "Thử từ khóa khác"), color = TextGray, fontSize = 13.sp)
+            Text(settings.t("Try another keyword", "Thử từ khóa khác"), color = AppTheme.colors.textSecondary, fontSize = 13.sp)
         }
     }
 }

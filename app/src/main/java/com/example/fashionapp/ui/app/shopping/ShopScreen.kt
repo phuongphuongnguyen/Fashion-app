@@ -32,8 +32,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,8 +50,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,6 +68,7 @@ import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.components.FeedPostItem
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +101,10 @@ fun ShopScreen(
     var selectedTab by remember { mutableStateOf("Posts") }
     var selectedPostId by remember { mutableStateOf<String?>(null) }
     var showComments by remember { mutableStateOf(false) }
+    var showBioDialog by remember { mutableStateOf(false) }
+    var bioDraft by remember { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -106,18 +115,89 @@ fun ShopScreen(
                     if (shopState.isOwnProfile) {
                         IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_setting),
+                                painter = painterResource(
+                                    if (settings.isDarkMode) R.drawable.ic_setting_dark else R.drawable.ic_setting
+                                ),
                                 contentDescription = settings.t("Settings", "Cài đặt"),
                                 tint = Color.Unspecified,
-                                modifier = Modifier.size(30.dp)
+                                modifier = Modifier.size(34.dp)
                             )
                         }
                     }
                 }
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
+        LaunchedEffect(shopState.bioError) {
+            shopState.bioError?.let { message ->
+                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                shopViewModel.consumeBioError()
+            }
+        }
+
+        if (showBioDialog) {
+            val bioSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { showBioDialog = false },
+                sheetState = bioSheetState,
+                containerColor = MaterialTheme.colorScheme.surface,
+                dragHandle = { BottomSheetDefaults.DragHandle() }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 32.dp)
+                ) {
+                    Text(
+                        text = settings.t("Edit Bio", "Sửa tiểu sử"),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    androidx.compose.material3.OutlinedTextField(
+                        value = bioDraft,
+                        onValueChange = { bioDraft = it.take(160) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 5,
+                        placeholder = { Text(settings.t("Tell people about yourself", "Giới thiệu bản thân"), color = AppTheme.colors.textSecondary) },
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Text(
+                        text = "${bioDraft.length}/160",
+                        fontSize = 13.sp,
+                        color = AppTheme.colors.textSecondary,
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(top = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = {
+                            shopViewModel.updateBio(bioDraft)
+                            showBioDialog = false
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text(settings.t("Save Changes", "Lưu thay đổi"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            }
+        }
+
         if (showComments && selectedPostId != null) {
             shopPosts.find { it.id == selectedPostId }?.let { post ->
                 CommentBottomSheet(
@@ -152,6 +232,7 @@ fun ShopScreen(
             ShopHeader(
                 shopName = shopName,
                 avatarUrl = shopAvatarUrl,
+                bio = shopState.shopUser?.bio.orEmpty(),
                 selectedTab = selectedTab,
                 postCount = shopPosts.size,
                 followerCount = shopState.shopUser?.followersCount ?: 0,
@@ -161,6 +242,10 @@ fun ShopScreen(
                 isFollowing = shopState.isFollowing,
                 isShop = isShop,
                 onFollowClick = { shopViewModel.toggleFollow(ownerId) },
+                onEditBio = {
+                    bioDraft = shopState.shopUser?.bio.orEmpty()
+                    showBioDialog = true
+                },
                 onTabSelected = { selectedTab = it },
                 onAddPost = { navController.navigate(Screen.CreatePost.createRoute(ownerId)) }
             )
@@ -191,7 +276,7 @@ fun ShopScreen(
                                 navController.navigate(Screen.ProductDetail.createRoute(productId))
                             }
                         )
-                        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     }
                 }
             } else {
@@ -215,6 +300,7 @@ fun ShopScreen(
 private fun ShopHeader(
     shopName: String,
     avatarUrl: String,
+    bio: String,
     selectedTab: String,
     postCount: Int,
     followerCount: Int,
@@ -224,18 +310,19 @@ private fun ShopHeader(
     isFollowing: Boolean,
     isShop: Boolean,
     onFollowClick: () -> Unit,
+    onEditBio: () -> Unit,
     onTabSelected: (String) -> Unit,
     onAddPost: () -> Unit
 ) {
     val settings = LocalAppSettings.current
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
                     .size(68.dp)
-                    .border(1.dp, Color(0xFFE0E0E0), CircleShape)
+                    .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                     .clip(CircleShape)
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 if (avatarUrl.isNotBlank()) {
@@ -253,27 +340,36 @@ private fun ShopHeader(
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(shopName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    shopName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
-                    Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = Color.Gray)
+                    Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
+                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
                     Spacer(Modifier.width(12.dp))
-                    Text(followerCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = Color.Gray)
+                    Text(followerCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
+                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
                     Spacer(Modifier.width(12.dp))
                     Icon(
                         Icons.Default.Star,
                         contentDescription = "Rating",
-                        tint = Color(0xFFFFC107),
+                        tint = AppTheme.colors.star,
                         modifier = Modifier.size(13.dp)
                     )
                     Text(
                         " ${"%.1f".format(rating)}",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        softWrap = false,
+                        maxLines = 1
                     )
                 }
             }
@@ -311,6 +407,37 @@ private fun ShopHeader(
             }
         }
 
+        if (bio.isNotBlank() || isOwnProfile) {
+            Spacer(Modifier.height(12.dp))
+            if (bio.isNotBlank()) {
+                Text(
+                    text = bio,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    lineHeight = 20.sp
+                )
+            }
+            if (isOwnProfile) {
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = onEditBio,
+                    modifier = Modifier.fillMaxWidth().height(36.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text(
+                        text = settings.t("Edit Profile", "Chỉnh sửa trang cá nhân"),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(16.dp))
 
         Row(
@@ -327,7 +454,7 @@ private fun ShopHeader(
                     ) {
                         Text(
                             text = if (tab == "Posts") settings.t("Posts", "Bài viết") else settings.t("Products", "Sản phẩm"),
-                            color = if (selectedTab == tab) Color.Black else Color(0xFF9A9A9A),
+                            color = if (selectedTab == tab) MaterialTheme.colorScheme.onBackground else AppTheme.colors.textSecondary,
                             fontSize = 16.sp,
                             fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal
                         )
@@ -336,7 +463,7 @@ private fun ShopHeader(
                             modifier = Modifier
                                 .width(40.dp)
                                 .height(2.dp)
-                                .background(if (selectedTab == tab) Color.Black else Color.Transparent)
+                                .background(if (selectedTab == tab) MaterialTheme.colorScheme.onBackground else Color.Transparent)
                         )
                     }
                 }
@@ -345,7 +472,7 @@ private fun ShopHeader(
                 Icon(
                     imageVector = Icons.Outlined.AddCircleOutline,
                     contentDescription = settings.t("Add", "Đăng bài"),
-                    tint = Color.Black,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
                         .size(24.dp)
                         .clickable { onAddPost() }
@@ -367,7 +494,7 @@ private fun ProductTile(product: Product) {
                 .fillMaxWidth()
                 .aspectRatio(0.78f)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFF1F1F1)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentScale = ContentScale.Crop
         )
         Spacer(Modifier.height(6.dp))

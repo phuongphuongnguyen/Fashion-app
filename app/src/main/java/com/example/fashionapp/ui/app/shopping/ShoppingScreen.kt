@@ -32,13 +32,7 @@ import com.example.fashionapp.model.Product
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.ShoppingTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
-
-// ── Palette ───────────────────────────────────────────────────────────────────
-private val PrimaryBlue  = Color(0xFF3669C9)
-private val BgGray       = Color(0xFFF7F8FA)
-private val CardBg       = Color(0xFFEEEEEE)
-private val TextDark     = Color(0xFF1A1A1A)
-private val TextGray     = Color(0xFF888888)
+import com.example.fashionapp.ui.theme.AppTheme
 
 // ── Fallback categories khi Firestore trả về rỗng ─────────────────────────────
 private val fallbackCategories = listOf(
@@ -77,7 +71,7 @@ fun ShoppingScreen(
                 }
             )
         },
-        containerColor = BgGray,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
 
@@ -85,7 +79,7 @@ fun ShoppingScreen(
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator(color = PrimaryBlue) }
+            ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary) }
             return@Scaffold
         }
 
@@ -151,7 +145,7 @@ fun ShoppingScreen(
                         text       = settings.t("Just For You", "Dành cho bạn"),
                         fontWeight = FontWeight.Bold,
                         fontSize   = 18.sp,
-                        color      = TextDark
+                        color      = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(Modifier.width(6.dp))
                     Text("⭐", fontSize = 15.sp)
@@ -182,19 +176,19 @@ private fun SectionHeader(title: String, onSeeAll: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDark)
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onBackground)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier          = Modifier.clickable { onSeeAll() }
         ) {
-            Text(settings.t("See All", "Xem tất cả"), color = PrimaryBlue, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(settings.t("See All", "Xem tất cả"), color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.width(6.dp))
             Box(
                 modifier            = Modifier
                     .size(26.dp)
                     .clip(CircleShape)
-                    .background(PrimaryBlue),
+                    .background(MaterialTheme.colorScheme.secondary),
                 contentAlignment    = Alignment.Center
             ) {
                 Icon(
@@ -250,7 +244,7 @@ private fun CategoryCard(
     Surface(
         modifier = modifier.clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp
     ) {
         Column(
@@ -262,7 +256,7 @@ private fun CategoryCard(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF5F5F5))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Row(modifier = Modifier.weight(1f)) {
@@ -285,7 +279,7 @@ private fun CategoryCard(
                 text       = category.name,
                 fontWeight = FontWeight.Bold,
                 fontSize   = 16.sp,
-                color      = Color.Black,
+                color      = MaterialTheme.colorScheme.onSurface,
                 maxLines   = 1,
                 overflow   = TextOverflow.Ellipsis,
                 modifier   = Modifier.padding(horizontal = 4.dp)
@@ -297,7 +291,7 @@ private fun CategoryCard(
 @Composable
 private fun PreviewImage(url: String?, modifier: Modifier) {
     if (url.isNullOrBlank()) {
-        Box(modifier = modifier.fillMaxSize().background(Color(0xFFE0E0E0)))
+        Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
     } else {
         AsyncImage(
             model           = url,
@@ -355,7 +349,7 @@ private fun ProductCardVertical(
             .width(145.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 3.dp
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
@@ -364,7 +358,7 @@ private fun ProductCardVertical(
                     .fillMaxWidth()
                     .height(130.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CardBg)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 AsyncImage(
                     model              = product.imageUrl.ifBlank { null },
@@ -408,7 +402,7 @@ private fun ProductCardVertical(
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color    = TextGray,
+                color    = AppTheme.colors.textSecondary,
                 lineHeight = 16.sp
             )
             Spacer(Modifier.height(4.dp))
@@ -416,7 +410,7 @@ private fun ProductCardVertical(
                 text       = "₫${formatPrice(product.price)}",
                 fontWeight = FontWeight.Bold,
                 fontSize   = 14.sp,
-                color      = TextDark
+                color      = MaterialTheme.colorScheme.onBackground
             )
         }
     }
@@ -479,7 +473,7 @@ private fun ProductCardGrid(
     Surface(
         modifier = modifier.clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 3.dp
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
@@ -488,7 +482,7 @@ private fun ProductCardGrid(
                     .fillMaxWidth()
                     .aspectRatio(0.85f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CardBg)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 AsyncImage(
                     model              = product.imageUrl.ifBlank { null },
@@ -504,7 +498,7 @@ private fun ProductCardGrid(
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color    = TextGray,
+                color    = AppTheme.colors.textSecondary,
                 lineHeight = 16.sp
             )
             Spacer(Modifier.height(4.dp))
@@ -512,7 +506,7 @@ private fun ProductCardGrid(
                 text       = "₫${formatPrice(product.price)}",
                 fontWeight = FontWeight.Bold,
                 fontSize   = 14.sp,
-                color      = TextDark
+                color      = MaterialTheme.colorScheme.onBackground
             )
         }
     }
@@ -530,12 +524,12 @@ private fun SkeletonProductCard() {
                 .fillMaxWidth()
                 .height(140.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFFE8E8E8))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         )
         Spacer(Modifier.height(7.dp))
-        Box(Modifier.fillMaxWidth(0.8f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFFE8E8E8)))
+        Box(Modifier.fillMaxWidth(0.8f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
         Spacer(Modifier.height(4.dp))
-        Box(Modifier.fillMaxWidth(0.5f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFFE8E8E8)))
+        Box(Modifier.fillMaxWidth(0.5f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
     }
 }
 
@@ -547,12 +541,12 @@ private fun SkeletonProductCardGrid(modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .aspectRatio(0.82f)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFE8E8E8))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         )
         Spacer(Modifier.height(7.dp))
-        Box(Modifier.fillMaxWidth(0.8f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFFE8E8E8)))
+        Box(Modifier.fillMaxWidth(0.8f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
         Spacer(Modifier.height(4.dp))
-        Box(Modifier.fillMaxWidth(0.5f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFFE8E8E8)))
+        Box(Modifier.fillMaxWidth(0.5f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
     }
 }
 

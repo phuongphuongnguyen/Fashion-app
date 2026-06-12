@@ -7,7 +7,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,6 +18,7 @@ import com.example.fashionapp.ui.components.FeedPostItem
 import com.example.fashionapp.ui.components.FeedPostSkeleton
 import com.example.fashionapp.ui.components.HomeTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +50,7 @@ fun HomeScreen(
                 }
             )
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
 
@@ -77,7 +77,7 @@ fun HomeScreen(
                 ) {
                     items(3) {
                         FeedPostSkeleton()
-                        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     }
                 }
             }
@@ -87,7 +87,7 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(settings.t("No posts yet", "Chưa có bài đăng nào"), color = Color.Gray)
+                    Text(settings.t("No posts yet", "Chưa có bài đăng nào"), color = AppTheme.colors.textSecondary)
                 }
             }
 
@@ -118,7 +118,7 @@ fun HomeScreen(
                                 navController.navigate(Screen.ProductDetail.createRoute(productId))
                             }
                         )
-                        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     }
                 }
             }

@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,6 +20,7 @@ import com.example.fashionapp.ui.app.home.HomeViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,10 +47,10 @@ fun PostDetailScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = settings.t("Back", "Quay lại"))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         if (showComments && post != null) {
             CommentBottomSheet(
@@ -71,7 +71,7 @@ fun PostDetailScreen(
                 Text(
                     text = settings.t("Post not found", "Không tìm thấy bài viết"),
                     modifier = Modifier.align(Alignment.Center),
-                    color = Color.Gray
+                    color = AppTheme.colors.textSecondary
                 )
             } else {
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {

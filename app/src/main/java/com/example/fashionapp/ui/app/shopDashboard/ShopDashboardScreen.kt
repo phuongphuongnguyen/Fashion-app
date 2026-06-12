@@ -29,14 +29,10 @@ import com.example.fashionapp.data.shop.ShopProductStat
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
-private val PrimaryBlue = Color(0xFF3669C9)
 private val PrimaryBlueDark = Color(0xFF274B9A)
-private val TextDark = Color(0xFF1A1A1A)
-private val TextGray = Color(0xFF888888)
-private val CardBg = Color(0xFFF7F8FA)
 private val colorRevenue = Color(0xFF274B9A)
-private val StarYellow = Color(0xFFFFC107)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +49,7 @@ fun ShopDashboardScreen(
                 title = settings.t("Shop Management", "Quản lý shop")
             )
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         if (state.isLoading) {
@@ -62,7 +58,7 @@ fun ShopDashboardScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator(color = PrimaryBlue) }
+            ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary) }
             return@Scaffold
         }
 
@@ -81,11 +77,11 @@ fun ShopDashboardScreen(
                 Spacer(Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = CardBg,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(Modifier.padding(16.dp)) {
-                        RevenueBarChart(data = state.dailyRevenue, barColor = PrimaryBlue)
+                        RevenueBarChart(data = state.dailyRevenue, barColor = MaterialTheme.colorScheme.secondary)
                     }
                 }
             }
@@ -100,7 +96,7 @@ fun ShopDashboardScreen(
                             .padding(vertical = 32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(settings.t("The shop has no products yet", "Shop chưa có sản phẩm nào"), color = TextGray, fontSize = 14.sp)
+                        Text(settings.t("The shop has no products yet", "Shop chưa có sản phẩm nào"), color = AppTheme.colors.textSecondary, fontSize = 14.sp)
                     }
                 }
             } else {
@@ -125,7 +121,7 @@ private fun RevenueHeroCard(state: ShopDashboardUiState) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(PrimaryBlue, PrimaryBlueDark)))
+            .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.secondary, PrimaryBlueDark)))
             .padding(20.dp)
     ) {
         Text(settings.t("Total Revenue", "Tổng doanh thu"), color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
@@ -179,20 +175,20 @@ private fun MetricCardsRow(state: ShopDashboardUiState) {
     ) {
         MetricCard(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Star, null, tint = StarYellow, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Star, null, tint = AppTheme.colors.star, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("%.1f".format(state.stats.rating), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = TextDark)
+                Text("%.1f".format(state.stats.rating), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.onBackground)
             }
             Spacer(Modifier.height(4.dp))
-            Text(settings.t("${state.stats.reviewCount} reviews", "${state.stats.reviewCount} đánh giá"), fontSize = 12.sp, color = TextGray)
+            Text(settings.t("${state.stats.reviewCount} reviews", "${state.stats.reviewCount} đánh giá"), fontSize = 12.sp, color = AppTheme.colors.textSecondary)
         }
         MetricCard(modifier = Modifier.weight(1f)) {
-            Text("${state.stats.responseRate}%", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = PrimaryBlue)
+            Text("${state.stats.responseRate}%", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.secondary)
             Spacer(Modifier.height(4.dp))
             Text(
                 state.stats.responseTime.ifBlank { settings.t("Response Rate", "Tỉ lệ phản hồi") },
                 fontSize = 12.sp,
-                color = TextGray,
+                color = AppTheme.colors.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -205,7 +201,7 @@ private fun MetricCard(modifier: Modifier = Modifier, content: @Composable Colum
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBg)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp),
         content = content
     )
@@ -213,7 +209,7 @@ private fun MetricCard(modifier: Modifier = Modifier, content: @Composable Colum
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = TextDark)
+    Text(text, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = MaterialTheme.colorScheme.onBackground)
 }
 
 // products
@@ -225,7 +221,7 @@ private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(CardBg)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable { onClick() }
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -236,7 +232,7 @@ private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
             modifier = Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFFEEEEEE)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentScale = ContentScale.Crop,
             error = painterResource(R.drawable.ic_shopping)
         )
@@ -248,17 +244,17 @@ private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
                 fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = TextDark
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(Modifier.height(4.dp))
-            Text("₫${formatMoney(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextDark)
+            Text("₫${formatMoney(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground)
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(settings.t("Sold ${product.soldCount}", "Đã bán ${product.soldCount}"), fontSize = 11.sp, color = TextGray)
-                Text("   •   ", fontSize = 11.sp, color = TextGray)
-                Icon(Icons.Default.Star, null, tint = StarYellow, modifier = Modifier.size(11.dp))
+                Text(settings.t("Sold ${product.soldCount}", "Đã bán ${product.soldCount}"), fontSize = 11.sp, color = AppTheme.colors.textSecondary)
+                Text("   •   ", fontSize = 11.sp, color = AppTheme.colors.textSecondary)
+                Icon(Icons.Default.Star, null, tint = AppTheme.colors.star, modifier = Modifier.size(11.dp))
                 Spacer(Modifier.width(2.dp))
-                Text("%.1f".format(product.rating), fontSize = 11.sp, color = TextGray)
+                Text("%.1f".format(product.rating), fontSize = 11.sp, color = AppTheme.colors.textSecondary)
             }
             Spacer(Modifier.height(2.dp))
             Text(
@@ -271,7 +267,7 @@ private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = TextGray,
+            tint = AppTheme.colors.textSecondary,
             modifier = Modifier.size(22.dp)
         )
     }

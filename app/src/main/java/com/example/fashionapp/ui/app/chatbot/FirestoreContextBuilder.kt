@@ -30,7 +30,7 @@ object FirestoreContextBuilder {
                 val shipping = doc.getBoolean("freeShipping") ?: false
                 val rating   = doc.getDouble("rating") ?: 0.0
                 val sold     = doc.getLong("soldCount") ?: 0L
-                sb.appendLine("- Sản phẩm: $name | Giá: ${formatPrice(price)}đ | Giảm: $discount% | Giá gốc: ${formatPrice(origPrice)}đ | Danh mục: $category | Miễn phí ship: $shipping | Rating: $rating | Đã bán: $sold | Mô tả: $desc")
+                sb.appendLine("- Sản phẩm: $name | Giá: ₫${formatPrice(price)} | Giảm: $discount% | Giá gốc: ₫${formatPrice(origPrice)} | Danh mục: $category | Miễn phí ship: $shipping | Rating: $rating | Đã bán: $sold | Mô tả: $desc")
             }
             sb.appendLine()
         } catch (_: Exception) {}
@@ -64,7 +64,7 @@ object FirestoreContextBuilder {
                 val limit     = doc.getLong("usageLimit") ?: 0L
                 val used      = doc.getLong("usedCount") ?: 0L
                 val remaining = limit - used
-                sb.appendLine("- Mã: $code | $desc | Loại: $type | Giảm: ${formatPrice(value)}đ | Đơn tối thiểu: ${formatPrice(minOrder)}đ | Còn lại: $remaining lượt")
+                sb.appendLine("- Mã: $code | $desc | Loại: $type | Giảm: ₫${formatPrice(value)} | Đơn tối thiểu: ₫${formatPrice(minOrder)} | Còn lại: $remaining lượt")
             }
             sb.appendLine()
         } catch (_: Exception) {}
@@ -84,7 +84,7 @@ object FirestoreContextBuilder {
                     val method        = doc.getString("paymentMethod") ?: ""
                     val tracking      = doc.getString("trackingNumber") ?: "Chưa có"
                     val orderId       = doc.id.takeLast(6)
-                    sb.appendLine("- Đơn #$orderId | Tổng: ${formatPrice(total)}đ | Thanh toán: $paymentStatus | Trạng thái: $status | Phương thức: $method | Mã vận đơn: $tracking")
+                    sb.appendLine("- Đơn #$orderId | Tổng: ₫${formatPrice(total)} | Thanh toán: $paymentStatus | Trạng thái: $status | Phương thức: $method | Mã vận đơn: $tracking")
                 }
                 sb.appendLine()
             } catch (_: Exception) {}

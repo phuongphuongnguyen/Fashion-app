@@ -29,6 +29,7 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -65,6 +66,7 @@ import com.example.fashionapp.data.CartItem
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,7 +115,7 @@ fun CartScreen(
                         TextButton(onClick = { isEditing = !isEditing }) {
                             Text(
                                 if (isEditing) settings.t("Done", "Xong") else settings.t("Edit", "Sửa"),
-                                color = Color(0xFF0057FF),
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -123,7 +125,7 @@ fun CartScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            Surface(shadowElevation = 16.dp, color = Color.White) {
+            Surface(shadowElevation = 16.dp, color = MaterialTheme.colorScheme.surface) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -133,8 +135,8 @@ fun CartScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                      Column {
-                        Text(settings.t("Total", "Tổng thanh toán"), color = Color.Gray, fontSize = 12.sp)
-                        Text(settings.t("${selectedItems.size} item(s) selected", "Đã chọn ${selectedItems.size} sản phẩm"), color = Color.Gray, fontSize = 11.sp)
+                        Text(settings.t("Total", "Tổng thanh toán"), color = AppTheme.colors.textSecondary, fontSize = 12.sp)
+                        Text(settings.t("${selectedItems.size} item(s) selected", "Đã chọn ${selectedItems.size} sản phẩm"), color = AppTheme.colors.textSecondary, fontSize = 11.sp)
                         Text("₫${formatPrice(total)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                     Button(
@@ -153,7 +155,7 @@ fun CartScreen(
                         },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isEditing) Color(0xFFE53935) else Color(0xFF0057FF)
+                            containerColor = if (isEditing) AppTheme.colors.danger else MaterialTheme.colorScheme.primary
                         ),
                         modifier = Modifier
                             .width(140.dp)
@@ -169,7 +171,7 @@ fun CartScreen(
                 }
             }
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (uiState.isLoadingCart) {
             Box(
@@ -178,7 +180,7 @@ fun CartScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Color(0xFF0057FF))
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (items.isEmpty()) {
             Box(
@@ -229,7 +231,7 @@ fun CartScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF7F8FB))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .clickable {
                                 selectedItemIds = if (allSelected) emptySet() else existingItemIds
                             }
@@ -241,7 +243,7 @@ fun CartScreen(
                             onCheckedChange = { checked ->
                                 selectedItemIds = if (checked) existingItemIds else emptySet()
                             },
-                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF0057FF)),
+                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
                             modifier = Modifier.size(34.dp)
                         )
                         Text(
@@ -252,7 +254,7 @@ fun CartScreen(
                         )
                         Text(
                             "${selectedItems.size}/${items.size}",
-                            color = Color.Gray,
+                            color = AppTheme.colors.textSecondary,
                             fontSize = 12.sp
                         )
                     }
@@ -319,7 +321,7 @@ private fun SwipeToDeleteCartItem(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFE53935))
+                    .background(AppTheme.colors.danger)
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
@@ -356,14 +358,14 @@ private fun EmptyCartState(
     ) {
         Text(
             errorMessage ?: settings.t("Your cart is empty", "Giỏ hàng trống"),
-            color = if (errorMessage == null) Color.Gray else Color(0xFFE53935),
+            color = if (errorMessage == null) AppTheme.colors.textSecondary else AppTheme.colors.danger,
             fontSize = 14.sp
         )
         if (errorMessage != null) {
             Button(
                 onClick = onRetry,
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF))
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text(settings.t("Retry", "Thử lại"), fontWeight = FontWeight.Bold)
             }
@@ -392,7 +394,7 @@ private fun CartErrorBanner(
             modifier = Modifier.weight(1f)
         )
         TextButton(onClick = onRetry) {
-            Text(settings.t("Retry", "Thử lại"), color = Color(0xFF0057FF), fontWeight = FontWeight.Bold)
+            Text(settings.t("Retry", "Thử lại"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -409,14 +411,14 @@ private fun CartItemRow(
             .fillMaxWidth()
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color(0x1A000000))
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Checkbox(
             checked = selected,
             onCheckedChange = onSelectedChange,
-            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF0057FF)),
+            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
             modifier = Modifier.size(34.dp)
         )
         Box(modifier = Modifier.size(70.dp)) {
@@ -426,7 +428,7 @@ private fun CartItemRow(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFFF5F5F5)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop,
                 error = painterResource(R.drawable.ic_shopping)
             )
@@ -442,7 +444,7 @@ private fun CartItemRow(
             )
             Text(
                 "${item.color} | ${item.size}",
-                color = Color.Gray,
+                color = AppTheme.colors.textSecondary,
                 fontSize = 12.sp
             )
             Spacer(Modifier.height(8.dp))
@@ -454,14 +456,14 @@ private fun CartItemRow(
                     "₫${formatPrice(item.product.price)}",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = Color(0xFF1A1A1A),
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFFF5F5F5))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
                     QuantityButton(
@@ -495,7 +497,7 @@ private fun QuantityButton(
         modifier = Modifier
             .size(26.dp)
             .clip(CircleShape)
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .clickable(enabled = enabled) { onClick() },
         contentAlignment = Alignment.Center
     ) {

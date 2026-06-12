@@ -9,17 +9,23 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.R
+import com.example.fashionapp.ui.app.settings.AppSettingsViewModel
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GENERIC TOP BAR (dùng chung cho các màn hình có back + actions tùy chỉnh)
@@ -56,7 +62,7 @@ fun FashionTopBar(
                 actions()
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         windowInsets = TopAppBarDefaults.windowInsets,
         scrollBehavior = scrollBehavior
     )
@@ -79,7 +85,7 @@ fun HomeTopBar(
                 text = "FashionApp",
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 28.sp,
-                color = Color(0xFF1A1A1A)
+                color = MaterialTheme.colorScheme.onBackground
             )
         },
         actions = {
@@ -88,11 +94,11 @@ fun HomeTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ActionIconButton(R.drawable.ic_search, "Search", onSearchClick)
-                ActionIconButton(R.drawable.ic_messbox, "Messages", onMessClick)
+                ActionIconButton(adaptiveIcon(R.drawable.ic_search, R.drawable.ic_search_dark), "Search", onSearchClick)
+                ActionIconButton(adaptiveIcon(R.drawable.ic_messbox, R.drawable.ic_messbox_dark), "Messages", onMessClick)
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         windowInsets = TopAppBarDefaults.windowInsets,
         scrollBehavior = scrollBehavior
     )
@@ -118,7 +124,7 @@ fun ShoppingTopBar(
                     .fillMaxWidth(0.92f)
                     .height(42.dp),
                 shape = RoundedCornerShape(21.dp),
-                color = Color(0xFFF5F5F5)
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Row(
                     modifier = Modifier
@@ -129,19 +135,19 @@ fun ShoppingTopBar(
                 ) {
                     Text(
                         text = settings.t("Search", "Tìm kiếm"),
-                        color = Color.Gray,
+                        color = AppTheme.colors.textSecondary,
                         fontSize = 15.sp,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(
                         onClick = onCameraClick,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_camera),
                             contentDescription = "Camera",
-                            tint = Color(0xFF3669C9),
-                            modifier = Modifier.size(24.dp)
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }
@@ -152,10 +158,10 @@ fun ShoppingTopBar(
                 modifier = Modifier.padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ActionIconButton(R.drawable.ic_cart, "Cart", onCartClick)
+                ActionIconButton(adaptiveIcon(R.drawable.ic_cart, R.drawable.ic_cart_dark), "Cart", onCartClick)
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         windowInsets = TopAppBarDefaults.windowInsets,
         scrollBehavior = scrollBehavior
     )
@@ -173,7 +179,7 @@ fun SavedTopBar(
     val settings = LocalAppSettings.current
     TopAppBar(
         title = { Text(settings.t("Saved Items", "Mục đã lưu"), fontWeight = FontWeight.Bold, fontSize = 20.sp) },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         windowInsets = TopAppBarDefaults.windowInsets,
         scrollBehavior = scrollBehavior
     )
@@ -197,10 +203,10 @@ fun ProfileTopBar(
                 modifier = Modifier.padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ActionIconButton(R.drawable.ic_setting, "Settings", onSettingsClick)
+                ActionIconButton(adaptiveIcon(R.drawable.ic_setting, R.drawable.ic_setting_dark), "Settings", onSettingsClick)
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         windowInsets = TopAppBarDefaults.windowInsets,
         scrollBehavior = scrollBehavior
     )
@@ -210,11 +216,16 @@ fun ProfileTopBar(
 //  COMMON COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Chọn biến thể icon theo dark mode (in-app toggle, không phải uiMode hệ thống).
+@Composable
+private fun adaptiveIcon(light: Int, dark: Int): Int =
+    if (LocalAppSettings.current.isDarkMode) dark else light
+
 @Composable
 private fun ActionIconButton(iconRes: Int, contentDescription: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
@@ -222,7 +233,7 @@ private fun ActionIconButton(iconRes: Int, contentDescription: String, onClick: 
         Icon(
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(34.dp),
             tint = Color.Unspecified
         )
     }
@@ -243,7 +254,12 @@ fun HomeTopBarPreview() {
 @Preview(showBackground = true)
 @Composable
 fun ShoppingTopBarPreview() {
-    ShoppingTopBar()
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("preview_prefs", Context.MODE_PRIVATE)
+    val settings = remember { AppSettingsViewModel(prefs) }
+    CompositionLocalProvider(LocalAppSettings provides settings) {
+        ShoppingTopBar()
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

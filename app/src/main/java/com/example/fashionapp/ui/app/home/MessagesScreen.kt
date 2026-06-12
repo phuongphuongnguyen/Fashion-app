@@ -25,6 +25,7 @@ import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.data.NotificationModel
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +43,7 @@ fun MessagesScreen(
                 onBackClick = { navController.popBackStack() }
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -52,7 +53,7 @@ fun MessagesScreen(
             // ── Fixed Chatbot Item ──
             ChatbotEntryItem(onClick = { navController.navigate(Screen.Chatbot.route) })
             
-            HorizontalDivider(thickness = 8.dp, color = Color(0xFFF7F7F7))
+            HorizontalDivider(thickness = 8.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
             // ── Notifications List ──
             if (notifications.isEmpty()) {
@@ -60,7 +61,7 @@ fun MessagesScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(settings.t("No notifications", "Không có thông báo nào"), color = Color.Gray, fontSize = 14.sp)
+                    Text(settings.t("No notifications", "Không có thông báo nào"), color = AppTheme.colors.textSecondary, fontSize = 14.sp)
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -69,7 +70,7 @@ fun MessagesScreen(
                             data = item,
                             onClick = { viewModel.markAsRead(item.id) }
                         )
-                        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     }
                 }
             }
@@ -102,14 +103,14 @@ private fun ChatbotEntryItem(onClick: () -> Unit) {
             )
             Text(
                 text = settings.t("Ask me anything about fashion!", "Hỏi tôi bất kỳ câu hỏi nào về thời trang!"),
-                color = Color.Gray,
+                color = AppTheme.colors.textSecondary,
                 fontSize = 13.sp
             )
         }
         Icon(
             painter = painterResource(R.drawable.ic_mess),
             contentDescription = null,
-            tint = Color(0xFF3669C9),
+            tint = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -131,7 +132,7 @@ private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .background(if (!data.isRead) Color(0xFFF6F8FE) else Color.Transparent)
+            .background(if (!data.isRead) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
             .padding(16.dp),
         verticalAlignment = Alignment.Top
     ) {
@@ -139,7 +140,7 @@ private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFF0F4FF)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             Text("🔔", fontSize = 18.sp)
@@ -158,14 +159,14 @@ private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
                 )
                 Text(
                     text = formatTimeAgo(data.createdAt, settings),
-                    color = Color.Gray,
+                    color = AppTheme.colors.textSecondary,
                     fontSize = 11.sp
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = data.message,
-                color = Color(0xFF4A4A4A),
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 13.sp,
                 lineHeight = 18.sp
             )
@@ -176,7 +177,7 @@ private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF3669C9))
+                    .background(MaterialTheme.colorScheme.secondary)
                     .align(Alignment.CenterVertically)
             )
         }

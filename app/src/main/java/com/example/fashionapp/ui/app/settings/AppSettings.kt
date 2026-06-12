@@ -18,12 +18,7 @@ enum class AppLanguage(val code: String, val displayName: String, val nativeName
 
 // ── Supported Currencies ──
 enum class AppCurrency(val code: String, val symbol: String, val displayName: String) {
-    USD("USD", "$", "US Dollar"),
-    VND("VND", "₫", "Vietnamese Dong"),
-    EUR("EUR", "€", "Euro"),
-    JPY("JPY", "¥", "Japanese Yen"),
-    KRW("KRW", "₩", "Korean Won"),
-    GBP("GBP", "£", "British Pound")
+    VND("VND", "₫", "Vietnamese Dong")
 }
 
 // ── Size Systems ──
@@ -43,7 +38,7 @@ val countryList = listOf(
 
 // ── Settings ViewModel ──
 class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
-    private val auth = FirebaseAuth.getInstance()
+    private var auth: FirebaseAuth? = null
 
     var language by mutableStateOf(AppLanguage.ENGLISH)
         private set
@@ -51,7 +46,7 @@ class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
     var isDarkMode by mutableStateOf(false)
         private set
 
-    var currency by mutableStateOf(AppCurrency.USD)
+    var currency by mutableStateOf(AppCurrency.VND)
         private set
 
     var sizeSystem by mutableStateOf(SizeSystem.UK)
@@ -78,12 +73,20 @@ class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
     }
 
     init {
-        auth.addAuthStateListener(authStateListener)
-        loadUserSettings(auth.currentUser?.uid.orEmpty())
+        try {
+            auth = FirebaseAuth.getInstance()
+            auth?.addAuthStateListener(authStateListener)
+            loadUserSettings(auth?.currentUser?.uid.orEmpty())
+        } catch (e: Exception) {
+            // Support for Previews or environments where Firebase is not initialized
+            loadUserSettings("")
+        }
     }
 
     override fun onCleared() {
-        auth.removeAuthStateListener(authStateListener)
+        try {
+            auth?.removeAuthStateListener(authStateListener)
+        } catch (e: Exception) {}
         super.onCleared()
     }
 
@@ -95,8 +98,7 @@ class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
 
         isDarkMode = prefs.getBoolean("${prefix}dark_mode", prefs.getBoolean("dark_mode", false))
 
-        currency = AppCurrency.values().find { it.code == prefs.getString("${prefix}currency", prefs.getString("currency", "USD")) }
-            ?: AppCurrency.USD
+        currency = AppCurrency.VND
 
         sizeSystem = SizeSystem.values().find { it.label == prefs.getString("${prefix}size_system", prefs.getString("size_system", "UK")) }
             ?: SizeSystem.UK
@@ -113,7 +115,7 @@ class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
     }
 
     private fun getPrefix(): String {
-        val uid = auth.currentUser?.uid.orEmpty()
+        val uid = auth?.currentUser?.uid.orEmpty()
         return if (uid.isBlank()) "" else "${uid}_"
     }
 
@@ -128,8 +130,9 @@ class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
     }
 
     fun updateCurrency(cur: AppCurrency) {
-        currency = cur
-        prefs.edit().putString("${getPrefix()}currency", cur.code).apply()
+        // Only VND supported now, but keep for compatibility if needed elsewhere
+        currency = AppCurrency.VND
+        prefs.edit().putString("${getPrefix()}currency", AppCurrency.VND.code).apply()
     }
 
     fun updateSizeSystem(size: SizeSystem) {

@@ -7,46 +7,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -61,229 +36,305 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.fashionapp.R
 import com.example.fashionapp.data.feed.FeedRepository
+import com.example.fashionapp.data.product.ProductRepository
 import com.example.fashionapp.data.user.UserSession
+import com.example.fashionapp.model.ProductVariant
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class CreateMode { POST, PRODUCT }
+
 data class CreatePostUiState(
     val isSubmitting: Boolean = false,
     val isSuccess: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val mode: CreateMode = CreateMode.POST
 )
 
 class CreatePostViewModel : ViewModel() {
-    private val repository = FeedRepository()
+    private val feedRepository = FeedRepository()
     private val auth = FirebaseAuth.getInstance()
 
     private val _uiState = MutableStateFlow(CreatePostUiState())
     val uiState: StateFlow<CreatePostUiState> = _uiState.asStateFlow()
 
+    fun setMode(mode: CreateMode) {
+        _uiState.value = _uiState.value.copy(mode = mode)
+    }
+
     fun submitPost(authorIdOverride: String?, caption: String, imageUris: List<Uri>) {
         val currentUser = UserSession.currentUser.value
         val authorId = authorIdOverride?.takeIf { it.isNotBlank() } ?: auth.currentUser?.uid.orEmpty()
         if (authorId.isBlank()) {
-            _uiState.value = CreatePostUiState(error = "Please sign in before posting")
+            _uiState.value = _uiState.value.copy(error = "Please sign in before posting")
             return
         }
         if (caption.isBlank() && imageUris.isEmpty()) {
-            _uiState.value = CreatePostUiState(error = "Add a caption or at least one image")
+            _uiState.value = _uiState.value.copy(error = "Add a caption or at least one image")
             return
         }
 
         viewModelScope.launch {
-            _uiState.value = CreatePostUiState(isSubmitting = true)
+            _uiState.value = _uiState.value.copy(isSubmitting = true)
             try {
-                repository.createPost(
+                feedRepository.createPost(
                     authorId = authorId,
                     caption = caption,
                     imageUris = imageUris,
                     fallbackAuthorName = currentUser?.name.orEmpty(),
                     fallbackAuthorAvt = currentUser?.avatarUrl.orEmpty()
                 )
-                _uiState.value = CreatePostUiState(isSuccess = true)
+                _uiState.value = _uiState.value.copy(isSubmitting = false, isSuccess = true)
             } catch (e: Exception) {
-                _uiState.value = CreatePostUiState(error = e.message ?: "Failed to create post")
+                _uiState.value = _uiState.value.copy(isSubmitting = false, error = e.message ?: "Failed to create post")
+            }
+        }
+    }
+
+    fun submitProduct(
+        shopId: String,
+        name: String,
+        description: String,
+        priceStr: String,
+        stockStr: String,
+        categoryId: String,
+        imageUris: List<Uri>,
+        variants: List<ProductVariant>
+    ) {
+        if (shopId.isBlank()) {
+            _uiState.value = _uiState.value.copy(error = "Shop session required")
+            return
+        }
+        val price = priceStr.toDoubleOrNull() ?: 0.0
+        val stock = stockStr.toIntOrNull() ?: 0
+        if (name.isBlank() || imageUris.isEmpty()) {
+            _uiState.value = _uiState.value.copy(error = "Name and at least one image are required")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmitting = true)
+            try {
+                ProductRepository.createProduct(
+                    shopId = shopId,
+                    name = name,
+                    description = description,
+                    price = price,
+                    stock = stock,
+                    categoryId = categoryId,
+                    imageUris = imageUris,
+                    variants = variants
+                )
+                _uiState.value = _uiState.value.copy(isSubmitting = false, isSuccess = true)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isSubmitting = false, error = e.message ?: "Failed to add product")
             }
         }
     }
 
     fun consumeResult() {
-        _uiState.value = CreatePostUiState()
+        _uiState.value = _uiState.value.copy(isSuccess = false, error = null)
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CreatePostScreen(
     navController: NavController,
-    authorId: String? = null,
+    authorId: String? = null, // if present, it's a shop
     viewModel: CreatePostViewModel = viewModel()
 ) {
     val settings = LocalAppSettings.current
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val currentUser by UserSession.currentUser.collectAsState()
+
+    // Shared state
     var caption by remember { mutableStateOf("") }
     var imageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    
+    // Product specific state
+    var productName by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var stock by remember { mutableStateOf("") }
+    var selectedSizes by remember { mutableStateOf(setOf<String>()) }
+    val availableSizes = listOf("XS", "S", "M", "L", "XL", "XXL")
+
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
         imageUris = (imageUris + uris).distinct().take(6)
     }
 
     LaunchedEffect(uiState.isSuccess, uiState.error) {
-        when {
-            uiState.isSuccess -> {
-                Toast.makeText(context, settings.t("Post created", "Đã tạo bài viết"), Toast.LENGTH_SHORT).show()
-                viewModel.consumeResult()
-                navController.popBackStack()
-            }
-            uiState.error != null -> {
-                val errorMsg = uiState.error?.let {
-                    when (it) {
-                        "Please sign in before posting" -> settings.t("Please sign in before posting", "Vui lòng đăng nhập trước khi đăng bài")
-                        "Add a caption or at least one image" -> settings.t("Add a caption or at least one image", "Vui lòng thêm chú thích hoặc ít nhất một hình ảnh")
-                        else -> it
-                    }
-                }
-                Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
-                viewModel.consumeResult()
-            }
+        if (uiState.isSuccess) {
+            Toast.makeText(context, settings.t("Action completed", "Thao tác thành công"), Toast.LENGTH_SHORT).show()
+            viewModel.consumeResult()
+            navController.popBackStack()
+        } else if (uiState.error != null) {
+            Toast.makeText(context, uiState.error, Toast.LENGTH_SHORT).show()
+            viewModel.consumeResult()
         }
     }
 
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = settings.t("Create Post", "Tạo bài viết"),
+                title = if (uiState.mode == CreateMode.POST) settings.t("Create Post", "Tạo bài viết") else settings.t("Add Product", "Thêm sản phẩm"),
                 onBackClick = { navController.popBackStack() },
                 actions = {
                     TextButton(
-                        enabled = !uiState.isSubmitting && (caption.isNotBlank() || imageUris.isNotEmpty()),
-                        onClick = { viewModel.submitPost(authorId, caption, imageUris) }
+                        enabled = !uiState.isSubmitting,
+                        onClick = {
+                            if (uiState.mode == CreateMode.POST) {
+                                viewModel.submitPost(authorId, caption, imageUris)
+                            } else {
+                                val variants = selectedSizes.map { size ->
+                                    ProductVariant(size = size, stock = stock.toIntOrNull() ?: 0)
+                                }
+                                viewModel.submitProduct(
+                                    shopId = authorId ?: "",
+                                    name = productName,
+                                    description = caption,
+                                    priceStr = price,
+                                    stockStr = stock,
+                                    categoryId = "general",
+                                    imageUris = imageUris,
+                                    variants = variants
+                                )
+                            }
+                        }
                     ) {
-                        Text(settings.t("Post", "Đăng"), color = Color(0xFF0056FF), fontWeight = FontWeight.Bold)
+                        Text(settings.t("Submit", "Gửi"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                PostComposerCard(
-                    authorName = currentUser?.name.orEmpty().ifBlank { if (authorId.isNullOrBlank()) settings.t("User", "Người dùng") else settings.t("Shop", "Cửa hàng") },
-                    authorAvatar = currentUser?.avatarUrl.orEmpty(),
-                    isShopPost = !authorId.isNullOrBlank(),
-                    caption = caption,
-                    onCaptionChange = { caption = it },
-                    imageUris = imageUris,
-                    onPickImages = { imagePicker.launch("image/*") },
-                    onRemoveImage = { uri -> imageUris = imageUris.filterNot { it == uri } }
-                )
+            // Mode Toggle (Only if authorId is present - i.e. it's a Shop)
+            if (!authorId.isNullOrBlank()) {
+                item {
+                    TabRow(
+                        selectedTabIndex = if (uiState.mode == CreateMode.POST) 0 else 1,
+                        containerColor = Color.Transparent,
+                        divider = {}
+                    ) {
+                        Tab(
+                            selected = uiState.mode == CreateMode.POST,
+                            onClick = { viewModel.setMode(CreateMode.POST) },
+                            text = { Text(settings.t("Post", "Bài viết")) }
+                        )
+                        Tab(
+                            selected = uiState.mode == CreateMode.PRODUCT,
+                            onClick = { viewModel.setMode(CreateMode.PRODUCT) },
+                            text = { Text(settings.t("Product", "Sản phẩm")) }
+                        )
+                    }
+                }
             }
 
             item {
-                if (uiState.isSubmitting) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (uiState.mode == CreateMode.PRODUCT) {
+                        OutlinedTextField(
+                            value = productName,
+                            onValueChange = { productName = it },
+                            label = { Text(settings.t("Product Name", "Tên sản phẩm")) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = price,
+                                onValueChange = { if (it.all { c -> c.isDigit() }) price = it },
+                                label = { Text(settings.t("Price", "Giá")) },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            OutlinedTextField(
+                                value = stock,
+                                onValueChange = { if (it.all { c -> c.isDigit() }) stock = it },
+                                label = { Text(settings.t("Stock", "Kho")) },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+
+                        Text(settings.t("Select Sizes", "Chọn kích thước"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            availableSizes.forEach { size ->
+                                FilterChip(
+                                    selected = selectedSizes.contains(size),
+                                    onClick = {
+                                        selectedSizes = if (selectedSizes.contains(size)) selectedSizes - size else selectedSizes + size
+                                    },
+                                    label = { Text(size) }
+                                )
+                            }
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    }
+
+                    OutlinedTextField(
+                        value = caption,
+                        onValueChange = { caption = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 8,
+                        placeholder = { Text(if (uiState.mode == CreateMode.POST) settings.t("Write a caption...", "Viết chú thích...") else settings.t("Description...", "Mô tả sản phẩm...")) },
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    MediaPreview(imageUris = imageUris, onPickImages = { imagePicker.launch("image/*") })
+
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        item { AddImageTile { imagePicker.launch("image/*") } }
+                        items(imageUris) { uri ->
+                            SelectedImageTile(uri = uri) { imageUris = imageUris.filterNot { it == uri } }
+                        }
+                    }
+                }
+            }
+
+            if (uiState.isSubmitting) {
+                item {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PostComposerCard(
-    authorName: String,
-    authorAvatar: String,
-    isShopPost: Boolean,
-    caption: String,
-    onCaptionChange: (String) -> Unit,
-    imageUris: List<Uri>,
-    onPickImages: () -> Unit,
-    onRemoveImage: (Uri) -> Unit
-) {
-    val settings = LocalAppSettings.current
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0xFFE8EAF0), RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF1F3F6))
-            ) {
-                AsyncImage(
-                    model = authorAvatar.ifBlank { null },
-                    contentDescription = authorName,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    error = androidx.compose.ui.res.painterResource(R.drawable.ic_profile),
-                    fallback = androidx.compose.ui.res.painterResource(R.drawable.ic_profile)
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(authorName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(if (isShopPost) settings.t("Shop post", "Bài đăng cửa hàng") else settings.t("Profile post", "Bài đăng cá nhân"), color = Color.Gray, fontSize = 12.sp)
-            }
-        }
-
-        OutlinedTextField(
-            value = caption,
-            onValueChange = onCaptionChange,
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            maxLines = 8,
-            placeholder = { Text(settings.t("Write a caption...", "Viết chú thích...")) },
-            colors = TextFieldDefaults.colors(
-                focusedIndicatorColor = Color(0xFFE0E4EC),
-                unfocusedIndicatorColor = Color(0xFFE8EAF0),
-                focusedContainerColor = Color(0xFFFAFBFC),
-                unfocusedContainerColor = Color(0xFFFAFBFC)
-            ),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        MediaPreview(imageUris = imageUris, onPickImages = onPickImages)
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(settings.t("Content images", "Hình ảnh nội dung"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text("${imageUris.size}/6", color = Color.Gray, fontSize = 12.sp)
-        }
-
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(end = 4.dp)
-        ) {
-            item { AddImageTile(onClick = onPickImages) }
-            items(imageUris, key = { it.toString() }) { uri ->
-                SelectedImageTile(uri = uri, onRemove = { onRemoveImage(uri) })
             }
         }
     }
@@ -295,40 +346,26 @@ private fun MediaPreview(imageUris: List<Uri>, onPickImages: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f)
+            .aspectRatio(1.2f)
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFF1F3F6))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(enabled = imageUris.isEmpty()) { onPickImages() },
         contentAlignment = Alignment.Center
     ) {
         if (imageUris.isEmpty()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.AddPhotoAlternate, contentDescription = settings.t("Add images", "Thêm ảnh"), tint = Color(0xFF0056FF), modifier = Modifier.size(34.dp))
-                Spacer(Modifier.height(6.dp))
-                Text(settings.t("Add post images", "Thêm hình ảnh bài đăng"), color = Color(0xFF0056FF), fontWeight = FontWeight.Medium)
+                Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
+                Text(settings.t("Add Images", "Thêm hình ảnh"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
             }
         } else {
-            AsyncImage(
-                model = imageUris.first(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            AsyncImage(model = imageUris.first(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (imageUris.size > 1) {
                 Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(10.dp),
-                    color = Color.Black.copy(alpha = 0.62f),
-                    shape = RoundedCornerShape(16.dp)
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                    color = Color.Black.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(
-                        "+${imageUris.size - 1}",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                    Text("+${imageUris.size - 1}", color = Color.White, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 12.sp)
                 }
             }
         }
@@ -337,48 +374,20 @@ private fun MediaPreview(imageUris: List<Uri>, onPickImages: () -> Unit) {
 
 @Composable
 private fun AddImageTile(onClick: () -> Unit) {
-    val settings = LocalAppSettings.current
     Box(
-        modifier = Modifier
-            .size(96.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF1F3F6))
-            .clickable { onClick() },
+        modifier = Modifier.size(80.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.AddPhotoAlternate, contentDescription = settings.t("Add image", "Thêm ảnh"), tint = Color(0xFF0056FF))
-            Spacer(Modifier.height(4.dp))
-            Text(settings.t("Add", "Thêm"), color = Color(0xFF0056FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-        }
+        Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
     }
 }
 
 @Composable
 private fun SelectedImageTile(uri: Uri, onRemove: () -> Unit) {
-    val settings = LocalAppSettings.current
-    Box(
-        modifier = Modifier
-            .size(96.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF1F3F6))
-    ) {
-        AsyncImage(
-            model = uri,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-        IconButton(
-            onClick = onRemove,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.55f))
-        ) {
-            Icon(Icons.Default.Close, contentDescription = settings.t("Remove image", "Xóa ảnh"), tint = Color.White, modifier = Modifier.size(14.dp))
+    Box(modifier = Modifier.size(80.dp).clip(RoundedCornerShape(12.dp))) {
+        AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        IconButton(onClick = onRemove, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(alpha = 0.4f), CircleShape)) {
+            Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
         }
     }
 }

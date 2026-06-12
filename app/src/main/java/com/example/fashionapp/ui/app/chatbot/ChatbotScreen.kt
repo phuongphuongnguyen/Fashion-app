@@ -23,13 +23,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fashionapp.R
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.launch
-
-// ── Colors ──
-private val PrimaryBlue   = Color(0xFF3669C9)
-private val ChatBubbleBot  = Color(0xFFEEF2FF)
-private val ChatBubbleUser = Color(0xFF3669C9)
 
 // ── Data ──
 data class ChatMessage(
@@ -146,7 +142,7 @@ Customer asks: $userMessage
         }
     }
 
-    Scaffold(containerColor = Color(0xFFF5F7FB)) { innerPadding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -196,7 +192,7 @@ Customer asks: $userMessage
 @Composable
 private fun ChatHeader(onBack: () -> Unit, isLoadingData: Boolean = false) {
     val settings = LocalAppSettings.current
-    Surface(color = Color.White, shadowElevation = 2.dp) {
+    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
@@ -207,7 +203,7 @@ private fun ChatHeader(onBack: () -> Unit, isLoadingData: Boolean = false) {
                 Icon(
                     imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = settings.t("Back", "Quay lại"),
-                    tint               = Color(0xFF1A1A2E)
+                    tint               = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -225,12 +221,12 @@ private fun ChatHeader(onBack: () -> Unit, isLoadingData: Boolean = false) {
                     text       = "Fashion Assistant",
                     fontSize   = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color      = Color(0xFF1A1A2E)
+                    color      = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text     = if (isLoadingData) settings.t("Loading app data...", "Đang tải dữ liệu app...") else settings.t("Your fashion assistant", "Trợ lý thời trang của bạn"),
                     fontSize = 12.sp,
-                    color    = if (isLoadingData) Color(0xFF3669C9) else Color.Gray
+                    color    = if (isLoadingData) MaterialTheme.colorScheme.secondary else AppTheme.colors.textSecondary
                 )
             }
 
@@ -239,7 +235,7 @@ private fun ChatHeader(onBack: () -> Unit, isLoadingData: Boolean = false) {
                 CircularProgressIndicator(
                     modifier    = Modifier.size(16.dp).padding(end = 8.dp),
                     strokeWidth = 2.dp,
-                    color       = PrimaryBlue
+                    color       = MaterialTheme.colorScheme.secondary
                 )
             }
         }
@@ -274,12 +270,12 @@ private fun ChatBubble(message: ChatMessage) {
                         bottomEnd   = if (message.isUser) 4.dp else 16.dp
                     )
                 )
-                .background(if (message.isUser) ChatBubbleUser else ChatBubbleBot)
+                .background(if (message.isUser) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Text(
                 text      = message.text,
-                color     = if (message.isUser) Color.White else Color(0xFF1A1A2E),
+                color     = if (message.isUser) Color.White else MaterialTheme.colorScheme.onSurface,
                 fontSize  = 14.sp,
                 lineHeight = 20.sp
             )
@@ -306,10 +302,10 @@ private fun TypingIndicator() {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
-                .background(ChatBubbleBot)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
-            Text(settings.t("Typing...", "Đang nhập..."), color = Color.Gray, fontSize = 14.sp)
+            Text(settings.t("Typing...", "Đang nhập..."), color = AppTheme.colors.textSecondary, fontSize = 14.sp)
         }
     }
 }
@@ -323,7 +319,7 @@ private fun ChatInputBar(
     isLoading: Boolean,
     placeholder: String = "Nhập tin nhắn..."
 ) {
-    Surface(color = Color.White, shadowElevation = 6.dp) {
+    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
@@ -337,14 +333,14 @@ private fun ChatInputBar(
                     .weight(1f)
                     .heightIn(min = 44.dp),
                 placeholder   = {
-                    Text(placeholder, color = Color.Gray, fontSize = 14.sp)
+                    Text(placeholder, color = AppTheme.colors.textSecondary, fontSize = 14.sp)
                 },
                 shape  = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor   = PrimaryBlue,
-                    unfocusedBorderColor = Color(0xFFE0E0E0),
-                    focusedContainerColor   = Color.White,
-                    unfocusedContainerColor = Color(0xFFF5F5F5)
+                    focusedBorderColor   = MaterialTheme.colorScheme.secondary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedContainerColor   = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
                 singleLine = false,
                 maxLines   = 4
@@ -359,8 +355,8 @@ private fun ChatInputBar(
                     .size(44.dp)
                     .clip(CircleShape)
                     .background(
-                        if (value.isNotBlank() && !isLoading) PrimaryBlue
-                        else Color(0xFFB0BEC5)
+                        if (value.isNotBlank() && !isLoading) MaterialTheme.colorScheme.secondary
+                        else MaterialTheme.colorScheme.surfaceVariant
                     )
             ) {
                 Icon(

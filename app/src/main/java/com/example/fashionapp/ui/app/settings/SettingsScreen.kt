@@ -135,26 +135,6 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                 dividerColor = dividerColor,
                 topBarBgColor = topBarBgColor
             )
-            SubScreen.CURRENCY   -> CurrencyScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor,
-                topBarBgColor = topBarBgColor
-            )
-            SubScreen.SIZE       -> SizeSystemScreen(
-                onBack = { currentSubScreen = null },
-                isDark = isDark,
-                bgColor = bgColor,
-                cardColor = cardColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                dividerColor = dividerColor,
-                topBarBgColor = topBarBgColor
-            )
             SubScreen.COUNTRY    -> CountryScreen(
                 onBack = { currentSubScreen = null },
                 isDark = isDark,
@@ -272,13 +252,13 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                             dividerColor = dividerColor
                         )
                         // ── Dark Mode toggle in Personal ──
-//                        FlatSwitchRow(
-//                            label = settings.t("Dark Mode", "Chế độ tối", "Mode sombre", "ダークモード", "다크 모드", "深色模式"),
-//                            checked = settings.isDarkMode,
-//                            onCheckedChange = { settings.updateDarkMode(it) },
-//                            textColor = textColor,
-//                            dividerColor = dividerColor
-//                        )
+                        FlatSwitchRow(
+                            label = settings.t("Dark Mode", "Chế độ tối", "Mode sombre", "ダークモード", "다크 모드", "深色模式"),
+                            checked = settings.isDarkMode,
+                            onCheckedChange = { settings.updateDarkMode(it) },
+                            textColor = textColor,
+                            dividerColor = dividerColor
+                        )
 
                         Spacer(Modifier.height(24.dp))
 
@@ -306,20 +286,6 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
                             label = settings.t("Country", "Quốc gia", "Pays", "国", "국가", "国家"),
                             value = settings.country,
                             onClick = { currentSubScreen = SubScreen.COUNTRY },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
-                        )
-                        FlatSettingRow(
-                            label = settings.t("Currency", "Tiền tệ", "Devise", "通貨", "통화", "货币"),
-                            value = "${settings.currency.symbol} ${settings.currency.code}",
-                            onClick = { currentSubScreen = SubScreen.CURRENCY },
-                            textColor = textColor, subTextColor = subTextColor,
-                            dividerColor = dividerColor
-                        )
-                        FlatSettingRow(
-                            label = settings.t("Sizes", "Kích cỡ", "Tailles", "サイズ", "사이즈", "尺码"),
-                            value = settings.sizeSystem.label,
-                            onClick = { currentSubScreen = SubScreen.SIZE },
                             textColor = textColor, subTextColor = subTextColor,
                             dividerColor = dividerColor
                         )
@@ -508,7 +474,7 @@ fun SettingsScreen(navController: NavController, initialSubScreen: String? = nul
 }
 
 // ── Sub-screen enum ──
-private enum class SubScreen { PROFILE, SHIPPING, PAYMENT, LANGUAGE, CURRENCY, SIZE, COUNTRY, NOTIFICATIONS, ABOUT, REGISTER_SHOP, SELLER_CENTRE }
+private enum class SubScreen { PROFILE, SHIPPING, PAYMENT, LANGUAGE, COUNTRY, NOTIFICATIONS, ABOUT, REGISTER_SHOP, SELLER_CENTRE }
 
 // ══════════════════════════════════════════
 // ── Sub Screens ──
@@ -1038,91 +1004,6 @@ private fun LanguageScreen(
                     Column(Modifier.weight(1f)) {
                         Text(lang.nativeName, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
                         Text(lang.displayName, fontSize = 13.sp, color = subTextColor)
-                    }
-                    if (selected) {
-                        Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CurrencyScreen(
-    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
-    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
-) {
-    val settings = LocalAppSettings.current
-    Scaffold(containerColor = bgColor) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            item {
-                FlatSubScreenHeader(
-                    onBack = onBack,
-                    title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
-                    subtitle = settings.t("Currency", "Tiền tệ", "Devise", "通貨", "통화", "货币"),
-                    textColor = textColor, subTextColor = subTextColor
-                )
-            }
-            items(AppCurrency.values()) { cur ->
-                val selected = settings.currency == cur
-                FlatSelectableRow(
-                    selected = selected,
-                    onClick = { settings.updateCurrency(cur) },
-                    textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
-                ) {
-                    Text(cur.symbol, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(cur.displayName, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
-                        Text(cur.code, fontSize = 13.sp, color = subTextColor)
-                    }
-                    if (selected) {
-                        Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SizeSystemScreen(
-    onBack: () -> Unit, isDark: Boolean, bgColor: Color, cardColor: Color,
-    textColor: Color, subTextColor: Color, dividerColor: Color, topBarBgColor: Color
-) {
-    val settings = LocalAppSettings.current
-    val descriptions = mapOf(
-        SizeSystem.UK to settings.t("Standard UK sizing (e.g. 6, 8, 10)", "Bảng size chuẩn Anh (ví dụ: 6, 8, 10)", "Taille standard Royaume-Uni (ex. 6, 8, 10)", "英国標準サイズ (例 6, 8, 10)", "영국 표준 사이즈 (예: 6, 8, 10)", "英国标准尺码 (例如 6, 8, 10)"),
-        SizeSystem.US to settings.t("Standard US sizing (e.g. 2, 4, 6)", "Bảng size chuẩn Mỹ (ví dụ: 2, 4, 6)", "Taille standard États-Unis (ex. 2, 4, 6)", "米国標準サイズ (例 2, 4, 6)", "미국 표준 사이즈 (예: 2, 4, 6)", "美国标准尺码 (例如 2, 4, 6)"),
-        SizeSystem.EU to settings.t("European sizing (e.g. 36, 38, 40)", "Bảng size chuẩn châu Âu (ví dụ: 36, 38, 40)", "Taille européenne (ex. 36, 38, 40)", "欧州サイズ (例 36, 38, 40)", "유럽 사이즈 (예: 36, 38, 40)", "欧洲尺码 (例如 36, 38, 40)"),
-        SizeSystem.ASIAN to settings.t("Asian sizing (e.g. S, M, L, XL)", "Bảng size chuẩn châu Á (ví dụ: S, M, L, XL)", "Taille asiatique (ex. S, M, L, XL)", "アジアサイズ (例 S, M, L, XL)", "아시아 사이즈 (예: S, M, L, XL)", "亚洲尺码 (例如 S, M, L, XL)")
-    )
-    Scaffold(containerColor = bgColor) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-        ) {
-            FlatSubScreenHeader(
-                onBack = onBack,
-                title = settings.t("Settings", "Cài đặt", "Paramètres", "設定", "설정", "设置"),
-                subtitle = settings.t("Size System", "Hệ size", "Système de taille", "サイズ表記", "사이즈 체계", "尺码系统"),
-                textColor = textColor, subTextColor = subTextColor
-            )
-            SizeSystem.values().forEach { size ->
-                val selected = settings.sizeSystem == size
-                FlatSelectableRow(
-                    selected = selected,
-                    onClick = { settings.updateSizeSystem(size) },
-                    textColor = textColor, subTextColor = subTextColor, dividerColor = dividerColor
-                ) {
-                    Text(size.label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("${size.label} Sizes", fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textColor)
-                        Text(descriptions[size] ?: "", fontSize = 12.sp, color = subTextColor)
                     }
                     if (selected) {
                         Icon(Icons.Default.CheckCircle, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))

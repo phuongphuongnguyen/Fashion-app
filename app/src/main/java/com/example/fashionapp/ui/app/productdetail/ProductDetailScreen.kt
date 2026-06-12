@@ -40,11 +40,6 @@ import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import coil.compose.AsyncImage
 import com.example.fashionapp.data.StorageUrlResolver
 import com.example.fashionapp.data.shop.ShopRepository
 import com.example.fashionapp.navigation.Screen
@@ -53,16 +48,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
-// ── Palette ───────────────────────────────────────────────────────────────────
-private val PrimaryBlue   = Color(0xFF3669C9)
-private val StarYellow    = Color(0xFFFFC107)
-private val TagBg         = Color(0xFFF0F4FF)
-private val TagText       = Color(0xFF3669C9)
-private val SectionBg     = Color(0xFFF7F8FA)
-private val TextDark      = Color(0xFF1A1A1A)
-private val TextGray      = Color(0xFF888888)
-private val DividerColor  = Color(0xFFEEEEEE)
-private val GreenShipping = Color(0xFF00B248)
+import com.example.fashionapp.ui.theme.AppTheme
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  SCREEN
@@ -108,7 +94,7 @@ fun ProductDetailScreen(
 
     if (state.isLoading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = PrimaryBlue)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
         }
         return
     }
@@ -116,7 +102,7 @@ fun ProductDetailScreen(
     val product = state.product
     if (product == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(state.error ?: settings.t("An error occurred", "Có lỗi xảy ra"), color = TextGray)
+            Text(state.error ?: settings.t("An error occurred", "Có lỗi xảy ra"), color = AppTheme.colors.textSecondary)
         }
         return
     }
@@ -146,7 +132,7 @@ fun ProductDetailScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 100.dp)
@@ -205,7 +191,7 @@ fun ProductDetailScreen(
             if (state.relatedProducts.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(8.dp))
-                    HorizontalDivider(color = SectionBg, thickness = 8.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 8.dp)
                     Spacer(Modifier.height(16.dp))
                     MostPopularSection(
                         products    = state.relatedProducts,
@@ -252,17 +238,17 @@ fun ProductReviewsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = settings.t("Back", "Quay lại"))
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (reviews.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(settings.t("No reviews yet", "Chưa có đánh giá"), color = TextGray)
+                Text(settings.t("No reviews yet", "Chưa có đánh giá"), color = AppTheme.colors.textSecondary)
             }
         } else {
             LazyColumn(
@@ -305,7 +291,7 @@ private fun ImageSection(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Color(0xFFEEEEEE)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) { Text("📷", fontSize = 48.sp) }
         } else {
@@ -343,7 +329,7 @@ private fun ImageSection(
                 .clip(CircleShape)
                 .background(Color.White.copy(alpha = 0.85f))
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = TextDark)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.Black)
         }
 
         // Dot indicator
@@ -380,7 +366,7 @@ private fun PriceSection(product: Product) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         // Giá + share icon
@@ -389,7 +375,7 @@ private fun PriceSection(product: Product) {
                 text       = "₫${formatPrice(product.price)}",
                 fontWeight = FontWeight.ExtraBold,
                 fontSize   = 26.sp,
-                color      = TextDark,
+                color      = MaterialTheme.colorScheme.onBackground,
                 modifier   = Modifier.weight(1f)
             )
             if (product.discountPercent > 0) {
@@ -412,7 +398,7 @@ private fun PriceSection(product: Product) {
         if (product.discountPercent > 0 && product.originalPrice > 0) {
             Text(
                 text  = "₫${formatPrice(product.originalPrice)}",
-                color = TextGray,
+                color = AppTheme.colors.textSecondary,
                 fontSize = 13.sp,
                 style = androidx.compose.ui.text.TextStyle(
                     textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
@@ -426,7 +412,7 @@ private fun PriceSection(product: Product) {
         Text(
             text      = product.description,
             fontSize  = 14.sp,
-            color     = TextGray,
+            color     = AppTheme.colors.textSecondary,
             lineHeight= 21.sp
         )
 
@@ -438,13 +424,13 @@ private fun PriceSection(product: Product) {
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Star, null, tint = StarYellow, modifier = Modifier.size(14.dp))
+                Icon(Icons.Filled.Star, null, tint = AppTheme.colors.star, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(3.dp))
                 Text("${product.rating}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text(" (${product.reviewCount})", fontSize = 12.sp, color = TextGray)
+                Text(" (${product.reviewCount})", fontSize = 12.sp, color = AppTheme.colors.textSecondary)
             }
-            Text("•", color = TextGray)
-            Text(settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"), fontSize = 12.sp, color = TextGray)
+            Text("•", color = AppTheme.colors.textSecondary)
+            Text(settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"), fontSize = 12.sp, color = AppTheme.colors.textSecondary)
         }
     }
 }
@@ -467,7 +453,7 @@ private fun VariationsSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         // Header
@@ -476,13 +462,13 @@ private fun VariationsSection(
             Spacer(Modifier.width(12.dp))
             // Hiển thị màu + size đang chọn
             selectedVariant?.let { v ->
-                Text(v.color, color = TextGray, fontSize = 13.sp)
+                Text(v.color, color = AppTheme.colors.textSecondary, fontSize = 13.sp)
                 Spacer(Modifier.width(6.dp))
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = TagBg
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Text(v.size, color = TagText, fontSize = 12.sp,
+                    Text(v.size, color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
                 }
             }
@@ -503,7 +489,7 @@ private fun VariationsSection(
         }
     }
 
-    HorizontalDivider(color = DividerColor)
+    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
 @Composable
@@ -522,10 +508,10 @@ private fun VariantChip(
                 .clip(RoundedCornerShape(10.dp))
                 .background(
                     try { Color(android.graphics.Color.parseColor(variant.colorHex)) }
-                    catch (_: Exception) { Color(0xFFEEEEEE) }
+                    catch (_: Exception) { MaterialTheme.colorScheme.surfaceVariant }
                 )
                 .then(
-                    if (isSelected) Modifier.border(2.5.dp, PrimaryBlue, RoundedCornerShape(10.dp))
+                    if (isSelected) Modifier.border(2.5.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(10.dp))
                     else Modifier
                 )
         ) {
@@ -538,7 +524,7 @@ private fun VariantChip(
                         modifier = Modifier
                             .size(16.dp)
                             .clip(CircleShape)
-                            .background(PrimaryBlue),
+                            .background(MaterialTheme.colorScheme.secondary),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("✓", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -547,7 +533,7 @@ private fun VariantChip(
             }
         }
         Spacer(Modifier.height(4.dp))
-        Text(variant.size, fontSize = 11.sp, color = if (isSelected) PrimaryBlue else TextGray)
+        Text(variant.size, fontSize = 11.sp, color = if (isSelected) MaterialTheme.colorScheme.secondary else AppTheme.colors.textSecondary)
     }
 }
 
@@ -561,25 +547,25 @@ private fun SpecificationsSection(specs: Map<String, String>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Text(settings.t("Specifications", "Thông số kỹ thuật"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(12.dp))
 
         specs.forEach { (key, value) ->
-            Text(key, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = TextDark)
+            Text(key, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground)
             Spacer(Modifier.height(6.dp))
             // Hiển thị value dưới dạng chip(s) — tách bằng dấu phẩy nếu nhiều
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(value.split(",").map { it.trim() }.filter { it.isNotEmpty() }) { v ->
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = TagBg
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Text(
                             v,
-                            color    = TagText,
+                            color    = MaterialTheme.colorScheme.secondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                         )
@@ -589,7 +575,7 @@ private fun SpecificationsSection(specs: Map<String, String>) {
             Spacer(Modifier.height(12.dp))
         }
     }
-    HorizontalDivider(color = DividerColor)
+    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -602,7 +588,7 @@ private fun DeliverySection(freeShipping: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Text(settings.t("Delivery", "Vận chuyển"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -614,7 +600,7 @@ private fun DeliverySection(freeShipping: Boolean) {
             duration = settings.t("5-7 days", "5-7 ngày"),
             price    = if (freeShipping) settings.t("Free", "Miễn phí") else "₫30.000",
             isFree   = freeShipping,
-            color    = Color(0xFF3669C9)
+            color    = MaterialTheme.colorScheme.secondary
         )
         Spacer(Modifier.height(10.dp))
         // Express
@@ -626,7 +612,7 @@ private fun DeliverySection(freeShipping: Boolean) {
             color    = Color(0xFFFF6B00)
         )
     }
-    HorizontalDivider(color = DividerColor)
+    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
 @Composable
@@ -641,11 +627,11 @@ private fun DeliveryRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .border(1.dp, DividerColor, RoundedCornerShape(10.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = TextDark)
+        Text(label, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground)
         Spacer(Modifier.width(10.dp))
         Surface(shape = RoundedCornerShape(6.dp), color = color.copy(alpha = 0.12f)) {
             Text(duration, color = color, fontSize = 11.sp,
@@ -656,7 +642,7 @@ private fun DeliveryRow(
             text       = price,
             fontWeight = FontWeight.Bold,
             fontSize   = 14.sp,
-            color      = if (isFree) GreenShipping else TextDark
+            color      = if (isFree) AppTheme.colors.success else MaterialTheme.colorScheme.onBackground
         )
     }
 }
@@ -675,7 +661,7 @@ private fun ProductReviewSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Text(settings.t("Product Reviews", "Đánh giá sản phẩm"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -684,14 +670,14 @@ private fun ProductReviewSection(
         Row(verticalAlignment = Alignment.CenterVertically) {
             StarRow(rating = product.rating)
             Spacer(Modifier.width(8.dp))
-            Text("${product.rating}/5", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextDark)
+            Text("${product.rating}/5", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
         }
 
         Spacer(Modifier.height(14.dp))
 
         val previewReviews = reviews.take(2)
         if (previewReviews.isEmpty()) {
-            Text(settings.t("No reviews yet", "Chưa có đánh giá"), color = TextGray, fontSize = 13.sp)
+            Text(settings.t("No reviews yet", "Chưa có đánh giá"), color = AppTheme.colors.textSecondary, fontSize = 13.sp)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 previewReviews.forEach { review ->
@@ -706,13 +692,13 @@ private fun ProductReviewSection(
             onClick = { navController.navigate(Screen.ProductReviews.createRoute(product.id)) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue),
-            border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue)
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
         ) {
             Text(settings.t("See all ${product.reviewCount} reviews", "Xem tất cả ${product.reviewCount} đánh giá"), fontWeight = FontWeight.Medium)
         }
     }
-    HorizontalDivider(color = DividerColor)
+    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
 @Composable
@@ -727,7 +713,7 @@ private fun RealReviewItem(review: ProductReview) {
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(PrimaryBlue.copy(alpha = 0.15f)),
+                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
                 contentScale = ContentScale.Crop
             )
         } else {
@@ -735,10 +721,10 @@ private fun RealReviewItem(review: ProductReview) {
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(PrimaryBlue.copy(alpha = 0.15f)),
+                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(name.firstOrNull()?.toString() ?: "C", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                Text(name.firstOrNull()?.toString() ?: "C", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.width(10.dp))
@@ -756,13 +742,13 @@ private fun RealReviewItem(review: ProductReview) {
                 .joinToString(" • ")
             if (metaText.isNotBlank()) {
                 Spacer(Modifier.height(2.dp))
-                Text(metaText, fontSize = 12.sp, color = TextGray)
+                Text(metaText, fontSize = 12.sp, color = AppTheme.colors.textSecondary)
             }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = review.comment.ifBlank { settings.t("No comment", "Không có bình luận") },
                 fontSize = 13.sp,
-                color = TextGray,
+                color = AppTheme.colors.textSecondary,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 19.sp
@@ -786,14 +772,14 @@ private fun StarRow(rating: Float) {
                 Icon(
                     imageVector = Icons.Outlined.StarOutline,
                     contentDescription = null,
-                    tint = StarYellow,
+                    tint = AppTheme.colors.star,
                     modifier = Modifier.size(18.dp)
                 )
                 if (i < full) {
                     Icon(
                         imageVector = Icons.Filled.Star,
                         contentDescription = null,
-                        tint = StarYellow,
+                        tint = AppTheme.colors.star,
                         modifier = Modifier.size(18.dp)
                     )
                 } else if (i == full && hasHalf) {
@@ -806,7 +792,7 @@ private fun StarRow(rating: Float) {
                         Icon(
                             imageVector = Icons.Filled.Star,
                             contentDescription = null,
-                            tint = StarYellow,
+                            tint = AppTheme.colors.star,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -834,10 +820,10 @@ private fun MostPopularSection(products: List<Product>, navController: NavContro
         ) {
             Text(settings.t("Most Popular", "Phổ biến nhất"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(settings.t("See All", "Xem tất cả"), color = PrimaryBlue, fontSize = 13.sp)
+                Text(settings.t("See All", "Xem tất cả"), color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp)
                 Spacer(Modifier.width(4.dp))
                 Box(
-                    modifier         = Modifier.size(24.dp).clip(CircleShape).background(PrimaryBlue),
+                    modifier         = Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondary),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, null,
@@ -892,7 +878,7 @@ private fun PopularProductCard(product: Product, onClick: () -> Unit) {
     Column(modifier = Modifier.width(130.dp).clickable { onClick() }) {
         Box(
             modifier = Modifier.fillMaxWidth().height(130.dp)
-                .clip(RoundedCornerShape(12.dp)).background(Color(0xFFEEEEEE))
+                .clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             AsyncImage(
                 model = product.imageUrl.ifBlank { null },
@@ -913,7 +899,7 @@ private fun PopularProductCard(product: Product, onClick: () -> Unit) {
             }
         }
         Spacer(Modifier.height(5.dp))
-        Text(product.name, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = TextGray)
+        Text(product.name, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = AppTheme.colors.textSecondary)
         Text("₫${formatPrice(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }
@@ -923,7 +909,7 @@ private fun GridProductCard(product: Product, modifier: Modifier, onClick: () ->
     Column(modifier = modifier.clickable { onClick() }) {
         Box(
             modifier = Modifier.fillMaxWidth().aspectRatio(0.85f)
-                .clip(RoundedCornerShape(14.dp)).background(Color(0xFFEEEEEE))
+                .clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             AsyncImage(
                 model = product.imageUrl.ifBlank { null },
@@ -934,7 +920,7 @@ private fun GridProductCard(product: Product, modifier: Modifier, onClick: () ->
             )
         }
         Spacer(Modifier.height(6.dp))
-        Text(product.name, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = TextGray)
+        Text(product.name, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = AppTheme.colors.textSecondary)
         Text("₫${formatPrice(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }
@@ -955,7 +941,7 @@ private fun BottomActionBar(
     val settings = LocalAppSettings.current
     Surface(
         modifier      = modifier.fillMaxWidth(),
-        color         = Color.White,
+        color         = MaterialTheme.colorScheme.surface,
         shadowElevation = 12.dp
     ) {
         Row(
@@ -970,8 +956,8 @@ private fun BottomActionBar(
                 onClick  = onAddToCart,
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape    = RoundedCornerShape(12.dp),
-                colors   = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue),
-                border   = androidx.compose.foundation.BorderStroke(1.5.dp, PrimaryBlue),
+                colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
+                border   = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondary),
                 enabled  = !isLoading
             ) {
                 Text(if (isLoading) settings.t("Adding...", "Đang thêm...") else settings.t("Add to cart", "Thêm vào giỏ"), fontWeight = FontWeight.SemiBold)
@@ -982,7 +968,7 @@ private fun BottomActionBar(
                 onClick  = onBuyNow,
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape    = RoundedCornerShape(12.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                 enabled  = !isLoading
             ) {
                 Text(if (isLoading) settings.t("Please wait", "Vui lòng đợi...") else settings.t("Buy now", "Mua ngay"), fontWeight = FontWeight.SemiBold)
@@ -1034,7 +1020,7 @@ private fun ShopSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         val settings = LocalAppSettings.current
@@ -1045,7 +1031,7 @@ private fun ShopSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFF7F8FA))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable(enabled = !isLoading) { onVisitShop() }
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1055,7 +1041,7 @@ private fun ShopSection(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFEEEEEE))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 if (!isLoading) {
                     AsyncImage(
@@ -1077,13 +1063,13 @@ private fun ShopSection(
                         modifier = Modifier
                             .width(120.dp).height(14.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFE0E0E0))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     )
                     Box(
                         modifier = Modifier
                             .width(80.dp).height(11.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFE8E8E8))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     )
                 }
             } else {
@@ -1094,7 +1080,7 @@ private fun ShopSection(
                             text       = shopName,
                             fontWeight = FontWeight.SemiBold,
                             fontSize   = 15.sp,
-                            color      = TextDark
+                            color      = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
@@ -1108,22 +1094,22 @@ private fun ShopSection(
                         Text(
                             text     = settings.t("${formatFollowerCount(followerCount)} followers", "${formatFollowerCount(followerCount)} người theo dõi"),
                             fontSize = 12.sp,
-                            color    = TextGray
+                            color    = AppTheme.colors.textSecondary
                         )
                         if (rating > 0f) {
-                            Text("•", fontSize = 12.sp, color = TextGray)
+                            Text("•", fontSize = 12.sp, color = AppTheme.colors.textSecondary)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = Icons.Filled.Star,
                                     contentDescription = null,
-                                    tint = Color(0xFFFFC107),
+                                    tint = AppTheme.colors.star,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(Modifier.width(2.dp))
                                 Text(
                                     text     = "$rating",
                                     fontSize = 12.sp,
-                                    color    = TextGray
+                                    color    = AppTheme.colors.textSecondary
                                 )
                             }
                         }
@@ -1133,14 +1119,14 @@ private fun ShopSection(
                 Icon(
                     imageVector        = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
-                    tint               = TextGray,
+                    tint               = AppTheme.colors.textSecondary,
                     modifier           = Modifier.size(16.dp)
                 )
             }
         }
     }
 
-    HorizontalDivider(color = DividerColor)
+    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
 // ── Helper format follower count ──────────────────────────────────────────────

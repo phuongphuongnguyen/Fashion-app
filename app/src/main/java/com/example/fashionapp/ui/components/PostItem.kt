@@ -40,6 +40,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
 
 @Composable
@@ -128,7 +129,7 @@ fun PostHeader(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFFEEEEEE)).padding(2.dp)) {
+        Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant).padding(2.dp)) {
             AsyncImage(
                 model = avatarUrl.ifBlank { null },
                 contentDescription = null,
@@ -142,7 +143,7 @@ fun PostHeader(
         Text(text = username, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         if (isVerified) {
             Spacer(Modifier.width(4.dp))
-            Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Color(0xFF0057FF), modifier = Modifier.size(14.dp))
+            Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
         }
         Spacer(modifier = Modifier.weight(1f))
         Box {
@@ -214,7 +215,7 @@ fun PostImagesRow(imageUrls: List<String>) {
         AsyncImage(
             model = imageUrls.first().ifBlank { null },
             contentDescription = null,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f).background(Color(0xFFF9F9F9)),
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f).background(MaterialTheme.colorScheme.surfaceVariant),
             contentScale = ContentScale.Fit,
             error = painterResource(R.drawable.ic_shopping)
         )
@@ -227,7 +228,7 @@ fun PostImagesRow(imageUrls: List<String>) {
                 AsyncImage(
                     model = url.ifBlank { null },
                     contentDescription = null,
-                    modifier = Modifier.fillParentMaxWidth().fillMaxHeight().background(Color(0xFFF9F9F9)),
+                    modifier = Modifier.fillParentMaxWidth().fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant),
                     contentScale = ContentScale.Fit,
                     error = painterResource(R.drawable.ic_shopping),
                     fallback = painterResource(R.drawable.ic_shopping)
@@ -250,7 +251,7 @@ fun ProductTagsRow(tags: List<ProductTag>, onProductClick: (String) -> Unit = {}
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFF0F0F0))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable(enabled = tag.productId.isNotBlank()) {
                         onProductClick(tag.productId)
                     },
@@ -278,7 +279,7 @@ fun ActionRow(
                 Icon(
                     painter = painterResource(if (isLiked) R.drawable.ic_like_full else R.drawable.ic_like),
                     contentDescription = null,
-                    tint = if (isLiked) Color(0xFFF04957) else Color.Black,
+                    tint = if (isLiked) Color(0xFFF04957) else MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -292,7 +293,7 @@ fun ActionRow(
         if (imageCount > 1) {
             Row(modifier = Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 repeat(imageCount.coerceAtMost(5)) {
-                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF3669C9)))
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondary))
                 }
             }
         }
@@ -323,7 +324,7 @@ fun CaptionRow(username: String, caption: String, timestamp: Date?) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
     )
     if (dateStr.isNotEmpty()) {
-        Text(text = "$dateStr •", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
+        Text(text = "$dateStr •", fontSize = 11.sp, color = AppTheme.colors.textSecondary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
     }
 }
 
@@ -349,20 +350,20 @@ fun CommentBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets.ime }
     ) {
         Column(modifier = Modifier.fillMaxHeight(0.85f).fillMaxWidth().navigationBarsPadding()) {
             Text(text = settings.t("Comments", "Bình luận"), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
             LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item { CommentItem(username = post.authorName, avatarUrl = post.authorAvt, text = post.caption, isCaption = true) }
                 items(post.comments) { comment -> CommentItem(username = comment.username, avatarUrl = comment.avatarUrl, text = comment.text) }
             }
-            HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
-            Row(modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+            Row(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
                     AsyncImage(
                         model = currentUserAvatarUrl.ifBlank { null },
                         contentDescription = null,
@@ -380,7 +381,7 @@ fun CommentBottomSheet(
                     maxLines = 5
                 )
                 IconButton(onClick = { onSendComment(commentText); commentText = "" }, enabled = commentText.isNotBlank()) {
-                    Icon(painter = painterResource(R.drawable.ic_share), contentDescription = null, modifier = Modifier.size(32.dp), tint = if (commentText.isNotBlank()) Color(0xFF3669C9) else Color.LightGray)
+                    Icon(painter = painterResource(R.drawable.ic_share), contentDescription = null, modifier = Modifier.size(32.dp), tint = if (commentText.isNotBlank()) MaterialTheme.colorScheme.secondary else AppTheme.colors.textSecondary)
                 }
             }
         }
@@ -391,7 +392,7 @@ fun CommentBottomSheet(
 fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Boolean = false) {
     val settings = LocalAppSettings.current
     Row(verticalAlignment = Alignment.Top) {
-        Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
+        Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
             AsyncImage(
                 model = avatarUrl.ifBlank { null },
                 contentDescription = null,
@@ -404,7 +405,7 @@ fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Bo
         Spacer(Modifier.width(12.dp))
         Column {
             Text(text = buildAnnotatedString { withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold)) { append(username) }; append(" "); append(text) }, fontSize = 13.sp)
-            if (!isCaption) { Text(text = settings.t("Reply", "Phản hồi"), fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp)) }
+            if (!isCaption) { Text(text = settings.t("Reply", "Phản hồi"), fontSize = 11.sp, color = AppTheme.colors.textSecondary, modifier = Modifier.padding(top = 4.dp)) }
         }
     }
 }

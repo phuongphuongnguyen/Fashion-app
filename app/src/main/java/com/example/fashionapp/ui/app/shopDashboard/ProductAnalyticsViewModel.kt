@@ -7,6 +7,7 @@ import com.example.fashionapp.data.product.ProductRepository
 import com.example.fashionapp.data.shop.DailyRevenuePoint
 import com.example.fashionapp.data.shop.ShopDashboardRepository
 import com.example.fashionapp.model.Product
+import com.example.fashionapp.model.ProductVariant
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +29,7 @@ class ProductAnalyticsViewModel(private val productId: String) : ViewModel() {
 
     init { load() }
 
-    private fun load() {
+    fun load() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -45,6 +46,28 @@ class ProductAnalyticsViewModel(private val productId: String) : ViewModel() {
                 dailyRevenue = dailyDeferred.await(),
                 error = if (product == null) "Không tìm thấy sản phẩm" else null
             )
+        }
+    }
+
+    fun updatePrice(newPrice: Double) {
+        viewModelScope.launch {
+            try {
+                ProductRepository.updateProductPrice(productId, newPrice)
+                load()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+
+    fun updateStock(variants: List<ProductVariant>) {
+        viewModelScope.launch {
+            try {
+                ProductRepository.updateProductStock(productId, variants)
+                load()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
         }
     }
 }

@@ -37,6 +37,7 @@ import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.components.FeedPostItem
 import com.example.fashionapp.ui.components.ProfileTopBar
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
+import com.example.fashionapp.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +84,7 @@ fun ProfileScreen(
                 )
             }
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         LaunchedEffect(uiState.bioError) {
@@ -98,7 +99,7 @@ fun ProfileScreen(
             ModalBottomSheet(
                 onDismissRequest = { showBioDialog = false },
                 sheetState = bioSheetState,
-                containerColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.surface,
                 dragHandle = { BottomSheetDefaults.DragHandle() }
             ) {
                 Column(
@@ -111,7 +112,7 @@ fun ProfileScreen(
                         text = settings.t("Edit Bio", "Sửa tiểu sử"),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     OutlinedTextField(
@@ -120,19 +121,19 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
                         maxLines = 5,
-                        placeholder = { Text(settings.t("Tell people about yourself", "Giới thiệu bản thân"), color = Color.Gray) },
+                        placeholder = { Text(settings.t("Tell people about yourself", "Giới thiệu bản thân"), color = AppTheme.colors.textSecondary) },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Black,
-                            unfocusedBorderColor = Color(0xFFE0E0E0),
-                            focusedContainerColor = Color(0xFFFAFAFA),
-                            unfocusedContainerColor = Color(0xFFFAFAFA)
+                            focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                     )
                     Text(
                         text = "${bioDraft.length}/160",
                         fontSize = 13.sp,
-                        color = Color.Gray,
+                        color = AppTheme.colors.textSecondary,
                         modifier = Modifier
                             .align(Alignment.End)
                             .padding(top = 8.dp)
@@ -146,10 +147,10 @@ fun ProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                     ) {
-                        Text(settings.t("Save Changes", "Lưu thay đổi"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Text(settings.t("Save Changes", "Lưu thay đổi"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }
@@ -161,7 +162,7 @@ fun ProfileScreen(
                 CommentBottomSheet(
                     post = post,
                     sheetState = sheetState,
-                    currentUserAvatarUrl = uiState.user?.avatarUrl.orEmpty(),
+                    currentUserAvatarUrl = homeState.user?.avatarUrl.orEmpty(),
                     onDismiss = { showComments = false },
                     onSendComment = { text -> homeViewModel.addComment(post.id, text) }
                 )
@@ -211,7 +212,7 @@ fun ProfileScreen(
                         navController.navigate(Screen.ProductDetail.createRoute(productId))
                     }
                 )
-                HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
             }
         }
     }
@@ -244,7 +245,7 @@ private fun ProfileHeader(
             .build()
     }
 
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
         // ── Hàng thông tin (bố cục giống ShopScreen): avatar | name + stats | Follow ──
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
@@ -256,90 +257,66 @@ private fun ProfileHeader(
                     .border(2.dp, Color(0xFFFF5F5F), CircleShape)
                     .padding(3.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFECECEC)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop,
                 error = painterResource(R.drawable.ic_profile),
                 fallback = painterResource(R.drawable.ic_profile)
             )
             Spacer(Modifier.width(14.dp))
+            // ── name + stats (giống ShopScreen) ──
             Column(modifier = Modifier.weight(1f)) {
-                // displayName + nút Follow cùng một hàng
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        name,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (!isOwnProfile) {
-                        Spacer(Modifier.width(8.dp))
-                        if (isFollowing) {
-                            // Đang theo dõi: chỉ chữ xanh, không button (vẫn bấm được để bỏ theo dõi)
-                            Button(
-                                onClick = onFollowClick,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFE5EDFF),
-                                    contentColor = Color(0xFF1769FF)
-                                ),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                modifier = Modifier.height(30.dp)
-                            ) {
-                                Text(settings.t("Following", "Đang theo dõi"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                        } else {
-                            Button(
-                                onClick = onFollowClick,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                modifier = Modifier.height(30.dp)
-                            ) {
-                                Text(
-                                    settings.t("Follow", "Theo dõi"),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-                }
-                if (bio.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        bio,
-                        fontSize = 12.sp,
-                        color = Color(0xFF555555),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                if (isOwnProfile) {
-                    Text(
-                        text = if (bio.isBlank()) settings.t("Add bio", "Thêm tiểu sử") else settings.t("Edit bio", "Sửa tiểu sử"),
-                        color = Color(0xFF1769FF),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .padding(top = 4.dp)
-                            .clickable { onEditBio() }
-                    )
-                }
+                Text(
+                    name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
-                    Text(postsCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = Color.Gray)
+                    Text(postsCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
+                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
                     Spacer(Modifier.width(12.dp))
-                    Text(followers.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = Color.Gray)
+                    Text(followers.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
+                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
                     Spacer(Modifier.width(12.dp))
-                    Text(following.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(settings.t(" Following", " Đang theo dõi"), fontSize = 12.sp, color = Color.Gray)
+                    Text(following.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = false, maxLines = 1)
+                    Text(settings.t(" Following", " Đang theo dõi"), fontSize = 12.sp, color = AppTheme.colors.textSecondary, softWrap = false, maxLines = 1)
+                }
+            }
+            // ── Follow button (chỉ trang người khác) ──
+            if (!isOwnProfile) {
+                if (isFollowing) {
+                    Button(
+                        onClick = onFollowClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE5EDFF),
+                            contentColor = Color(0xFF1769FF)
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(settings.t("Following", "Đang theo dõi"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    Button(
+                        onClick = onFollowClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769FF)),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(
+                            settings.t("Follow", "Theo dõi"),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
@@ -355,7 +332,7 @@ private fun ProfileHeader(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = settings.t("Posts", "Bài viết"),
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -364,14 +341,14 @@ private fun ProfileHeader(
                     modifier = Modifier
                         .width(36.dp)
                         .height(2.dp)
-                        .background(Color.Black)
+                        .background(MaterialTheme.colorScheme.onBackground)
                 )
             }
             if (isOwnProfile) {
                 Icon(
                     imageVector = Icons.Outlined.AddCircleOutline,
                     contentDescription = settings.t("Add Post", "Đăng bài"),
-                    tint = Color.Black,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
                         .size(24.dp)
                         .clickable { onAddPost() }

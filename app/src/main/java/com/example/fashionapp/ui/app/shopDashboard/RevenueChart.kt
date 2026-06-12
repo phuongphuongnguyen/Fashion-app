@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.data.shop.DailyRevenuePoint
+import com.example.fashionapp.ui.theme.AppTheme
 
 /**
  * Bar chart đơn giản tự vẽ bằng Compose (không cần thư viện ngoài).
@@ -31,7 +32,7 @@ fun RevenueBarChart(
                 .height(150.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("Chưa có dữ liệu doanh thu", color = Color(0xFF888888), fontSize = 13.sp)
+            Text("Chưa có dữ liệu doanh thu", color = AppTheme.colors.textSecondary, fontSize = 13.sp)
         }
         return
     }
@@ -52,7 +53,7 @@ fun RevenueBarChart(
                 Text(
                     text = formatShortMoney(point.revenue),
                     fontSize = 9.sp,
-                    color = Color(0xFF888888),
+                    color = AppTheme.colors.textSecondary,
                     maxLines = 1,
                     textAlign = TextAlign.Center
                 )
@@ -76,7 +77,7 @@ fun RevenueBarChart(
                 Text(
                     text = shortDate(point.date),
                     fontSize = 9.sp,
-                    color = Color(0xFF888888),
+                    color = AppTheme.colors.textSecondary,
                     maxLines = 1,
                     textAlign = TextAlign.Center
                 )
