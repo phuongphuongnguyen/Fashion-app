@@ -71,7 +71,7 @@ fun RegisterShopScreen(
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = settings.t("Back", "Quay lại"),
                     tint = textColor
                 )
             }

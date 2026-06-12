@@ -20,6 +20,7 @@ import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.home.HomeViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +30,7 @@ fun PostDetailScreen(
     homeViewModel: HomeViewModel = viewModel(),
     savedViewModel: SavedViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val homeState by homeViewModel.uiState.collectAsState()
     val savedUiState by savedViewModel.uiState.collectAsState()
     val post = homeState.posts.find { it.id == postId } ?: savedUiState.savedPosts.find { it.id == postId }
@@ -39,10 +41,10 @@ fun PostDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Post", fontWeight = FontWeight.SemiBold, fontSize = 18.sp) },
+                title = { Text(settings.t("Post", "Bài viết"), fontWeight = FontWeight.SemiBold, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = settings.t("Back", "Quay lại"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -67,7 +69,7 @@ fun PostDetailScreen(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (post == null) {
                 Text(
-                    text = "Post not found for ID: $postId",
+                    text = settings.t("Post not found", "Không tìm thấy bài viết"),
                     modifier = Modifier.align(Alignment.Center),
                     color = Color.Gray
                 )

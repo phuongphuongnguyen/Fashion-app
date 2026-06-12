@@ -110,7 +110,7 @@ fun SellerCentreScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = settings.t("Back", "Quay lại"),
                         tint = textColor
                     )
                 }

@@ -65,6 +65,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.ui.components.FashionTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -125,6 +126,7 @@ fun CreatePostScreen(
     authorId: String? = null,
     viewModel: CreatePostViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val currentUser by UserSession.currentUser.collectAsState()
@@ -137,12 +139,19 @@ fun CreatePostScreen(
     LaunchedEffect(uiState.isSuccess, uiState.error) {
         when {
             uiState.isSuccess -> {
-                Toast.makeText(context, "Post created", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, settings.t("Post created", "Đã tạo bài viết"), Toast.LENGTH_SHORT).show()
                 viewModel.consumeResult()
                 navController.popBackStack()
             }
             uiState.error != null -> {
-                Toast.makeText(context, uiState.error, Toast.LENGTH_SHORT).show()
+                val errorMsg = uiState.error?.let {
+                    when (it) {
+                        "Please sign in before posting" -> settings.t("Please sign in before posting", "Vui lòng đăng nhập trước khi đăng bài")
+                        "Add a caption or at least one image" -> settings.t("Add a caption or at least one image", "Vui lòng thêm chú thích hoặc ít nhất một hình ảnh")
+                        else -> it
+                    }
+                }
+                Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
                 viewModel.consumeResult()
             }
         }
@@ -151,14 +160,14 @@ fun CreatePostScreen(
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Create Post",
+                title = settings.t("Create Post", "Tạo bài viết"),
                 onBackClick = { navController.popBackStack() },
                 actions = {
                     TextButton(
                         enabled = !uiState.isSubmitting && (caption.isNotBlank() || imageUris.isNotEmpty()),
                         onClick = { viewModel.submitPost(authorId, caption, imageUris) }
                     ) {
-                        Text("Post", color = Color(0xFF0056FF), fontWeight = FontWeight.Bold)
+                        Text(settings.t("Post", "Đăng"), color = Color(0xFF0056FF), fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -174,7 +183,7 @@ fun CreatePostScreen(
         ) {
             item {
                 PostComposerCard(
-                    authorName = currentUser?.name.orEmpty().ifBlank { if (authorId.isNullOrBlank()) "User" else "Shop" },
+                    authorName = currentUser?.name.orEmpty().ifBlank { if (authorId.isNullOrBlank()) settings.t("User", "Người dùng") else settings.t("Shop", "Cửa hàng") },
                     authorAvatar = currentUser?.avatarUrl.orEmpty(),
                     isShopPost = !authorId.isNullOrBlank(),
                     caption = caption,
@@ -208,6 +217,7 @@ private fun PostComposerCard(
     onPickImages: () -> Unit,
     onRemoveImage: (Uri) -> Unit
 ) {
+    val settings = LocalAppSettings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -236,7 +246,7 @@ private fun PostComposerCard(
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(authorName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(if (isShopPost) "Shop post" else "Profile post", color = Color.Gray, fontSize = 12.sp)
+                Text(if (isShopPost) settings.t("Shop post", "Bài đăng cửa hàng") else settings.t("Profile post", "Bài đăng cá nhân"), color = Color.Gray, fontSize = 12.sp)
             }
         }
 
@@ -246,7 +256,7 @@ private fun PostComposerCard(
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             maxLines = 8,
-            placeholder = { Text("Write a caption...") },
+            placeholder = { Text(settings.t("Write a caption...", "Viết chú thích...")) },
             colors = TextFieldDefaults.colors(
                 focusedIndicatorColor = Color(0xFFE0E4EC),
                 unfocusedIndicatorColor = Color(0xFFE8EAF0),
@@ -263,7 +273,7 @@ private fun PostComposerCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Content images", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(settings.t("Content images", "Hình ảnh nội dung"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Text("${imageUris.size}/6", color = Color.Gray, fontSize = 12.sp)
         }
 
@@ -281,6 +291,7 @@ private fun PostComposerCard(
 
 @Composable
 private fun MediaPreview(imageUris: List<Uri>, onPickImages: () -> Unit) {
+    val settings = LocalAppSettings.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -292,9 +303,9 @@ private fun MediaPreview(imageUris: List<Uri>, onPickImages: () -> Unit) {
     ) {
         if (imageUris.isEmpty()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Add images", tint = Color(0xFF0056FF), modifier = Modifier.size(34.dp))
+                Icon(Icons.Default.AddPhotoAlternate, contentDescription = settings.t("Add images", "Thêm ảnh"), tint = Color(0xFF0056FF), modifier = Modifier.size(34.dp))
                 Spacer(Modifier.height(6.dp))
-                Text("Add post images", color = Color(0xFF0056FF), fontWeight = FontWeight.Medium)
+                Text(settings.t("Add post images", "Thêm hình ảnh bài đăng"), color = Color(0xFF0056FF), fontWeight = FontWeight.Medium)
             }
         } else {
             AsyncImage(
@@ -326,6 +337,7 @@ private fun MediaPreview(imageUris: List<Uri>, onPickImages: () -> Unit) {
 
 @Composable
 private fun AddImageTile(onClick: () -> Unit) {
+    val settings = LocalAppSettings.current
     Box(
         modifier = Modifier
             .size(96.dp)
@@ -335,15 +347,16 @@ private fun AddImageTile(onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Add image", tint = Color(0xFF0056FF))
+            Icon(Icons.Default.AddPhotoAlternate, contentDescription = settings.t("Add image", "Thêm ảnh"), tint = Color(0xFF0056FF))
             Spacer(Modifier.height(4.dp))
-            Text("Add", color = Color(0xFF0056FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(settings.t("Add", "Thêm"), color = Color(0xFF0056FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
 
 @Composable
 private fun SelectedImageTile(uri: Uri, onRemove: () -> Unit) {
+    val settings = LocalAppSettings.current
     Box(
         modifier = Modifier
             .size(96.dp)
@@ -365,7 +378,7 @@ private fun SelectedImageTile(uri: Uri, onRemove: () -> Unit) {
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.55f))
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Remove image", tint = Color.White, modifier = Modifier.size(14.dp))
+            Icon(Icons.Default.Close, contentDescription = settings.t("Remove image", "Xóa ảnh"), tint = Color.White, modifier = Modifier.size(14.dp))
         }
     }
 }

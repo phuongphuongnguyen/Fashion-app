@@ -64,6 +64,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.data.CartItem
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,6 +73,7 @@ fun CartScreen(
     navController: NavController,
     viewModel: ShopViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val uiState by viewModel.uiState.collectAsState()
     val items = uiState.cartItems
     val existingItemIds = items.map { it.id }.toSet()
@@ -104,13 +106,13 @@ fun CartScreen(
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Shopping Cart",
+                title = settings.t("Shopping Cart", "Giỏ hàng"),
                 onBackClick = { navController.popBackStack() },
                 actions = {
                     if (items.isNotEmpty()) {
                         TextButton(onClick = { isEditing = !isEditing }) {
                             Text(
-                                if (isEditing) "Done" else "Edit",
+                                if (isEditing) settings.t("Done", "Xong") else settings.t("Edit", "Sửa"),
                                 color = Color(0xFF0057FF),
                                 fontWeight = FontWeight.Medium
                             )
@@ -130,9 +132,9 @@ fun CartScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text("Total", color = Color.Gray, fontSize = 12.sp)
-                        Text("${selectedItems.size} item(s) selected", color = Color.Gray, fontSize = 11.sp)
+                     Column {
+                        Text(settings.t("Total", "Tổng thanh toán"), color = Color.Gray, fontSize = 12.sp)
+                        Text(settings.t("${selectedItems.size} item(s) selected", "Đã chọn ${selectedItems.size} sản phẩm"), color = Color.Gray, fontSize = 11.sp)
                         Text("₫${formatPrice(total)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                     Button(
@@ -159,7 +161,7 @@ fun CartScreen(
                         enabled = selectedItems.isNotEmpty()
                     ) {
                         Text(
-                            if (isEditing) "Delete" else "Checkout",
+                            if (isEditing) settings.t("Delete", "Xóa") else settings.t("Checkout", "Thanh toán"),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -243,7 +245,7 @@ fun CartScreen(
                             modifier = Modifier.size(34.dp)
                         )
                         Text(
-                            "Select all",
+                            settings.t("Select all", "Chọn tất cả"),
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp,
                             modifier = Modifier.weight(1f)
@@ -260,10 +262,10 @@ fun CartScreen(
                         onDelete = {
                             viewModel.updateCartQuantity(item.id, 0)
                             selectedItemIds = selectedItemIds - item.id
-                            scope.launch {
+                             scope.launch {
                                 val result = snackbarHostState.showSnackbar(
-                                    message = "Item removed",
-                                    actionLabel = "Undo"
+                                    message = settings.t("Item removed", "Đã xóa sản phẩm"),
+                                    actionLabel = settings.t("Undo", "Hoàn tác")
                                 )
                                 if (result == SnackbarResult.ActionPerformed) {
                                     viewModel.restoreCartItem(item)
@@ -297,6 +299,7 @@ private fun SwipeToDeleteCartItem(
     onDelete: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
@@ -324,7 +327,7 @@ private fun SwipeToDeleteCartItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(settings.t("Delete", "Xóa"), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete item",
@@ -345,13 +348,14 @@ private fun EmptyCartState(
     errorMessage: String?,
     onRetry: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.padding(horizontal = 32.dp)
     ) {
         Text(
-            errorMessage ?: "Your cart is empty",
+            errorMessage ?: settings.t("Your cart is empty", "Giỏ hàng trống"),
             color = if (errorMessage == null) Color.Gray else Color(0xFFE53935),
             fontSize = 14.sp
         )
@@ -361,7 +365,7 @@ private fun EmptyCartState(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0057FF))
             ) {
-                Text("Retry", fontWeight = FontWeight.Bold)
+                Text(settings.t("Retry", "Thử lại"), fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -372,6 +376,7 @@ private fun CartErrorBanner(
     message: String,
     onRetry: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -387,7 +392,7 @@ private fun CartErrorBanner(
             modifier = Modifier.weight(1f)
         )
         TextButton(onClick = onRetry) {
-            Text("Retry", color = Color(0xFF0057FF), fontWeight = FontWeight.Bold)
+            Text(settings.t("Retry", "Thử lại"), color = Color(0xFF0057FF), fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -36,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import com.example.fashionapp.data.auth.AuthRepository
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,6 +47,7 @@ fun ResetPasswordScreen(
     onBack: () -> Unit,
     onPasswordResetSuccess: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var newPasswordVisible by remember { mutableStateOf(false) }
@@ -62,7 +64,7 @@ fun ResetPasswordScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Setup New Password",
+            text = settings.t("Setup New Password", "Thiết lập mật khẩu mới"),
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
             color = AuthTextDark
@@ -71,7 +73,7 @@ fun ResetPasswordScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Dat mat khau moi cho $email",
+            text = settings.t("Set new password for ", "Đặt mật khẩu mới cho ") + email,
             color = AuthTextSubtle,
             fontSize = 14.sp
         )
@@ -81,7 +83,7 @@ fun ResetPasswordScreen(
         OutlinedTextField(
             value = newPassword,
             onValueChange = { newPassword = it },
-            placeholder = { Text("New Password") },
+            placeholder = { Text(settings.t("New Password", "Mật khẩu mới")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true,
@@ -93,7 +95,7 @@ fun ResetPasswordScreen(
                 } else {
                     Icons.Filled.VisibilityOff
                 }
-                val description = if (newPasswordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu"
+                val description = if (newPasswordVisible) settings.t("Hide password", "Ẩn mật khẩu") else settings.t("Show password", "Hiện mật khẩu")
 
                 IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
                     Icon(imageVector = image, contentDescription = description)
@@ -106,7 +108,7 @@ fun ResetPasswordScreen(
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
-            placeholder = { Text("Repeat Password") },
+            placeholder = { Text(settings.t("Repeat Password", "Nhập lại mật khẩu")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true,
@@ -118,7 +120,7 @@ fun ResetPasswordScreen(
                 } else {
                     Icons.Filled.VisibilityOff
                 }
-                val description = if (confirmPasswordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu"
+                val description = if (confirmPasswordVisible) settings.t("Hide password", "Ẩn mật khẩu") else settings.t("Show password", "Hiện mật khẩu")
 
                 IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                     Icon(imageVector = image, contentDescription = description)
@@ -142,8 +144,8 @@ fun ResetPasswordScreen(
                 errorMessage = ""
 
                 when {
-                    newPassword.length < 6 -> errorMessage = "Mat khau moi toi thieu 6 ky tu"
-                    newPassword != confirmPassword -> errorMessage = "Mat khau nhap lai khong khop"
+                    newPassword.length < 6 -> errorMessage = settings.t("New password must be at least 6 characters", "Mật khẩu mới tối thiểu 6 ký tự")
+                    newPassword != confirmPassword -> errorMessage = settings.t("Passwords do not match", "Mật khẩu nhập lại không khớp")
                     else -> {
                         scope.launch {
                             isLoading = true
@@ -176,14 +178,14 @@ fun ResetPasswordScreen(
                     modifier = Modifier.height(18.dp)
                 )
             } else {
-                Text("Save")
+                Text(settings.t("Save", "Lưu"))
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "Cancel",
+            text = settings.t("Cancel", "Hủy"),
             color = AuthTextSubtle,
             modifier = Modifier.clickable { onBack() }
         )

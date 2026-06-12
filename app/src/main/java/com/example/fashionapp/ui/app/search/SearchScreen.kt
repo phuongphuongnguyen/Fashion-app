@@ -53,6 +53,7 @@ import com.example.fashionapp.data.search.SubCategory
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.User
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue  = Color(0xFF3669C9)
@@ -76,6 +77,7 @@ fun SearchScreen(
         factory = SearchViewModelFactory(initialQuery, initialCategoryId, initialSort, LocalContext.current)
     )
 ) {
+    val settings     = LocalAppSettings.current
     val state        by viewModel.uiState.collectAsState()
     val focusManager =  LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
@@ -104,7 +106,7 @@ fun SearchScreen(
                 focusManager.clearFocus()
             },
             onCameraClick  = {
-                Toast.makeText(context, "Image search is coming soon", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, settings.t("Image search is coming soon", "Tìm kiếm bằng hình ảnh sắp ra mắt"), Toast.LENGTH_SHORT).show()
             }
         )
 
@@ -204,6 +206,7 @@ private fun SearchTopBar(
     onSearch: () -> Unit,
     onCameraClick: () -> Unit,
 ) {
+    val settings = LocalAppSettings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -234,7 +237,7 @@ private fun SearchTopBar(
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(focusRequester),
-            placeholder = { Text("Search", fontSize = 14.sp) },
+            placeholder = { Text(settings.t("Search", "Tìm kiếm"), fontSize = 14.sp) },
             trailingIcon = {
                 if (textState.isNotEmpty()) {
                     IconButton(onClick = {
@@ -285,14 +288,15 @@ private fun ResultsHeader(
     subCategories: List<SubCategory>,
     resultCount: Int,
 ) {
+    val settings = LocalAppSettings.current
     val title = when {
-        query.isNotBlank() -> "Results for \"$query\""
-        sortMode == "popular" -> "Most Popular"
+        query.isNotBlank() -> settings.t("Results for \"$query\"", "Kết quả cho \"$query\"")
+        sortMode == "popular" -> settings.t("Most Popular", "Phổ biến nhất")
         selectedCategoryId != null -> {
-            val name = subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: "Category"
-            "Category: $name"
+            val name = subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: settings.t("Category", "Danh mục")
+            settings.t("Category: ", "Danh mục: ") + name
         }
-        else -> "All products"
+        else -> settings.t("All products", "Tất cả sản phẩm")
     }
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
@@ -302,7 +306,7 @@ private fun ResultsHeader(
             color      = TextDark
         )
         Text(
-            text     = "$resultCount products",
+            text     = settings.t("$resultCount products", "$resultCount sản phẩm"),
             fontSize = 12.sp,
             color    = TextGray,
         )
@@ -321,6 +325,7 @@ private fun SuggestionsContent(
     onRemoveItem: (String) -> Unit,
     onClearAll: () -> Unit,
 ) {
+    val settings = LocalAppSettings.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -336,13 +341,13 @@ private fun SuggestionsContent(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "Recent searches",
+                    settings.t("Recent searches", "Tìm kiếm gần đây"),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 15.sp,
                     color      = TextDark
                 )
                 Text(
-                    "Clear all",
+                    settings.t("Clear all", "Xóa tất cả"),
                     fontSize = 13.sp,
                     color    = PrimaryBlue,
                     modifier = Modifier
@@ -377,7 +382,7 @@ private fun SuggestionsContent(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    "Popular searches",
+                    settings.t("Popular searches", "Tìm kiếm phổ biến"),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 15.sp,
                     color      = TextDark
@@ -402,6 +407,7 @@ private fun HistoryRow(
     onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    val settings = LocalAppSettings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -427,7 +433,7 @@ private fun HistoryRow(
         IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
             Icon(
                 Icons.Default.Close,
-                contentDescription = "Xoá",
+                contentDescription = settings.t("Close", "Xóa"),
                 tint     = TextGray,
                 modifier = Modifier.size(14.dp)
             )
@@ -547,6 +553,7 @@ private fun SearchResults(
     onUserClick: (User) -> Unit,
     onProductClick: (Product) -> Unit,
 ) {
+    val settings = LocalAppSettings.current
     LazyVerticalGrid(
         columns               = GridCells.Fixed(2),
         contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
@@ -557,7 +564,7 @@ private fun SearchResults(
         // ── Người dùng ───────────────────────────────────────────────────
         if (users.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                SectionTitle("Người dùng", "${users.size} người dùng")
+                SectionTitle(settings.t("Users", "Người dùng"), settings.t("${users.size} users", "${users.size} người dùng"))
             }
             items(
                 users,
@@ -572,14 +579,14 @@ private fun SearchResults(
         if (products.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 val title = when {
-                    query.isNotBlank()         -> "Products"
-                    sortMode == "new"          -> "New Items"
-                    sortMode == "popular"      -> "Most Popular"
+                    query.isNotBlank()         -> settings.t("Products", "Sản phẩm")
+                    sortMode == "new"          -> settings.t("New Items", "Hàng mới")
+                    sortMode == "popular"      -> settings.t("Most Popular", "Phổ biến nhất")
                     selectedCategoryId != null ->
-                        subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: "Products"
-                    else                       -> "Products"
+                        subCategories.firstOrNull { it.id == selectedCategoryId }?.name ?: settings.t("Products", "Sản phẩm")
+                    else                       -> settings.t("Products", "Sản phẩm")
                 }
-                SectionTitle(title, "${products.size} products")
+                SectionTitle(title, settings.t("${products.size} products", "${products.size} sản phẩm"))
             }
             itemsIndexed(products, key = { _, p -> p.id }) { index, product ->
                 ProductGridCard(
@@ -611,6 +618,7 @@ private fun SectionTitle(title: String, subtitle: String) {
 
 @Composable
 private fun UserResultRow(user: User, onClick: () -> Unit) {
+    val settings = LocalAppSettings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -645,7 +653,7 @@ private fun UserResultRow(user: User, onClick: () -> Unit) {
                 overflow   = TextOverflow.Ellipsis
             )
             Text(
-                text     = "${user.followersCount} followers",
+                text     = settings.t("${user.followersCount} followers", "${user.followersCount} người theo dõi"),
                 fontSize = 12.sp,
                 color    = TextGray,
             )
@@ -663,6 +671,7 @@ private fun ProductGridCard(
     tallCard: Boolean,
     onClick: () -> Unit,
 ) {
+    val settings = LocalAppSettings.current
     val imageHeight = if (tallCard) 220.dp else 180.dp
 
     Column(
@@ -735,7 +744,7 @@ private fun ProductGridCard(
                 )
                 Spacer(Modifier.width(3.dp))
                 Text("${product.rating}", fontSize = 11.sp, color = TextGray)
-                Text(" • ${product.soldCount} sold", fontSize = 11.sp, color = TextGray)
+                Text(" • " + settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"), fontSize = 11.sp, color = TextGray)
             }
         }
     }
@@ -747,6 +756,7 @@ private fun ProductGridCard(
 
 @Composable
 private fun EmptyState(query: String) {
+    val settings = LocalAppSettings.current
     Column(
         modifier            = Modifier
             .fillMaxWidth()
@@ -755,10 +765,10 @@ private fun EmptyState(query: String) {
     ) {
         Spacer(Modifier.height(16.dp))
         if (query.isBlank()) {
-            Text("No products found", color = TextGray, fontSize = 15.sp)
+            Text(settings.t("No products found", "Không tìm thấy sản phẩm nào"), color = TextGray, fontSize = 15.sp)
         } else {
             Text(
-                "No results found for",
+                settings.t("No results found for", "Không tìm thấy kết quả cho"),
                 color    = TextGray,
                 fontSize = 14.sp
             )
@@ -770,7 +780,7 @@ private fun EmptyState(query: String) {
                 color      = TextDark
             )
             Spacer(Modifier.height(8.dp))
-            Text("Try another keyword", color = TextGray, fontSize = 13.sp)
+            Text(settings.t("Try another keyword", "Thử từ khóa khác"), color = TextGray, fontSize = 13.sp)
         }
     }
 }

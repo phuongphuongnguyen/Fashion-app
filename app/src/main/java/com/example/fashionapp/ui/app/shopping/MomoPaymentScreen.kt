@@ -28,6 +28,7 @@ import androidx.core.app.NotificationCompat
 import androidx.navigation.NavController
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.data.user.UserSession
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.google.firebase.auth.FirebaseAuth
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -60,6 +61,7 @@ fun MomoPaymentScreen(
     selectedCartItemIds: Set<String> = emptySet(),
     viewModel: ShopViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ){
+    val settings = LocalAppSettings.current
     val uiState by viewModel.uiState.collectAsState()
     val currentUser by UserSession.currentUser.collectAsState()
     val context = LocalContext.current
@@ -101,22 +103,22 @@ fun MomoPaymentScreen(
         if (uiState.isLoadingCart) return@LaunchedEffect
         when {
             checkoutItems.isEmpty() -> {
-                errorMsg = "Không có sản phẩm để thanh toán"
+                errorMsg = settings.t("No products to checkout", "Không có sản phẩm để thanh toán")
                 isLoading = false
                 return@LaunchedEffect
             }
             selectedItemsMissing -> {
-                errorMsg = "Một số sản phẩm đã chọn không còn trong giỏ hàng"
+                errorMsg = settings.t("Some selected products are no longer in the cart", "Một số sản phẩm đã chọn không còn trong giỏ hàng")
                 isLoading = false
                 return@LaunchedEffect
             }
             !hasShippingAddress -> {
-                errorMsg = "Vui lòng cập nhật địa chỉ giao hàng trước khi thanh toán"
+                errorMsg = settings.t("Please update your shipping address before paying", "Vui lòng cập nhật địa chỉ giao hàng trước khi thanh toán")
                 isLoading = false
                 return@LaunchedEffect
             }
             amount <= 0L -> {
-                errorMsg = "Số tiền thanh toán không hợp lệ"
+                errorMsg = settings.t("Invalid payment amount", "Số tiền thanh toán không hợp lệ")
                 isLoading = false
                 return@LaunchedEffect
             }
@@ -156,7 +158,7 @@ fun MomoPaymentScreen(
                     ) { orderId ->
                         if (orderId == null) return@placeOrderFromCart
 
-                        showPaymentNotification(context, amount)
+                        showPaymentNotification(context, amount, settings)
 
                         val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                         db.collection("users")
@@ -164,15 +166,14 @@ fun MomoPaymentScreen(
                             .collection("user_notifications")
                             .add(
                                 hashMapOf(
-                                    "id" to "", // will be set or can be updated, but for simple document read, it's fine. Wait, we can generate a document ID.
+                                    "id" to "",
                                     "userId" to uid,
-                                    "message" to "Đơn hàng ₫${formatAmount(amount)} đã được thanh toán thành công!",
+                                    "message" to settings.t("Order ₫${formatAmount(amount)} was paid successfully!", "Đơn hàng ₫${formatAmount(amount)} đã được thanh toán thành công!"),
                                     "type" to "PAYMENT",
                                     "isRead" to false,
                                     "createdAt" to com.google.firebase.Timestamp.now()
                                 )
                             ).addOnSuccessListener { docRef ->
-                                // Optional: Update the 'id' field inside the document to match the document's auto-generated ID.
                                 docRef.update("id", docRef.id)
                             }
 
@@ -199,10 +200,10 @@ fun MomoPaymentScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Thanh toán MoMo", fontWeight = FontWeight.SemiBold) },
+                title = { Text(settings.t("MoMo Payment", "Thanh toán MoMo"), fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = settings.t("Back", "Quay lại"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -219,7 +220,7 @@ fun MomoPaymentScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = Color(0xFFAE2070))
                         Spacer(Modifier.height(12.dp))
-                        Text("Đang tạo mã QR...", color = Color.Gray)
+                        Text(settings.t("Generating QR Code...", "Đang tạo mã QR..."), color = Color.Gray)
                     }
                 }
 
@@ -228,10 +229,10 @@ fun MomoPaymentScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(24.dp)
                     ) {
-                        Text("❌ Lỗi: $errorMsg", color = Color.Red)
+                        Text(settings.t("❌ Error: ", "❌ Lỗi: ") + errorMsg, color = Color.Red)
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { navController.popBackStack() }) {
-                            Text("Quay lại")
+                            Text(settings.t("Back", "Quay lại"))
                         }
                     }
                 }
@@ -244,7 +245,7 @@ fun MomoPaymentScreen(
                         Text("🎉", fontSize = 64.sp)
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "Thanh toán thành công!",
+                            settings.t("Payment successful!", "Thanh toán thành công!"),
                             fontSize = 22.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFFAE2070)
@@ -268,7 +269,7 @@ fun MomoPaymentScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth().height(52.dp)
                         ) {
-                            Text("Xem lịch sử đơn hàng", fontWeight = FontWeight.Bold)
+                            Text(settings.t("View order history", "Xem lịch sử đơn hàng"), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -295,7 +296,7 @@ fun MomoPaymentScreen(
                                     color = Color(0xFFAE2070)
                                 )
                                 Spacer(Modifier.height(4.dp))
-                                Text("Quét mã để thanh toán", fontSize = 13.sp, color = Color.Gray)
+                                Text(settings.t("Scan code to pay", "Quét mã để thanh toán"), fontSize = 13.sp, color = Color.Gray)
                                 Spacer(Modifier.height(20.dp))
 
                                 Box(
@@ -321,7 +322,7 @@ fun MomoPaymentScreen(
                                 HorizontalDivider(color = Color(0xFFEEEEEE))
                                 Spacer(Modifier.height(16.dp))
 
-                                Text("Số tiền thanh toán", fontSize = 13.sp, color = Color.Gray)
+                                Text(settings.t("Amount to pay", "Số tiền thanh toán"), fontSize = 13.sp, color = Color.Gray)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     "₫${formatAmount(amount)}",
@@ -345,11 +346,11 @@ fun MomoPaymentScreen(
                                     color = Color(0xFFAE2070)
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text("Đang chờ thanh toán...", fontSize = 13.sp, color = Color.Gray)
+                                Text(settings.t("Waiting for payment...", "Đang chờ thanh toán..."), fontSize = 13.sp, color = Color.Gray)
                             }
                         } else {
                             Text(
-                                "Mở app MoMo Test → Quét QR để thanh toán",
+                                settings.t("Open MoMo Test app → Scan QR to pay", "Mở app MoMo Test → Quét QR để thanh toán"),
                                 fontSize = 13.sp,
                                 color = Color.Gray
                             )
@@ -454,7 +455,7 @@ private fun checkMomoStatus(orderId: String): Int {
 }
 
 // ── Local Notification ────────────────────────────────────────────────────────
-private fun showPaymentNotification(context: Context, amount: Long) {
+private fun showPaymentNotification(context: Context, amount: Long, settings: com.example.fashionapp.ui.app.settings.AppSettingsViewModel) {
     val uid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
     val prefix = if (uid.isBlank()) "" else "${uid}_"
 
@@ -468,13 +469,13 @@ private fun showPaymentNotification(context: Context, amount: Long) {
     val manager   = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     manager.createNotificationChannel(
-        NotificationChannel(channelId, "Thanh toán", NotificationManager.IMPORTANCE_HIGH)
+        NotificationChannel(channelId, settings.t("Payment", "Thanh toán"), NotificationManager.IMPORTANCE_HIGH)
     )
 
     val notification = NotificationCompat.Builder(context, channelId)
         .setSmallIcon(android.R.drawable.ic_dialog_info)
-        .setContentTitle("Thanh toán thành công 🎉")
-        .setContentText("Đơn hàng ₫${formatAmount(amount)} đã được thanh toán!")
+        .setContentTitle(settings.t("Payment successful 🎉", "Thanh toán thành công 🎉"))
+        .setContentText(settings.t("Order ₫${formatAmount(amount)} has been paid!", "Đơn hàng ₫${formatAmount(amount)} đã được thanh toán!"))
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setAutoCancel(true)
         .build()

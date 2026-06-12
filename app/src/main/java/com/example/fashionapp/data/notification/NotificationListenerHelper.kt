@@ -86,7 +86,7 @@ object NotificationListenerHelper {
         if (!isMasterEnabled || !isSystemEnabled) return
 
         val isAllowed = when (notification.type) {
-            "PAYMENT", "SHIPPING" -> prefs.getBoolean("${prefix}order_updates", prefs.getBoolean("order_updates", true))
+            "PAYMENT", "SHIPPING", "CANCELLED", "REFUND" -> prefs.getBoolean("${prefix}order_updates", prefs.getBoolean("order_updates", true))
             "LIKE", "COMMENT", "SAVE" -> prefs.getBoolean("${prefix}social_interactions", prefs.getBoolean("social_interactions", true))
             else -> true
         }
@@ -105,6 +105,8 @@ object NotificationListenerHelper {
         val title = when (notification.type) {
             "PAYMENT" -> "Thanh toán thành công 🎉"
             "SHIPPING" -> "Theo dõi đơn hàng 🚚"
+            "CANCELLED" -> "Hủy đơn hàng thành công 💸"
+            "REFUND" -> "Hoàn tiền thành công 💸"
             "LIKE" -> "Yêu thích bài viết ❤️"
             "COMMENT" -> "Bình luận bài viết 💬"
             "SAVE" -> "Lưu bài viết 💾"

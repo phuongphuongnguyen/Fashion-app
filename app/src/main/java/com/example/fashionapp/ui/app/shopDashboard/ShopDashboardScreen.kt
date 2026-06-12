@@ -28,7 +28,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.data.shop.ShopProductStat
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
-
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 private val PrimaryBlue = Color(0xFF3669C9)
 private val PrimaryBlueDark = Color(0xFF274B9A)
@@ -44,12 +44,13 @@ fun ShopDashboardScreen(
     navController: NavController,
     viewModel: ShopDashboardViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val state by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Quản lý shop"
+                title = settings.t("Shop Management", "Quản lý shop")
             )
         },
         containerColor = Color.White,
@@ -76,7 +77,7 @@ fun ShopDashboardScreen(
             item { MetricCardsRow(state) }
 
             item {
-                SectionTitle("Doanh thu 7 ngày gần nhất")
+                SectionTitle(settings.t("Revenue (Last 7 Days)", "Doanh thu 7 ngày gần nhất"))
                 Spacer(Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(16.dp),
@@ -89,7 +90,7 @@ fun ShopDashboardScreen(
                 }
             }
 
-            item { SectionTitle("Sản phẩm của shop (${state.products.size})") }
+            item { SectionTitle(settings.t("Shop Products", "Sản phẩm của shop") + " (${state.products.size})") }
 
             if (state.products.isEmpty()) {
                 item {
@@ -99,7 +100,7 @@ fun ShopDashboardScreen(
                             .padding(vertical = 32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Shop chưa có sản phẩm nào", color = TextGray, fontSize = 14.sp)
+                        Text(settings.t("The shop has no products yet", "Shop chưa có sản phẩm nào"), color = TextGray, fontSize = 14.sp)
                     }
                 }
             } else {
@@ -119,6 +120,7 @@ fun ShopDashboardScreen(
 // tổng doanh thu
 @Composable
 private fun RevenueHeroCard(state: ShopDashboardUiState) {
+    val settings = LocalAppSettings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -126,7 +128,7 @@ private fun RevenueHeroCard(state: ShopDashboardUiState) {
             .background(Brush.linearGradient(listOf(PrimaryBlue, PrimaryBlueDark)))
             .padding(20.dp)
     ) {
-        Text("Tổng doanh thu", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+        Text(settings.t("Total Revenue", "Tổng doanh thu"), color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
         Spacer(Modifier.height(6.dp))
         Text(
             "₫${formatMoney(state.stats.revenue)}",
@@ -136,11 +138,11 @@ private fun RevenueHeroCard(state: ShopDashboardUiState) {
         )
         Spacer(Modifier.height(18.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
-            HeroStat("Đã bán", state.stats.soldCount.toString())
+            HeroStat(settings.t("Sold", "Đã bán"), state.stats.soldCount.toString())
             HeroDivider()
-            HeroStat("Đơn hàng", state.stats.orderCount.toString())
+            HeroStat(settings.t("Orders", "Đơn hàng"), state.stats.orderCount.toString())
             HeroDivider()
-            HeroStat("Sản phẩm", state.stats.productCount.toString())
+            HeroStat(settings.t("Products", "Sản phẩm"), state.stats.productCount.toString())
         }
     }
 }
@@ -170,6 +172,7 @@ private fun HeroDivider() {
 // đánh giá, tỉ lệ phản hồi
 @Composable
 private fun MetricCardsRow(state: ShopDashboardUiState) {
+    val settings = LocalAppSettings.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -181,13 +184,13 @@ private fun MetricCardsRow(state: ShopDashboardUiState) {
                 Text("%.1f".format(state.stats.rating), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = TextDark)
             }
             Spacer(Modifier.height(4.dp))
-            Text("${state.stats.reviewCount} đánh giá", fontSize = 12.sp, color = TextGray)
+            Text(settings.t("${state.stats.reviewCount} reviews", "${state.stats.reviewCount} đánh giá"), fontSize = 12.sp, color = TextGray)
         }
         MetricCard(modifier = Modifier.weight(1f)) {
             Text("${state.stats.responseRate}%", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = PrimaryBlue)
             Spacer(Modifier.height(4.dp))
             Text(
-                state.stats.responseTime.ifBlank { "Tỉ lệ phản hồi" },
+                state.stats.responseTime.ifBlank { settings.t("Response Rate", "Tỉ lệ phản hồi") },
                 fontSize = 12.sp,
                 color = TextGray,
                 maxLines = 1,
@@ -216,6 +219,7 @@ private fun SectionTitle(text: String) {
 // products
 @Composable
 private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
+    val settings = LocalAppSettings.current
     val product = stat.product
     Row(
         modifier = Modifier
@@ -250,7 +254,7 @@ private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
             Text("₫${formatMoney(product.price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextDark)
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Đã bán ${product.soldCount}", fontSize = 11.sp, color = TextGray)
+                Text(settings.t("Sold ${product.soldCount}", "Đã bán ${product.soldCount}"), fontSize = 11.sp, color = TextGray)
                 Text("   •   ", fontSize = 11.sp, color = TextGray)
                 Icon(Icons.Default.Star, null, tint = StarYellow, modifier = Modifier.size(11.dp))
                 Spacer(Modifier.width(2.dp))
@@ -258,7 +262,7 @@ private fun ShopProductRow(stat: ShopProductStat, onClick: () -> Unit) {
             }
             Spacer(Modifier.height(2.dp))
             Text(
-                "Doanh thu: ₫${formatMoney(stat.revenue)}",
+                settings.t("Revenue: ", "Doanh thu: ") + "₫${formatMoney(stat.revenue)}",
                 fontSize = 11.sp,
                 color = colorRevenue,
                 fontWeight = FontWeight.Medium

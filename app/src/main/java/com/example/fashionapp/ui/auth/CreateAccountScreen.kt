@@ -35,6 +35,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.data.auth.AuthRepository
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
 @Composable
@@ -44,6 +45,7 @@ fun CreateAccountScreen(
     onLoginClick: () -> Unit,
     onRegisterSuccess: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -60,7 +62,7 @@ fun CreateAccountScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Create\nAccount",
+            text = settings.t("Create\nAccount", "Tạo\nTài khoản"),
             fontSize = 36.sp,
             lineHeight = 40.sp,
             fontWeight = FontWeight.Bold,
@@ -72,7 +74,7 @@ fun CreateAccountScreen(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            placeholder = { Text("Email") },
+            placeholder = { Text(settings.t("Email", "Email")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true
@@ -83,7 +85,7 @@ fun CreateAccountScreen(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = { Text("Password") },
+            placeholder = { Text(settings.t("Password", "Mật khẩu")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true,
@@ -95,7 +97,7 @@ fun CreateAccountScreen(
                 } else {
                     Icons.Filled.VisibilityOff
                 }
-                val description = if (passwordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu"
+                val description = if (passwordVisible) settings.t("Hide password", "Ẩn mật khẩu") else settings.t("Show password", "Hiện mật khẩu")
 
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(imageVector = image, contentDescription = description)
@@ -108,7 +110,7 @@ fun CreateAccountScreen(
         OutlinedTextField(
             value = phone,
             onValueChange = { phone = it },
-            placeholder = { Text("Your number") },
+            placeholder = { Text(settings.t("Phone number", "Số điện thoại")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true
@@ -129,7 +131,7 @@ fun CreateAccountScreen(
             onClick = {
                 errorMessage = ""
                 if (email.isBlank() || password.length < 6 || phone.isBlank()) {
-                    errorMessage = "Nhap day du thong tin, mat khau toi thieu 6 ky tu"
+                    errorMessage = settings.t("Please fill in all details, password must be at least 6 characters", "Vui lòng nhập đầy đủ thông tin, mật khẩu tối thiểu 6 ký tự")
                     return@Button
                 }
                 scope.launch {
@@ -160,14 +162,14 @@ fun CreateAccountScreen(
                     modifier = Modifier.height(18.dp)
                 )
             } else {
-                Text("Done")
+                Text(settings.t("Done", "Hoàn tất"))
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "Already have account? Login",
+            text = settings.t("Already have an account? Log in", "Đã có tài khoản? Đăng nhập"),
             color = AuthPrimaryBlue,
             modifier = Modifier.clickable { onLoginClick() }
         )
@@ -175,7 +177,7 @@ fun CreateAccountScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Cancel",
+            text = settings.t("Cancel", "Hủy"),
             color = AuthTextSubtle,
             modifier = Modifier.clickable { onBack() }
         )

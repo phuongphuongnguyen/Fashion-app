@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.example.fashionapp.data.auth.AuthRepository
 import com.example.fashionapp.data.user.UserRepository
 import com.example.fashionapp.data.user.UserSession
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
 @Composable
@@ -47,6 +48,7 @@ fun LoginScreen(
     onForgotPasswordClick: () -> Unit,
     onLoginSuccess: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     val userRepository = remember { UserRepository() }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -63,7 +65,7 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Login",
+            text = settings.t("Login", "Đăng nhập"),
             fontSize = 38.sp,
             fontWeight = FontWeight.Bold,
             color = AuthTextDark
@@ -72,7 +74,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Good to see you back",
+            text = settings.t("Good to see you back", "Rất vui được gặp lại bạn"),
             color = AuthTextSubtle,
             fontSize = 14.sp
         )
@@ -82,7 +84,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            placeholder = { Text("Email") },
+            placeholder = { Text(settings.t("Email", "Email")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true
@@ -93,7 +95,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = { Text("Password") },
+            placeholder = { Text(settings.t("Password", "Mật khẩu")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true,
@@ -105,7 +107,7 @@ fun LoginScreen(
                 } else {
                     Icons.Filled.VisibilityOff
                 }
-                val description = if (passwordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu"
+                val description = if (passwordVisible) settings.t("Hide password", "Ẩn mật khẩu") else settings.t("Show password", "Hiện mật khẩu")
 
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(imageVector = image, contentDescription = description)
@@ -136,7 +138,7 @@ fun LoginScreen(
             onClick = {
                 errorMessage = ""
                 if (email.isBlank() || password.isBlank()) {
-                    errorMessage = "Vui long nhap email va mat khau"
+                    errorMessage = settings.t("Please enter email and password", "Vui lòng nhập email và mật khẩu")
                     return@Button
                 }
                 scope.launch {
@@ -173,14 +175,14 @@ fun LoginScreen(
                     modifier = Modifier.height(18.dp)
                 )
             } else {
-                Text("Next")
+                Text(settings.t("Next", "Tiếp tục"))
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "Forgot password?",
+            text = settings.t("Forgot password?", "Quên mật khẩu?"),
             color = AuthPrimaryBlue,
             modifier = Modifier.clickable { onForgotPasswordClick() }
         )
@@ -188,7 +190,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Create account",
+            text = settings.t("Create account", "Tạo tài khoản"),
             color = AuthPrimaryBlue,
             modifier = Modifier.clickable { onCreateAccountClick() }
         )
@@ -196,7 +198,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Cancel",
+            text = settings.t("Cancel", "Hủy"),
             color = AuthTextSubtle,
             modifier = Modifier.clickable { onBack() }
         )

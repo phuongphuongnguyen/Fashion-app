@@ -36,6 +36,7 @@ import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.components.FeedPostItem
 import com.example.fashionapp.ui.components.ProfileTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +50,7 @@ fun ProfileScreen(
     homeViewModel: HomeViewModel = viewModel(),
     savedViewModel: SavedViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val uiState by profileViewModel.uiState.collectAsState()
     val isOwnProfile = uiState.isOwnProfile
     val homeState by homeViewModel.uiState.collectAsState()
@@ -76,7 +78,7 @@ fun ProfileScreen(
                 FashionTopBar(
                     title = uiState.user?.username?.takeIf { it.isNotBlank() }
                         ?: uiState.user?.name?.takeIf { it.isNotBlank() }
-                        ?: "Profile",
+                        ?: settings.t("Profile", "Trang cá nhân"),
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -106,7 +108,7 @@ fun ProfileScreen(
                         .padding(bottom = 32.dp)
                 ) {
                     Text(
-                        text = "Edit Bio",
+                        text = settings.t("Edit Bio", "Sửa tiểu sử"),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black,
@@ -118,7 +120,7 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
                         maxLines = 5,
-                        placeholder = { Text("Tell people about yourself", color = Color.Gray) },
+                        placeholder = { Text(settings.t("Tell people about yourself", "Giới thiệu bản thân"), color = Color.Gray) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color.Black,
                             unfocusedBorderColor = Color(0xFFE0E0E0),
@@ -147,7 +149,7 @@ fun ProfileScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                     ) {
-                        Text("Save Changes", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Text(settings.t("Save Changes", "Lưu thay đổi"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                     }
                 }
             }
@@ -227,7 +229,8 @@ private fun ProfileHeader(
     onEditBio: () -> Unit,
     onAddPost: () -> Unit
 ) {
-    val name = user?.name?.takeIf { it.isNotBlank() } ?: "User"
+    val settings = LocalAppSettings.current
+    val name = user?.name?.takeIf { it.isNotBlank() } ?: settings.t("User", "Người dùng")
     val avatar = user?.avatarUrl.orEmpty()
     val bio = user?.bio.orEmpty()
     val context = LocalContext.current
@@ -284,7 +287,7 @@ private fun ProfileHeader(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                 modifier = Modifier.height(30.dp)
                             ) {
-                                Text("Following", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text(settings.t("Following", "Đang theo dõi"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             }
                         } else {
                             Button(
@@ -295,7 +298,7 @@ private fun ProfileHeader(
                                 modifier = Modifier.height(30.dp)
                             ) {
                                 Text(
-                                    "Follow",
+                                    settings.t("Follow", "Theo dõi"),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White
@@ -316,7 +319,7 @@ private fun ProfileHeader(
                 }
                 if (isOwnProfile) {
                     Text(
-                        text = if (bio.isBlank()) "Add bio" else "Edit bio",
+                        text = if (bio.isBlank()) settings.t("Add bio", "Thêm tiểu sử") else settings.t("Edit bio", "Sửa tiểu sử"),
                         color = Color(0xFF1769FF),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -330,13 +333,13 @@ private fun ProfileHeader(
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
                     Text(postsCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(" Posts", fontSize = 12.sp, color = Color.Gray)
+                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = Color.Gray)
                     Spacer(Modifier.width(12.dp))
                     Text(followers.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(" Followers", fontSize = 12.sp, color = Color.Gray)
+                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = Color.Gray)
                     Spacer(Modifier.width(12.dp))
                     Text(following.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(" Following", fontSize = 12.sp, color = Color.Gray)
+                    Text(settings.t(" Following", " Đang theo dõi"), fontSize = 12.sp, color = Color.Gray)
                 }
             }
         }
@@ -351,7 +354,7 @@ private fun ProfileHeader(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Posts",
+                    text = settings.t("Posts", "Bài viết"),
                     color = Color.Black,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
@@ -367,7 +370,7 @@ private fun ProfileHeader(
             if (isOwnProfile) {
                 Icon(
                     imageVector = Icons.Outlined.AddCircleOutline,
-                    contentDescription = "Add Post",
+                    contentDescription = settings.t("Add Post", "Đăng bài"),
                     tint = Color.Black,
                     modifier = Modifier
                         .size(24.dp)

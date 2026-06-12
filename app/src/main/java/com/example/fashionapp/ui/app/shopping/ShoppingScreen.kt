@@ -31,6 +31,7 @@ import com.example.fashionapp.model.Category
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.ShoppingTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue  = Color(0xFF3669C9)
@@ -59,6 +60,7 @@ fun ShoppingScreen(
     navController: NavController,
     viewModel: ShoppingViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val state by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
@@ -96,7 +98,7 @@ fun ShoppingScreen(
             item {
                 val cats = state.categories.ifEmpty { fallbackCategories }
                 SectionHeader(
-                    title = "Categories",
+                    title = settings.t("Categories", "Danh mục"),
                     onSeeAll = { navController.navigate(Screen.Search.createRoute()) }
                 )
                 Spacer(Modifier.height(12.dp))
@@ -111,7 +113,7 @@ fun ShoppingScreen(
             // ── New Items ─────────────────────────────────────────────────
             item {
                 SectionHeader(
-                    title = "New Items",
+                    title = settings.t("New Items", "Sản phẩm mới"),
                     onSeeAll = { navController.navigate(Screen.Search.createRoute(sort = "new")) }
                 )
                 Spacer(Modifier.height(12.dp))
@@ -126,7 +128,7 @@ fun ShoppingScreen(
             // ── Most Popular ──────────────────────────────────────────────
             item {
                 SectionHeader(
-                    title = "Most Popular",
+                    title = settings.t("Most Popular", "Phổ biến nhất"),
                     onSeeAll = { navController.navigate(Screen.Search.createRoute(sort = "popular")) }
                 )
                 Spacer(Modifier.height(12.dp))
@@ -146,7 +148,7 @@ fun ShoppingScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text       = "Just For You",
+                        text       = settings.t("Just For You", "Dành cho bạn"),
                         fontWeight = FontWeight.Bold,
                         fontSize   = 18.sp,
                         color      = TextDark
@@ -172,6 +174,7 @@ fun ShoppingScreen(
 
 @Composable
 private fun SectionHeader(title: String, onSeeAll: () -> Unit) {
+    val settings = LocalAppSettings.current
     Row(
         modifier              = Modifier
             .fillMaxWidth()
@@ -185,7 +188,7 @@ private fun SectionHeader(title: String, onSeeAll: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             modifier          = Modifier.clickable { onSeeAll() }
         ) {
-            Text("See All", color = PrimaryBlue, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(settings.t("See All", "Xem tất cả"), color = PrimaryBlue, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.width(6.dp))
             Box(
                 modifier            = Modifier
@@ -346,6 +349,7 @@ private fun ProductCardVertical(
     showBadge: Boolean,
     onClick: () -> Unit = {}
 ) {
+    val settings = LocalAppSettings.current
     Surface(
         modifier = Modifier
             .width(145.dp)
@@ -382,7 +386,7 @@ private fun ProductCardVertical(
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Text(
-                            text     = "Đã bán ${product.soldCount}",
+                            text     = settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"),
                             color    = Color.White,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold

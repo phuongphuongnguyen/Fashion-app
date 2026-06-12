@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.R
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GENERIC TOP BAR (dùng chung cho các màn hình có back + actions tùy chỉnh)
@@ -109,6 +110,7 @@ fun ShoppingTopBar(
     onCameraClick: () -> Unit = {},
     onCartClick: () -> Unit = {}
 ) {
+    val settings = LocalAppSettings.current
     TopAppBar(
         title = {
             Surface(
@@ -126,7 +128,7 @@ fun ShoppingTopBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Search",
+                        text = settings.t("Search", "Tìm kiếm"),
                         color = Color.Gray,
                         fontSize = 15.sp,
                         modifier = Modifier.weight(1f)
@@ -168,8 +170,9 @@ fun ShoppingTopBar(
 fun SavedTopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
+    val settings = LocalAppSettings.current
     TopAppBar(
-        title = { Text("Saved Items", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+        title = { Text(settings.t("Saved Items", "Mục đã lưu"), fontWeight = FontWeight.Bold, fontSize = 20.sp) },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
         windowInsets = TopAppBarDefaults.windowInsets,
         scrollBehavior = scrollBehavior
@@ -186,8 +189,9 @@ fun ProfileTopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onSettingsClick: () -> Unit = {}
 ) {
+    val settings = LocalAppSettings.current
     TopAppBar(
-        title = { Text("Profile", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+        title = { Text(settings.t("Profile", "Trang cá nhân"), fontWeight = FontWeight.Bold, fontSize = 20.sp) },
         actions = {
             Row(
                 modifier = Modifier.padding(end = 8.dp),

@@ -52,6 +52,7 @@ import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue   = Color(0xFF3669C9)
 private val StarYellow    = Color(0xFFFFC107)
@@ -78,11 +79,12 @@ fun ProductDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val settings = LocalAppSettings.current
 
     LaunchedEffect(state.isAddedToCart, state.cartError) {
         when {
             state.isAddedToCart -> {
-                android.widget.Toast.makeText(context, "Added to cart", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, settings.t("Added to cart", "Đã thêm vào giỏ hàng"), android.widget.Toast.LENGTH_SHORT).show()
                 viewModel.consumeCartResult()
                 navController.navigate(Screen.Cart.route) {
                     launchSingleTop = true
@@ -114,7 +116,7 @@ fun ProductDetailScreen(
     val product = state.product
     if (product == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(state.error ?: "Có lỗi xảy ra", color = TextGray)
+            Text(state.error ?: settings.t("An error occurred", "Có lỗi xảy ra"), color = TextGray)
         }
         return
     }
@@ -236,6 +238,7 @@ fun ProductReviewsScreen(
     productId: String,
     navController: NavController
 ) {
+    val settings = LocalAppSettings.current
     val reviews by remember(productId) {
         ShopRepository.getReviewsForProductFlow(productId)
     }.collectAsState(initial = emptyList())
@@ -243,10 +246,10 @@ fun ProductReviewsScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Đánh giá sản phẩm", fontWeight = FontWeight.Bold) },
+                title = { Text(settings.t("Product Reviews", "Đánh giá sản phẩm"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = settings.t("Back", "Quay lại"))
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
@@ -259,7 +262,7 @@ fun ProductReviewsScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Chưa có đánh giá", color = TextGray)
+                Text(settings.t("No reviews yet", "Chưa có đánh giá"), color = TextGray)
             }
         } else {
             LazyColumn(
@@ -373,6 +376,7 @@ private fun ImageSection(
 
 @Composable
 private fun PriceSection(product: Product) {
+    val settings = LocalAppSettings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -440,7 +444,7 @@ private fun PriceSection(product: Product) {
                 Text(" (${product.reviewCount})", fontSize = 12.sp, color = TextGray)
             }
             Text("•", color = TextGray)
-            Text("Đã bán ${product.soldCount}", fontSize = 12.sp, color = TextGray)
+            Text(settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"), fontSize = 12.sp, color = TextGray)
         }
     }
 }
@@ -455,6 +459,7 @@ private fun VariationsSection(
     selectedVariant: ProductVariant?,
     onSelect: (ProductVariant) -> Unit,
 ) {
+    val settings = LocalAppSettings.current
     // Nhóm variants theo màu để hiển thị thumbnail màu
     val sizes  = variants.map { it.size }.distinct()
     val colors = variants.map { it.color }.distinct()
@@ -467,7 +472,7 @@ private fun VariationsSection(
     ) {
         // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Variations", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(settings.t("Variations", "Phân loại"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(Modifier.width(12.dp))
             // Hiển thị màu + size đang chọn
             selectedVariant?.let { v ->
@@ -552,13 +557,14 @@ private fun VariantChip(
 
 @Composable
 private fun SpecificationsSection(specs: Map<String, String>) {
+    val settings = LocalAppSettings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Text("Specifications", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(settings.t("Specifications", "Thông số kỹ thuật"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(12.dp))
 
         specs.forEach { (key, value) ->
@@ -592,28 +598,29 @@ private fun SpecificationsSection(specs: Map<String, String>) {
 
 @Composable
 private fun DeliverySection(freeShipping: Boolean) {
+    val settings = LocalAppSettings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Text("Delivery", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(settings.t("Delivery", "Vận chuyển"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(12.dp))
 
         // Standard
         DeliveryRow(
-            label    = "Standard",
-            duration = "5-7 ngày",
-            price    = if (freeShipping) "Miễn phí" else "₫30.000",
+            label    = settings.t("Standard", "Tiêu chuẩn"),
+            duration = settings.t("5-7 days", "5-7 ngày"),
+            price    = if (freeShipping) settings.t("Free", "Miễn phí") else "₫30.000",
             isFree   = freeShipping,
             color    = Color(0xFF3669C9)
         )
         Spacer(Modifier.height(10.dp))
         // Express
         DeliveryRow(
-            label    = "Express",
-            duration = "1-2 ngày",
+            label    = settings.t("Express", "Hỏa tốc"),
+            duration = settings.t("1-2 days", "1-2 ngày"),
             price    = "₫80.000",
             isFree   = false,
             color    = Color(0xFFFF6B00)
@@ -664,13 +671,14 @@ private fun ProductReviewSection(
     reviews: List<ProductReview>,
     navController: NavController
 ) {
+    val settings = LocalAppSettings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Text("Đánh giá sản phẩm", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(settings.t("Product Reviews", "Đánh giá sản phẩm"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(12.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -683,7 +691,7 @@ private fun ProductReviewSection(
 
         val previewReviews = reviews.take(2)
         if (previewReviews.isEmpty()) {
-            Text("Chưa có đánh giá", color = TextGray, fontSize = 13.sp)
+            Text(settings.t("No reviews yet", "Chưa có đánh giá"), color = TextGray, fontSize = 13.sp)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 previewReviews.forEach { review ->
@@ -701,7 +709,7 @@ private fun ProductReviewSection(
             colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue),
             border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue)
         ) {
-            Text("Xem tất cả ${product.reviewCount} đánh giá", fontWeight = FontWeight.Medium)
+            Text(settings.t("See all ${product.reviewCount} reviews", "Xem tất cả ${product.reviewCount} đánh giá"), fontWeight = FontWeight.Medium)
         }
     }
     HorizontalDivider(color = DividerColor)
@@ -709,7 +717,8 @@ private fun ProductReviewSection(
 
 @Composable
 private fun RealReviewItem(review: ProductReview) {
-    val name = review.userName.ifBlank { "Khách hàng" }
+    val settings = LocalAppSettings.current
+    val name = review.userName.ifBlank { settings.t("Customer", "Khách hàng") }
     Row(verticalAlignment = Alignment.Top) {
         if (review.userAvatarUrl.isNotBlank()) {
             AsyncImage(
@@ -751,7 +760,7 @@ private fun RealReviewItem(review: ProductReview) {
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                text = review.comment.ifBlank { "Không có bình luận" },
+                text = review.comment.ifBlank { settings.t("No comment", "Không có bình luận") },
                 fontSize = 13.sp,
                 color = TextGray,
                 maxLines = 3,
@@ -813,6 +822,7 @@ private fun StarRow(rating: Float) {
 
 @Composable
 private fun MostPopularSection(products: List<Product>, navController: NavController) {
+    val settings = LocalAppSettings.current
     Column {
         // Header
         Row(
@@ -822,9 +832,9 @@ private fun MostPopularSection(products: List<Product>, navController: NavContro
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            Text("Most Popular", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(settings.t("Most Popular", "Phổ biến nhất"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("See All", color = PrimaryBlue, fontSize = 13.sp)
+                Text(settings.t("See All", "Xem tất cả"), color = PrimaryBlue, fontSize = 13.sp)
                 Spacer(Modifier.width(4.dp))
                 Box(
                     modifier         = Modifier.size(24.dp).clip(CircleShape).background(PrimaryBlue),
@@ -898,7 +908,8 @@ private fun PopularProductCard(product: Product, onClick: () -> Unit) {
                     .padding(horizontal = 5.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Đã bán ${product.soldCount}", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                val settings = LocalAppSettings.current
+                Text(settings.t("${product.soldCount} sold", "Đã bán ${product.soldCount}"), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.height(5.dp))
@@ -941,6 +952,7 @@ private fun BottomActionBar(
     onBuyNow: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val settings = LocalAppSettings.current
     Surface(
         modifier      = modifier.fillMaxWidth(),
         color         = Color.White,
@@ -962,7 +974,7 @@ private fun BottomActionBar(
                 border   = androidx.compose.foundation.BorderStroke(1.5.dp, PrimaryBlue),
                 enabled  = !isLoading
             ) {
-                Text(if (isLoading) "Adding..." else "Add to cart", fontWeight = FontWeight.SemiBold)
+                Text(if (isLoading) settings.t("Adding...", "Đang thêm...") else settings.t("Add to cart", "Thêm vào giỏ"), fontWeight = FontWeight.SemiBold)
             }
 
             // Buy now
@@ -973,7 +985,7 @@ private fun BottomActionBar(
                 colors   = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 enabled  = !isLoading
             ) {
-                Text(if (isLoading) "Please wait" else "Buy now", fontWeight = FontWeight.SemiBold)
+                Text(if (isLoading) settings.t("Please wait", "Vui lòng đợi...") else settings.t("Buy now", "Mua ngay"), fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -1025,7 +1037,8 @@ private fun ShopSection(
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Text("Shop", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        val settings = LocalAppSettings.current
+        Text(settings.t("Shop", "Cửa hàng"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(12.dp))
 
         Row(
@@ -1093,7 +1106,7 @@ private fun ShopSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text     = "${formatFollowerCount(followerCount)} followers",
+                            text     = settings.t("${formatFollowerCount(followerCount)} followers", "${formatFollowerCount(followerCount)} người theo dõi"),
                             fontSize = 12.sp,
                             color    = TextGray
                         )

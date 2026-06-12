@@ -24,6 +24,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.data.NotificationModel
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,12 +32,13 @@ fun MessagesScreen(
     navController: NavController,
     viewModel: NotificationViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val notifications by viewModel.notifications.collectAsState()
 
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Notifications",
+                title = settings.t("Notifications", "Thông báo"),
                 onBackClick = { navController.popBackStack() }
             )
         },
@@ -58,7 +60,7 @@ fun MessagesScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Không có thông báo nào", color = Color.Gray, fontSize = 14.sp)
+                    Text(settings.t("No notifications", "Không có thông báo nào"), color = Color.Gray, fontSize = 14.sp)
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -77,6 +79,7 @@ fun MessagesScreen(
 
 @Composable
 private fun ChatbotEntryItem(onClick: () -> Unit) {
+    val settings = LocalAppSettings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,7 +101,7 @@ private fun ChatbotEntryItem(onClick: () -> Unit) {
                 fontSize = 16.sp
             )
             Text(
-                text = "Ask me anything about fashion!",
+                text = settings.t("Ask me anything about fashion!", "Hỏi tôi bất kỳ câu hỏi nào về thời trang!"),
                 color = Color.Gray,
                 fontSize = 13.sp
             )
@@ -114,13 +117,14 @@ private fun ChatbotEntryItem(onClick: () -> Unit) {
 
 @Composable
 private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
+    val settings = LocalAppSettings.current
     val title = when (data.type) {
-        "PAYMENT" -> "Thanh toán thành công 🎉"
-        "SHIPPING" -> "Theo dõi đơn hàng 🚚"
-        "LIKE" -> "Yêu thích bài viết ❤️"
-        "COMMENT" -> "Bình luận bài viết 💬"
-        "SAVE" -> "Lưu bài viết 💾"
-        else -> "Thông báo 🔔"
+        "PAYMENT" -> settings.t("Payment successful 🎉", "Thanh toán thành công 🎉")
+        "SHIPPING" -> settings.t("Order updates 🚚", "Theo dõi đơn hàng 🚚")
+        "LIKE" -> settings.t("Liked post ❤️", "Yêu thích bài viết ❤️")
+        "COMMENT" -> settings.t("Commented on post 💬", "Bình luận bài viết 💬")
+        "SAVE" -> settings.t("Saved post 💾", "Lưu bài viết 💾")
+        else -> settings.t("Notification 🔔", "Thông báo 🔔")
     }
 
     Row(
@@ -153,7 +157,7 @@ private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
                     fontSize = 15.sp
                 )
                 Text(
-                    text = formatTimeAgo(data.createdAt),
+                    text = formatTimeAgo(data.createdAt, settings),
                     color = Color.Gray,
                     fontSize = 11.sp
                 )
@@ -179,7 +183,7 @@ private fun NotificationItem(data: NotificationModel, onClick: () -> Unit) {
     }
 }
 
-private fun formatTimeAgo(timestamp: com.google.firebase.Timestamp?): String {
+private fun formatTimeAgo(timestamp: com.google.firebase.Timestamp?, settings: com.example.fashionapp.ui.app.settings.AppSettingsViewModel): String {
     val time = timestamp?.toDate()?.time ?: return ""
     val diff = System.currentTimeMillis() - time
     val seconds = diff / 1000
@@ -188,9 +192,9 @@ private fun formatTimeAgo(timestamp: com.google.firebase.Timestamp?): String {
     val days = hours / 24
 
     return when {
-        seconds < 60 -> "vừa xong"
-        minutes < 60 -> "${minutes}m ago"
-        hours < 24 -> "${hours}h ago"
-        else -> "${days}d ago"
+        seconds < 60 -> settings.t("just now", "vừa xong")
+        minutes < 60 -> settings.t("${minutes}m ago", "${minutes} phút trước")
+        hours < 24 -> settings.t("${hours}h ago", "${hours} giờ trước")
+        else -> settings.t("${days}d ago", "${days} ngày trước")
     }
 }

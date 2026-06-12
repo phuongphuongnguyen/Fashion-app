@@ -124,6 +124,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.res.ResourcesCompat
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 
 @Composable
@@ -131,6 +132,7 @@ fun StartScreen(
     onGetStarted: () -> Unit,
     onLoginClick: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     val context = LocalContext.current
     val logoPainter = remember {
         val drawable = ResourcesCompat.getDrawable(context.resources, R.mipmap.ic_launcher, context.theme)
@@ -181,7 +183,10 @@ fun StartScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Beautiful eCommerce UI Kit\nfor your online store",
+            text = settings.t(
+                "Beautiful eCommerce UI Kit\nfor your online store",
+                "Giao diện mua sắm thời trang tuyệt đẹp\ncho cửa hàng trực tuyến của bạn"
+            ),
             fontSize = 14.sp,
             color = Color(0xFF9E9E9E),
             textAlign = TextAlign.Center
@@ -200,7 +205,7 @@ fun StartScreen(
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4461F2))
         ) {
             Text(
-                text = "Let's get started",
+                text = settings.t("Let's get started", "Bắt đầu ngay"),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -214,7 +219,7 @@ fun StartScreen(
             modifier = Modifier.clickable { onLoginClick() }
         ) {
             Text(
-                text = "I already have an account",
+                text = settings.t("I already have an account", "Tôi đã có tài khoản"),
                 color = Color(0xFF9E9E9E),
                 fontSize = 14.sp
             )

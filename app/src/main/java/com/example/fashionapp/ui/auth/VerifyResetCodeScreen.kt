@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.data.auth.AuthRepository
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -38,6 +39,7 @@ fun VerifyResetCodeScreen(
     onBack: () -> Unit,
     onOtpVerified: (String) -> Unit
 ) {
+    val settings = LocalAppSettings.current
     var code by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var isResending by remember { mutableStateOf(false) }
@@ -61,7 +63,7 @@ fun VerifyResetCodeScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Verify OTP",
+            text = settings.t("Verify OTP", "Xác minh OTP"),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = AuthTextDark
@@ -70,7 +72,7 @@ fun VerifyResetCodeScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Nhap OTP 4 so da gui ve $email",
+            text = settings.t("Enter 4-digit OTP sent to ", "Nhập mã OTP 4 số đã gửi về ") + email,
             color = AuthTextSubtle,
             fontSize = 14.sp
         )
@@ -80,7 +82,7 @@ fun VerifyResetCodeScreen(
         OutlinedTextField(
             value = code,
             onValueChange = { code = it.filter(Char::isDigit).take(4) },
-            placeholder = { Text("OTP code") },
+            placeholder = { Text(settings.t("OTP code", "Mã OTP")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true
@@ -103,7 +105,7 @@ fun VerifyResetCodeScreen(
                 errorMessage = ""
                 infoMessage = ""
                 if (code.length != 4) {
-                    errorMessage = "Vui long nhap OTP 4 so"
+                    errorMessage = settings.t("Please enter 4-digit OTP", "Vui lòng nhập OTP 4 số")
                     return@Button
                 }
                 scope.launch {
@@ -127,7 +129,7 @@ fun VerifyResetCodeScreen(
             if (isLoading) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.height(18.dp))
             } else {
-                Text("Verify")
+                Text(settings.t("Verify", "Xác minh"))
             }
         }
 
@@ -135,13 +137,13 @@ fun VerifyResetCodeScreen(
 
         if (remainingSeconds > 0) {
             Text(
-                text = "Gui lai code sau ${remainingSeconds}s",
+                text = settings.t("Resend code in ", "Gửi lại mã sau ") + "${remainingSeconds}s",
                 color = AuthTextSubtle,
                 fontSize = 12.sp
             )
         } else {
             Text(
-                text = if (isResending) "Dang gui lai code..." else "Khong nhan duoc code? Gui lai",
+                text = if (isResending) settings.t("Resending code...", "Đang gửi lại mã...") else settings.t("Didn't receive code? Resend", "Không nhận được mã? Gửi lại"),
                 color = if (isResending) AuthTextSubtle else AuthPrimaryBlue,
                 fontSize = 12.sp,
                 modifier = Modifier.clickable(enabled = !isResending) {
@@ -164,7 +166,7 @@ fun VerifyResetCodeScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "Cancel",
+            text = settings.t("Cancel", "Hủy"),
             color = AuthTextSubtle,
             modifier = Modifier.clickable { onBack() }
         )

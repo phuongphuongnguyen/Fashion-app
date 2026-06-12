@@ -2,11 +2,14 @@ package com.example.fashionapp.ui.app.shopping
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import kotlinx.coroutines.delay
 import com.example.fashionapp.data.CartItem
 import com.example.fashionapp.data.ProductReview
 import com.example.fashionapp.data.ReviewOrder
 import com.example.fashionapp.data.feed.FeedRepository
 import com.example.fashionapp.data.shop.ShopRepository
+import com.example.fashionapp.data.notification.NotificationRepository
 import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.data.user.UserRepository
 import com.example.fashionapp.model.Post
@@ -322,7 +325,7 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    fun cancelOrder(orderId: String) {
+    fun cancelOrder(context: Context, orderId: String) {
         val userId = auth.currentUser?.uid ?: run {
             _uiState.value = _uiState.value.copy(orderError = "Please sign in before cancelling")
             return
@@ -335,6 +338,30 @@ class ShopViewModel : ViewModel() {
         viewModelScope.launch {
             val result = runCatching {
                 repository.cancelOrder(userId, order)
+            }
+            result.onSuccess {
+                try {
+                    androidx.work.WorkManager.getInstance(context).cancelAllWorkByTag("order_tracking_$orderId")
+                } catch (e: Exception) {
+                    android.util.Log.e("ShopViewModel", "Failed to cancel tracking work", e)
+                }
+
+                val notificationRepo = NotificationRepository()
+                val shortId = orderId.takeLast(6)
+                notificationRepo.addNotification(
+                    userId = userId,
+                    message = "Bạn đã hủy đơn hàng #$shortId thành công.",
+                    type = "CANCELLED"
+                )
+
+                launch {
+                    delay(5000)
+                    notificationRepo.addNotification(
+                        userId = userId,
+                        message = "Đã hoàn tiền thành công cho đơn hàng #$shortId.",
+                        type = "REFUND"
+                    )
+                }
             }
             result.exceptionOrNull()?.let { error ->
                 _uiState.value = _uiState.value.copy(

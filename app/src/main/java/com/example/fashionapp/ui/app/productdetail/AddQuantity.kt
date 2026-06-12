@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.model.ProductVariant
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val PrimaryBlue  = Color(0xFF3669C9)
@@ -53,6 +54,7 @@ fun AddQuantity(
     onDismiss: () -> Unit,
     onConfirm: (variant: ProductVariant, quantity: Int) -> Unit,
 ) {
+    val settings = LocalAppSettings.current
     // ── Nhóm variants theo màu ────────────────────────────────────────────
     val colorGroups = remember(product.variants) {
         product.variants.groupBy { it.color }
@@ -93,7 +95,7 @@ fun AddQuantity(
 
             // Color Options — chỉ hiện khi có > 1 màu
             if (colorList.size > 1) {
-                SectionLabel("Color Options")
+                SectionLabel(settings.t("Color Options", "Tùy chọn màu sắc"))
                 Spacer(Modifier.height(12.dp))
                 ColorOptionsRow(
                     product       = product,
@@ -105,7 +107,7 @@ fun AddQuantity(
             }
 
             // Size
-            SectionLabel("Size")
+            SectionLabel(settings.t("Size", "Kích cỡ"))
             Spacer(Modifier.height(12.dp))
             SizeRow(
                 sizes           = colorGroups[selectedColor] ?: emptyList(),
@@ -145,7 +147,7 @@ fun AddQuantity(
                 )
             ) {
                 Text(
-                    text       = if (isBuyNow) "Buy Now" else "Add to cart",
+                    text       = if (isBuyNow) settings.t("Buy Now", "Mua ngay") else settings.t("Add to cart", "Thêm vào giỏ hàng"),
                     fontWeight = FontWeight.SemiBold,
                     fontSize   = 16.sp,
                     color      = if (selectedVariant != null && (selectedVariant?.stock ?: 0) > 0)
@@ -165,6 +167,7 @@ fun AddQuantity(
 
 @Composable
 private fun SummaryRow(product: Product, selectedVariant: ProductVariant?) {
+    val settings = LocalAppSettings.current
     Row(
         modifier          = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -209,11 +212,11 @@ private fun SummaryRow(product: Product, selectedVariant: ProductVariant?) {
             val stock = selectedVariant?.stock ?: 0
             Text(
                 text  = when {
-                    selectedVariant == null -> "Chọn phân loại"
-                    stock <= 0  -> "Hết hàng"
-                    stock <= 5  -> "Còn $stock sản phẩm (sắp hết)"
-                    stock <= 20 -> "Còn $stock sản phẩm"
-                    else        -> "Còn hàng ($stock)"
+                    selectedVariant == null -> settings.t("Select variation", "Chọn phân loại")
+                    stock <= 0  -> settings.t("Out of stock", "Hết hàng")
+                    stock <= 5  -> settings.t("Only $stock items left", "Còn $stock sản phẩm (sắp hết)")
+                    stock <= 20 -> settings.t("$stock items left", "Còn $stock sản phẩm")
+                    else        -> settings.t("In stock ($stock)", "Còn hàng ($stock)")
                 },
                 fontSize = 11.sp,
                 color    = when {
@@ -363,12 +366,13 @@ private fun QuantityRow(
     onDecrease: () -> Unit,
     onIncrease: () -> Unit,
 ) {
+    val settings = LocalAppSettings.current
     Row(
         modifier          = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "Quantity",
+            settings.t("Quantity", "Số lượng"),
             fontWeight = FontWeight.Bold,
             fontSize   = 16.sp,
             modifier   = Modifier.weight(1f),

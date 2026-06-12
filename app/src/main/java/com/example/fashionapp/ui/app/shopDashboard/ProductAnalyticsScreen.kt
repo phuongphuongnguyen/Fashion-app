@@ -27,6 +27,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.data.shop.DailyRevenuePoint
 import com.example.fashionapp.model.Product
 import com.example.fashionapp.navigation.Screen
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 // ── Palette ──
 private val PrimaryBlue = Color(0xFF3669C9)
@@ -45,15 +46,16 @@ fun ProductAnalyticsScreen(
         factory = ProductAnalyticsViewModelFactory(productId)
     )
 ) {
+    val settings = LocalAppSettings.current
     val state by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Phân tích sản phẩm", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = { Text(settings.t("Product Analytics", "Phân tích sản phẩm"), fontWeight = FontWeight.Bold, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = settings.t("Back", "Quay lại"))
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
@@ -77,7 +79,7 @@ fun ProductAnalyticsScreen(
                         .fillMaxSize()
                         .padding(padding),
                     contentAlignment = Alignment.Center
-                ) { Text(state.error ?: "Không tìm thấy sản phẩm", color = TextGray) }
+                ) { Text(state.error ?: settings.t("Product not found", "Không tìm thấy sản phẩm"), color = TextGray) }
             }
 
             else -> {
@@ -98,7 +100,7 @@ fun ProductAnalyticsScreen(
                     item { ProductMetricGrid(product = product, revenue = state.revenue) }
 
                     item {
-                        SectionTitle("Doanh thu theo ngày")
+                        SectionTitle(settings.t("Daily Revenue", "Doanh thu theo ngày"))
                         Spacer(Modifier.height(10.dp))
                         Surface(
                             shape = RoundedCornerShape(16.dp),
@@ -112,7 +114,7 @@ fun ProductAnalyticsScreen(
                     }
 
                     if (state.dailyRevenue.isNotEmpty()) {
-                        item { SectionTitle("Chi tiết theo ngày") }
+                        item { SectionTitle(settings.t("Daily Details", "Chi tiết theo ngày")) }
                         // hiển thị ngày mới nhất lên đầu
                         items(state.dailyRevenue.reversed(), key = { it.date }) { point ->
                             DailyRevenueRow(point)
@@ -126,6 +128,7 @@ fun ProductAnalyticsScreen(
 
 @Composable
 private fun ProductHeader(product: Product, onViewPage: () -> Unit) {
+    val settings = LocalAppSettings.current
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
@@ -154,7 +157,7 @@ private fun ProductHeader(product: Product, onViewPage: () -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            "Xem trang sản phẩm",
+            settings.t("View product page", "Xem trang sản phẩm"),
             color = PrimaryBlue,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
@@ -166,14 +169,15 @@ private fun ProductHeader(product: Product, onViewPage: () -> Unit) {
 // ── Lưới 2x2 chỉ số sản phẩm ──
 @Composable
 private fun ProductMetricGrid(product: Product, revenue: Double) {
+    val settings = LocalAppSettings.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AnalyticMetricCard(Modifier.weight(1f), "Doanh thu", "₫${formatMoney(revenue)}", GreenRevenue)
-            AnalyticMetricCard(Modifier.weight(1f), "Đã bán", product.soldCount.toString(), PrimaryBlue)
+            AnalyticMetricCard(Modifier.weight(1f), settings.t("Revenue", "Doanh thu"), "₫${formatMoney(revenue)}", GreenRevenue)
+            AnalyticMetricCard(Modifier.weight(1f), settings.t("Sold", "Đã bán"), product.soldCount.toString(), PrimaryBlue)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AnalyticMetricCard(Modifier.weight(1f), "Đánh giá", "%.1f (${product.reviewCount})".format(product.rating), OrangeRating)
-            AnalyticMetricCard(Modifier.weight(1f), "Tồn kho", product.stock.toString(), TextDark)
+            AnalyticMetricCard(Modifier.weight(1f), settings.t("Rating", "Đánh giá"), "%.1f (${product.reviewCount})".format(product.rating), OrangeRating)
+            AnalyticMetricCard(Modifier.weight(1f), settings.t("Stock", "Tồn kho"), product.stock.toString(), TextDark)
         }
     }
 }
@@ -201,6 +205,7 @@ private fun AnalyticMetricCard(modifier: Modifier, label: String, value: String,
 
 @Composable
 private fun DailyRevenueRow(point: DailyRevenuePoint) {
+    val settings = LocalAppSettings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -219,7 +224,11 @@ private fun DailyRevenueRow(point: DailyRevenuePoint) {
         Column(horizontalAlignment = Alignment.End) {
             Text("₫${formatMoney(point.revenue)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GreenRevenue)
             Spacer(Modifier.height(2.dp))
-            Text("${point.orderCount} đơn • ${point.soldCount} sp", fontSize = 11.sp, color = TextGray)
+            Text(
+                settings.t("${point.orderCount} orders • ${point.soldCount} items", "${point.orderCount} đơn • ${point.soldCount} sp"),
+                fontSize = 11.sp,
+                color = TextGray
+            )
         }
     }
 }

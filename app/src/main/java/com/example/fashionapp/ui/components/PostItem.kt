@@ -39,6 +39,8 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
+
 
 @Composable
 fun FeedPostItem(
@@ -54,6 +56,7 @@ fun FeedPostItem(
     onProductClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val settings = LocalAppSettings.current
     Column {
         PostHeader(
             postId = post.id,
@@ -88,7 +91,7 @@ fun FeedPostItem(
         )
 
         Text(
-            text = "${formatLikeCount(post.likeCount)} Likes",
+            text = "${formatLikeCount(post.likeCount)} " + settings.t("Likes", "Lượt thích"),
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 12.dp)
@@ -115,6 +118,7 @@ fun PostHeader(
     onHeaderClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val settings = LocalAppSettings.current
     val clipboardManager = LocalClipboardManager.current
     var showMenu by remember { mutableStateOf(false) }
     Row(
@@ -147,26 +151,26 @@ fun PostHeader(
         }
             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                 DropdownMenuItem(
-                    text = { Text("Report") },
+                    text = { Text(settings.t("Report", "Báo cáo")) },
                     onClick = {
                         showMenu = false
                         reportPost(
                             postId = postId,
                             onSuccess = {
-                                Toast.makeText(context, "Report submitted", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, settings.t("Report submitted", "Đã gửi báo cáo"), Toast.LENGTH_SHORT).show()
                             },
                             onFailure = {
-                                Toast.makeText(context, "Could not submit report", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, settings.t("Could not submit report", "Không thể gửi báo cáo"), Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Copy link") },
+                    text = { Text(settings.t("Copy link", "Sao chép liên kết")) },
                     onClick = {
                         showMenu = false
                         copyPostLink(clipboardManager, postId)
-                        Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, settings.t("Link copied", "Đã sao chép liên kết"), Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -340,6 +344,7 @@ fun CommentBottomSheet(
     onDismiss: () -> Unit,
     onSendComment: (String) -> Unit
 ) {
+    val settings = LocalAppSettings.current
     var commentText by remember { mutableStateOf("") }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -349,7 +354,7 @@ fun CommentBottomSheet(
         contentWindowInsets = { WindowInsets.ime }
     ) {
         Column(modifier = Modifier.fillMaxHeight(0.85f).fillMaxWidth().navigationBarsPadding()) {
-            Text(text = "Comments", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(text = settings.t("Comments", "Bình luận"), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
             LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item { CommentItem(username = post.authorName, avatarUrl = post.authorAvt, text = post.caption, isCaption = true) }
@@ -369,7 +374,7 @@ fun CommentBottomSheet(
                 }
                 TextField(
                     value = commentText, onValueChange = { commentText = it },
-                    placeholder = { Text("Add a comment...", fontSize = 14.sp) },
+                    placeholder = { Text(settings.t("Add a comment...", "Thêm bình luận..."), fontSize = 14.sp) },
                     modifier = Modifier.weight(1f),
                     colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
                     maxLines = 5
@@ -384,6 +389,7 @@ fun CommentBottomSheet(
 
 @Composable
 fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Boolean = false) {
+    val settings = LocalAppSettings.current
     Row(verticalAlignment = Alignment.Top) {
         Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFEEEEEE))) {
             AsyncImage(
@@ -398,7 +404,7 @@ fun CommentItem(username: String, avatarUrl: String, text: String, isCaption: Bo
         Spacer(Modifier.width(12.dp))
         Column {
             Text(text = buildAnnotatedString { withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold)) { append(username) }; append(" "); append(text) }, fontSize = 13.sp)
-            if (!isCaption) { Text(text = "Reply", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp)) }
+            if (!isCaption) { Text(text = settings.t("Reply", "Phản hồi"), fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp)) }
         }
     }
 }

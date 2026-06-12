@@ -52,6 +52,7 @@ import com.example.fashionapp.ui.auth.StartScreen
 import com.example.fashionapp.ui.auth.VerifyResetCodeScreen
 import com.example.fashionapp.ui.onboarding.FirstLoginOnboardingScreen
 import com.example.fashionapp.ui.app.settings.SettingsScreen
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.example.fashionapp.ui.app.chatbot.ChatbotScreen
 import com.example.fashionapp.ui.app.search.SearchScreen
 import com.example.fashionapp.ui.app.productdetail.ProductDetailScreen
@@ -410,16 +411,18 @@ fun AppBottomBar(
     val currentUser by com.example.fashionapp.data.user.UserSession.currentUser.collectAsState()
     val isShop = currentUser?.role?.equals("shop", ignoreCase = true) == true
 
-    val items = remember(isShop) {
+    val settings = LocalAppSettings.current
+
+    val items = remember(isShop, settings.language) {
         listOf(
-            BottomNavItem(Screen.Home, "Home", R.drawable.ic_home),
-            BottomNavItem(Screen.Shopping, "Shop", R.drawable.ic_shopping),
+            BottomNavItem(Screen.Home, settings.t("Home", "Trang chủ"), R.drawable.ic_home),
+            BottomNavItem(Screen.Shopping, settings.t("Shop", "Cửa hàng"), R.drawable.ic_shopping),
             BottomNavItem(
                 screen = Screen.Saved,
-                label = if (isShop) "Analytics" else "Saved",
+                label = if (isShop) settings.t("Analytics", "Thống kê") else settings.t("Saved", "Đã lưu"),
                 iconRes = if (isShop) R.drawable.ic_charts else R.drawable.ic_saved
             ),
-            BottomNavItem(Screen.Profile, "Profile", R.drawable.ic_profile)
+            BottomNavItem(Screen.Profile, settings.t("Profile", "Cá nhân"), R.drawable.ic_profile)
         )
     }
 

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fashionapp.R
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.launch
 
@@ -40,6 +41,7 @@ data class ChatMessage(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatbotScreen(navController: NavController) {
+    val settings = LocalAppSettings.current
     val generativeModel = remember {
         GenerativeModel(
             modelName = "models/gemini-3.1-flash-lite",
@@ -47,11 +49,14 @@ fun ChatbotScreen(navController: NavController) {
         )
     }
 
-    var messages by remember {
+    var messages by remember(settings) {
         mutableStateOf(
             listOf(
                 ChatMessage(
-                    text    = "Xin chào! Tôi là trợ lý thời trang của bạn. Tôi có thể giúp gì cho bạn hôm nay?",
+                    text    = settings.t(
+                        "Hello! I'm your fashion assistant. How can I help you today?",
+                        "Xin chào! Tôi là trợ lý thời trang của bạn. Tôi có thể giúp gì cho bạn hôm nay?"
+                    ),
                     isUser  = false
                 )
             )
@@ -93,7 +98,8 @@ fun ChatbotScreen(navController: NavController) {
             try {
                 // Tạo prompt với Firestore context
                 val context = firestoreContext ?: ""
-                val prompt = """
+                val prompt = if (settings.language == com.example.fashionapp.ui.app.settings.AppLanguage.VIETNAMESE) {
+                    """
 Bạn là trợ lý thời trang thông minh của một app mua sắm thời trang Việt Nam.
 Bạn có thể trả lời dựa trên dữ liệu thực tế của app bên dưới.
 Hãy trả lời bằng tiếng Việt, thân thiện, ngắn gọn và hữu ích.
@@ -105,18 +111,33 @@ $context
 --- HẾT DỮ LIỆU ---
 
 Khách hàng hỏi: $userMessage
-                """.trimIndent()
+                    """.trimIndent()
+                } else {
+                    """
+You are an intelligent fashion assistant of a Vietnamese fashion shopping app.
+You can reply based on the app's real data below.
+Please reply in English, in a friendly, concise, and helpful manner.
+If the question is about products, orders, vouchers, or the shop — use the data below.
+If there is no relevant information — reply based on general fashion knowledge.
+
+--- APP DATA ---
+$context
+--- END DATA ---
+
+Customer asks: $userMessage
+                    """.trimIndent()
+                }
 
                 val response = generativeModel.generateContent(prompt)
                 val botReply = response.text
-                    ?: "Xin lỗi, tôi không thể xử lý yêu cầu của bạn. Vui lòng thử lại."
+                    ?: settings.t("Sorry, I could not process your request. Please try again.", "Xin lỗi, tôi không thể xử lý yêu cầu của bạn. Vui lòng thử lại.")
                 messages = messages + ChatMessage(text = botReply, isUser = false)
             } catch (e: Exception) {
                 android.util.Log.e("CHATBOT_ERROR", "Class: ${e.javaClass.name}", e)
                 android.util.Log.e("CHATBOT_ERROR", "Message: ${e.message}")
                 android.util.Log.e("CHATBOT_ERROR", "Cause: ${e.cause}")
                 messages = messages + ChatMessage(
-                    text = "Xin lỗi, có lỗi kết nối. Vui lòng kiểm tra internet và thử lại.",
+                    text = settings.t("Sorry, connection error. Please check your internet connection and try again.", "Xin lỗi, có lỗi kết nối. Vui lòng kiểm tra internet và thử lại."),
                     isUser = false
                 )
             } finally {
@@ -165,7 +186,7 @@ Khách hàng hỏi: $userMessage
                     }
                 },
                 isLoading     = isLoading || isLoadingContext,
-                placeholder   = if (isLoadingContext) "Đang tải dữ liệu..." else "Nhập tin nhắn..."
+                placeholder   = if (isLoadingContext) settings.t("Loading data...", "Đang tải dữ liệu...") else settings.t("Type a message...", "Nhập tin nhắn...")
             )
         }
     }
@@ -174,6 +195,7 @@ Khách hàng hỏi: $userMessage
 // ── Chat Header ──
 @Composable
 private fun ChatHeader(onBack: () -> Unit, isLoadingData: Boolean = false) {
+    val settings = LocalAppSettings.current
     Surface(color = Color.White, shadowElevation = 2.dp) {
         Row(
             modifier          = Modifier
@@ -184,7 +206,7 @@ private fun ChatHeader(onBack: () -> Unit, isLoadingData: Boolean = false) {
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = settings.t("Back", "Quay lại"),
                     tint               = Color(0xFF1A1A2E)
                 )
             }
@@ -206,7 +228,7 @@ private fun ChatHeader(onBack: () -> Unit, isLoadingData: Boolean = false) {
                     color      = Color(0xFF1A1A2E)
                 )
                 Text(
-                    text     = if (isLoadingData) "Đang tải dữ liệu app..." else "Trợ lý thời trang của bạn",
+                    text     = if (isLoadingData) settings.t("Loading app data...", "Đang tải dữ liệu app...") else settings.t("Your fashion assistant", "Trợ lý thời trang của bạn"),
                     fontSize = 12.sp,
                     color    = if (isLoadingData) Color(0xFF3669C9) else Color.Gray
                 )
@@ -268,6 +290,7 @@ private fun ChatBubble(message: ChatMessage) {
 // ── Typing Indicator ──
 @Composable
 private fun TypingIndicator() {
+    val settings = LocalAppSettings.current
     Row(
         modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
@@ -286,7 +309,7 @@ private fun TypingIndicator() {
                 .background(ChatBubbleBot)
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
-            Text("Đang nhập...", color = Color.Gray, fontSize = 14.sp)
+            Text(settings.t("Typing...", "Đang nhập..."), color = Color.Gray, fontSize = 14.sp)
         }
     }
 }

@@ -62,6 +62,7 @@ import com.example.fashionapp.ui.app.saved.SavedViewModel
 import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FashionTopBar
 import com.example.fashionapp.ui.components.FeedPostItem
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +76,7 @@ fun ShopScreen(
     val homeState by homeViewModel.uiState.collectAsState()
     val shopState by shopViewModel.uiState.collectAsState()
     val savedUiState by savedViewModel.uiState.collectAsState()
+    val settings = LocalAppSettings.current
 
     LaunchedEffect(shopId) {
         shopViewModel.loadShopUser(shopId)
@@ -98,14 +100,14 @@ fun ShopScreen(
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = if (shopState.isOwnProfile) "Profile" else "",
+                title = if (shopState.isOwnProfile) settings.t("Profile", "Trang cá nhân") else "",
                 onBackClick = if (shopState.isOwnProfile) null else { { navController.popBackStack() } },
                 actions = {
                     if (shopState.isOwnProfile) {
                         IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_setting),
-                                contentDescription = "Settings",
+                                contentDescription = settings.t("Settings", "Cài đặt"),
                                 tint = Color.Unspecified,
                                 modifier = Modifier.size(30.dp)
                             )
@@ -225,6 +227,7 @@ private fun ShopHeader(
     onTabSelected: (String) -> Unit,
     onAddPost: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -256,10 +259,10 @@ private fun ShopHeader(
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
                     Text(postCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(" Posts", fontSize = 12.sp, color = Color.Gray)
+                    Text(settings.t(" Posts", " Bài viết"), fontSize = 12.sp, color = Color.Gray)
                     Spacer(Modifier.width(12.dp))
                     Text(followerCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(" Followers", fontSize = 12.sp, color = Color.Gray)
+                    Text(settings.t(" Followers", " Người theo dõi"), fontSize = 12.sp, color = Color.Gray)
                     Spacer(Modifier.width(12.dp))
                     Icon(
                         Icons.Default.Star,
@@ -287,7 +290,7 @@ private fun ShopHeader(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                         modifier = Modifier.height(30.dp)
                     ) {
-                        Text("Following", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(settings.t("Following", "Đang theo dõi"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 } else {
                     Button(
@@ -298,7 +301,7 @@ private fun ShopHeader(
                         modifier = Modifier.height(30.dp)
                     ) {
                         Text(
-                            "Follow",
+                            settings.t("Follow", "Theo dõi"),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White
@@ -323,7 +326,7 @@ private fun ShopHeader(
                         modifier = Modifier.clickable { onTabSelected(tab) }
                     ) {
                         Text(
-                            text = tab,
+                            text = if (tab == "Posts") settings.t("Posts", "Bài viết") else settings.t("Products", "Sản phẩm"),
                             color = if (selectedTab == tab) Color.Black else Color(0xFF9A9A9A),
                             fontSize = 16.sp,
                             fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal
@@ -341,7 +344,7 @@ private fun ShopHeader(
             if (isOwnProfile) {
                 Icon(
                     imageVector = Icons.Outlined.AddCircleOutline,
-                    contentDescription = "Add",
+                    contentDescription = settings.t("Add", "Đăng bài"),
                     tint = Color.Black,
                     modifier = Modifier
                         .size(24.dp)

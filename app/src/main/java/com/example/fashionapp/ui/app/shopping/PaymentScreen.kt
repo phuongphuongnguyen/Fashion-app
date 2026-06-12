@@ -35,6 +35,7 @@ import com.example.fashionapp.R
 import com.example.fashionapp.data.user.UserSession
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +49,7 @@ fun PaymentScreen(
     selectedCartItemIds: Set<String> = emptySet(),
     viewModel: ShopViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val uiState by viewModel.uiState.collectAsState()
     val currentUser by UserSession.currentUser.collectAsState()
     val items = uiState.cartItems
@@ -64,7 +66,7 @@ fun PaymentScreen(
     val shippingFee = if (selectedShippingMethod == "express") 50000.0 else 0.0
     val total = itemsTotal + shippingFee
     val checkoutUser = uiState.currentUserProfile ?: currentUser
-    val recipientName = checkoutUser?.name?.takeIf { it.isNotBlank() } ?: "Customer"
+    val recipientName = checkoutUser?.name?.takeIf { it.isNotBlank() } ?: settings.t("Customer", "Khách hàng")
     val recipientPhone = checkoutUser?.phoneNumber.orEmpty()
     val shippingAddress = checkoutUser?.address.orEmpty()
     val hasShippingAddress = shippingAddress.isNotBlank()
@@ -85,7 +87,7 @@ fun PaymentScreen(
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = "Checkout",
+                title = settings.t("Checkout", "Thanh toán"),
                 onBackClick = { navController.popBackStack() }
             )
         },
@@ -102,7 +104,7 @@ fun PaymentScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Order Total", color = Color.Gray, fontSize = 14.sp)
+                        Text(settings.t("Order Total", "Tổng thanh toán"), color = Color.Gray, fontSize = 14.sp)
                         Text(
                             "₫${formatPrice(total)}",
                             fontWeight = FontWeight.ExtraBold,
@@ -155,7 +157,7 @@ fun PaymentScreen(
                             !uiState.isPlacingOrder
                     ) {
                         Text(
-                            if (uiState.isPlacingOrder) "Placing Order..." else "Place Order",
+                            if (uiState.isPlacingOrder) settings.t("Placing Order...", "Đang đặt hàng...") else settings.t("Place Order", "Đặt hàng"),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -189,9 +191,9 @@ fun PaymentScreen(
                 item {
                     CheckoutMessage(
                         message = if (selectedCartItemIds.isEmpty()) {
-                            "Your cart is empty"
+                            settings.t("Your cart is empty", "Giỏ hàng trống")
                         } else {
-                            "Selected items are no longer available"
+                            settings.t("Selected items are no longer available", "Sản phẩm được chọn hiện không còn khả dụng")
                         },
                         onBackToCart = { navController.popBackStack() }
                     )
@@ -201,7 +203,7 @@ fun PaymentScreen(
 
             if (selectedItemsMissing) {
                 item {
-                    PaymentMessage("Some selected items are no longer available.")
+                    PaymentMessage(settings.t("Some selected items are no longer available.", "Một số sản phẩm được chọn không còn khả dụng."))
                 }
             }
 
@@ -213,7 +215,7 @@ fun PaymentScreen(
 
             // Shipping Address
             item {
-                SectionHeader("Shipping Address")
+                SectionHeader(settings.t("Shipping Address", "Địa chỉ giao hàng"))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -229,7 +231,7 @@ fun PaymentScreen(
                             Spacer(Modifier.height(2.dp))
                         }
                         Text(
-                            shippingAddress.ifBlank { "Add a shipping address in your profile" },
+                            shippingAddress.ifBlank { settings.t("Add a shipping address in your profile", "Thêm địa chỉ giao hàng trong trang cá nhân") },
                             color = if (hasShippingAddress) Color.Gray else Color(0xFFB3261E),
                             fontSize = 13.sp
                         )
@@ -252,7 +254,7 @@ fun PaymentScreen(
             // Items Summary
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Items", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(settings.t("Items", "Sản phẩm"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(Modifier.width(8.dp))
                     Surface(
                         color = Color(0xFFE5EDFF),
@@ -289,21 +291,21 @@ fun PaymentScreen(
 
             // Shipping Options
             item {
-                SectionHeader("Shipping Options")
+                SectionHeader(settings.t("Shipping Options", "Tùy chọn giao hàng"))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ShippingOption(
                         id = "standard",
                         selectedId = selectedShippingMethod,
-                        title = "Standard Delivery",
-                        time = "Arrival in 3-5 days",
-                        price = "FREE",
+                        title = settings.t("Standard Delivery", "Giao hàng tiêu chuẩn"),
+                        time = settings.t("Arrival in 3-5 days", "Nhận hàng sau 3-5 ngày"),
+                        price = settings.t("FREE", "Miễn phí"),
                         onSelected = { selectedShippingMethod = it }
                     )
                     ShippingOption(
                         id = "express",
                         selectedId = selectedShippingMethod,
-                        title = "Express Delivery",
-                        time = "Arrival in 1-2 days",
+                        title = settings.t("Express Delivery", "Giao hàng hỏa tốc"),
+                        time = settings.t("Arrival in 1-2 days", "Nhận hàng sau 1-2 ngày"),
                         price = "₫50.000",
                         onSelected = { selectedShippingMethod = it }
                     )
@@ -312,7 +314,7 @@ fun PaymentScreen(
 
             // Payment Method
             item {
-                SectionHeader("Payment Method")
+                SectionHeader(settings.t("Payment Method", "Phương thức thanh toán"))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     PaymentMethodOption(
                         id = "visa",
@@ -331,7 +333,7 @@ fun PaymentScreen(
                         badgeColor = Color(0xFFA50064),
                         badgeTextColor = Color.White,
                         title = "MoMo",
-                        subtitle = "Pay with MoMo e-wallet",
+                        subtitle = settings.t("Pay with MoMo e-wallet", "Thanh toán bằng ví điện tử MoMo"),
                         onSelected = { selectedPaymentMethod = it }
                     )
                 }
@@ -347,6 +349,7 @@ private fun CheckoutMessage(
     message: String,
     onBackToCart: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -360,7 +363,7 @@ private fun CheckoutMessage(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056FF))
         ) {
-            Text("Back to Cart", fontWeight = FontWeight.Bold)
+            Text(settings.t("Back to Cart", "Quay lại giỏ hàng"), fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -444,6 +447,7 @@ private fun ShippingOption(
     price: String,
     onSelected: (String) -> Unit
 ) {
+    val settings = LocalAppSettings.current
     val selected = id == selectedId
     Row(
         modifier = Modifier
@@ -466,7 +470,8 @@ private fun ShippingOption(
             Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Text(time, color = if (selected) Color(0xFF0056FF) else Color.Gray, fontSize = 12.sp)
         }
-        Text(price, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (price == "FREE") Color(0xFF00B248) else Color.Black)
+        val isFree = price == settings.t("FREE", "Miễn phí")
+        Text(price, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (isFree) Color(0xFF00B248) else Color.Black)
     }
 }
 

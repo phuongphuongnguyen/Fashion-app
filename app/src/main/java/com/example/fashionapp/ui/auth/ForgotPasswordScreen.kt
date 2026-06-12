@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fashionapp.data.auth.AuthRepository
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.launch
 
 @Composable
@@ -35,6 +36,7 @@ fun ForgotPasswordScreen(
     onBack: () -> Unit,
     onCodeSent: (String) -> Unit
 ) {
+    val settings = LocalAppSettings.current
     var email by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -49,7 +51,7 @@ fun ForgotPasswordScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Password Recovery",
+            text = settings.t("Password Recovery", "Khôi phục mật khẩu"),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = AuthTextDark
@@ -58,7 +60,10 @@ fun ForgotPasswordScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Nhap email de nhan ma xac nhan dat lai mat khau",
+            text = settings.t(
+                "Enter email to receive reset password verification code",
+                "Nhập email để nhận mã xác nhận đặt lại mật khẩu"
+            ),
             color = AuthTextSubtle,
             fontSize = 14.sp
         )
@@ -68,7 +73,7 @@ fun ForgotPasswordScreen(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            placeholder = { Text("Email") },
+            placeholder = { Text(settings.t("Email", "Email")) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true
@@ -99,7 +104,7 @@ fun ForgotPasswordScreen(
                 errorMessage = ""
                 successMessage = ""
                 if (email.isBlank()) {
-                    errorMessage = "Vui long nhap email"
+                    errorMessage = settings.t("Please enter your email", "Vui lòng nhập email")
                     return@Button
                 }
 
@@ -130,14 +135,14 @@ fun ForgotPasswordScreen(
                     modifier = Modifier.height(18.dp)
                 )
             } else {
-                Text("Send Code")
+                Text(settings.t("Send Code", "Gửi mã"))
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "Cancel",
+            text = settings.t("Cancel", "Hủy"),
             color = AuthTextSubtle,
             modifier = Modifier.clickable { onBack() }
         )

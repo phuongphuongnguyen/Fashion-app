@@ -13,11 +13,7 @@ import com.google.firebase.auth.FirebaseAuth
 // ── Supported Languages ──
 enum class AppLanguage(val code: String, val displayName: String, val nativeName: String, val flag: String) {
     ENGLISH("en", "English", "English", "🇬🇧"),
-    VIETNAMESE("vi", "Vietnamese", "Tiếng Việt", "🇻🇳"),
-    FRENCH("fr", "French", "Français", "🇫🇷"),
-    JAPANESE("ja", "Japanese", "日本語", "🇯🇵"),
-    KOREAN("ko", "Korean", "한국어", "🇰🇷"),
-    CHINESE("zh", "Chinese", "中文", "🇨🇳")
+    VIETNAMESE("vi", "Vietnamese", "Tiếng Việt", "🇻🇳")
 }
 
 // ── Supported Currencies ──
@@ -177,10 +173,6 @@ class AppSettingsViewModel(private val prefs: SharedPreferences) : ViewModel() {
     ): String {
         return when (language) {
             AppLanguage.VIETNAMESE -> vi
-            AppLanguage.FRENCH -> fr
-            AppLanguage.JAPANESE -> ja
-            AppLanguage.KOREAN -> ko
-            AppLanguage.CHINESE -> zh
             else -> en
         }
     }

@@ -62,6 +62,7 @@ import coil.compose.AsyncImage
 import com.example.fashionapp.R
 import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.components.FashionTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import kotlinx.coroutines.delay
 
 private const val ONGOING_DURATION_MILLIS = 10 * 60 * 1000L
@@ -74,6 +75,8 @@ fun HistoryScreen(
     initialTab: String = "Ongoing",
     viewModel: ShopViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val orders = uiState.orders
     var selectedTab by remember(initialTab) {
@@ -113,21 +116,21 @@ fun HistoryScreen(
     pendingCancelOrderId?.let { orderId ->
         AlertDialog(
             onDismissRequest = { pendingCancelOrderId = null },
-            title = { Text("Cancel order?") },
-            text = { Text("This will cancel the order, restore product stock, and refund paid orders.") },
+            title = { Text(settings.t("Cancel order?", "Hủy đơn hàng?")) },
+            text = { Text(settings.t("This will cancel the order, restore product stock, and refund paid orders.", "Hành động này sẽ hủy đơn hàng, khôi phục tồn kho sản phẩm và hoàn tiền cho các đơn hàng đã thanh toán.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         pendingCancelOrderId = null
-                        viewModel.cancelOrder(orderId)
+                        viewModel.cancelOrder(context, orderId)
                     }
                 ) {
-                    Text("Cancel order", color = Color(0xFFE53935), fontWeight = FontWeight.Bold)
+                    Text(settings.t("Cancel order", "Hủy đơn hàng"), color = Color(0xFFE53935), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingCancelOrderId = null }) {
-                    Text("Keep order")
+                    Text(settings.t("Keep order", "Giữ đơn hàng"))
                 }
             },
             containerColor = Color.White
@@ -137,7 +140,7 @@ fun HistoryScreen(
     Scaffold(
         topBar = {
             FashionTopBar(
-                title = if (selectedTab == "Ongoing") "Ongoing Orders" else "Order History",
+                title = if (selectedTab == "Ongoing") settings.t("Ongoing Orders", "Đơn hàng đang xử lý") else settings.t("Order History", "Lịch sử đơn hàng"),
                 onBackClick = { navController.popBackStack() }
             )
         },
@@ -172,7 +175,7 @@ fun HistoryScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            if (selectedTab == "Ongoing") "No ongoing orders" else "No order history",
+                            if (selectedTab == "Ongoing") settings.t("No ongoing orders", "Không có đơn hàng đang xử lý") else settings.t("No order history", "Không có lịch sử đơn hàng"),
                             color = Color.Gray
                         )
                     }
@@ -202,7 +205,7 @@ fun HistoryScreen(
                             Text(order.product.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                "Order #${order.id.takeLast(6)}",
+                                settings.t("Order #", "Đơn hàng #") + order.id.takeLast(6),
                                 color = Color.Gray,
                                 fontSize = 12.sp
                             )
@@ -215,15 +218,15 @@ fun HistoryScreen(
                                 canEditReview(it, nowMillis)
                             } ?: true
                             val reviewActionText = when {
-                                review == null -> "Review"
-                                canEditReview -> "Edit Review"
-                                else -> "Reviewed"
+                                review == null -> settings.t("Review", "Đánh giá")
+                                canEditReview -> settings.t("Edit Review", "Sửa đánh giá")
+                                else -> settings.t("Reviewed", "Đã đánh giá")
                             }
                             val reviewStatusText = when {
-                                review == null -> "Not reviewed"
-                                canEditReview -> "Reviewed - 1 edit left"
-                                review.editCount >= 1 -> "Reviewed - edit used"
-                                else -> "Reviewed - edit expired"
+                                review == null -> settings.t("Not reviewed", "Chưa đánh giá")
+                                canEditReview -> settings.t("Reviewed - 1 edit left", "Đã đánh giá - Còn 1 lần sửa")
+                                review.editCount >= 1 -> settings.t("Reviewed - edit used", "Đã đánh giá - Đã dùng lượt sửa")
+                                else -> settings.t("Reviewed - edit expired", "Đã đánh giá - Hết hạn sửa")
                             }
                             val reviewActionColor = if (review == null || canEditReview) {
                                 Color(0xFF0057FF)
@@ -242,7 +245,7 @@ fun HistoryScreen(
                                         contentColor = Color(0xFF0057FF),
                                         disabledContainerColor = Color(0xFFF1F1F1),
                                         disabledContentColor = Color.Gray
-                                    ),
+                                     ),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                     modifier = Modifier.height(34.dp),
                                     shape = RoundedCornerShape(16.dp),
@@ -264,7 +267,7 @@ fun HistoryScreen(
                             }
                         } else {
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("Ongoing", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Text(settings.t("Ongoing", "Đang xử lý"), color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                                 Spacer(Modifier.height(6.dp))
                                 Button(
                                     onClick = { pendingCancelOrderId = order.id },
@@ -276,7 +279,7 @@ fun HistoryScreen(
                                     modifier = Modifier.height(32.dp),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text("Cancel", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text(settings.t("Cancel", "Hủy"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -294,6 +297,7 @@ fun CartHistoryTabs(
     onOngoing: () -> Unit,
     onHistory: () -> Unit
 ) {
+    val settings = LocalAppSettings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -302,9 +306,9 @@ fun CartHistoryTabs(
             .padding(4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        SegmentPill("Cart", selected == "Cart", onClick = onCart, modifier = Modifier.weight(1f))
-        SegmentPill("Ongoing", selected == "Ongoing", onClick = onOngoing, modifier = Modifier.weight(1f))
-        SegmentPill("History", selected == "History", onClick = onHistory, modifier = Modifier.weight(1f))
+        SegmentPill(settings.t("Cart", "Giỏ hàng"), selected == "Cart", onClick = onCart, modifier = Modifier.weight(1f))
+        SegmentPill(settings.t("Ongoing", "Đang xử lý"), selected == "Ongoing", onClick = onOngoing, modifier = Modifier.weight(1f))
+        SegmentPill(settings.t("History", "Lịch sử"), selected == "History", onClick = onHistory, modifier = Modifier.weight(1f))
     }
 }
 
@@ -334,6 +338,7 @@ fun ReviewScreen(
     orderId: String,
     viewModel: ShopViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val orderToReview = uiState.orders.firstOrNull { it.id == orderId }
@@ -367,9 +372,9 @@ fun ReviewScreen(
         topBar = {
             FashionTopBar(
                 title = when {
-                    existingReview == null -> "Write a Review"
-                    isEditingReview -> "Edit Review"
-                    else -> "Review Submitted"
+                    existingReview == null -> settings.t("Write a Review", "Viết đánh giá")
+                    isEditingReview -> settings.t("Edit Review", "Sửa đánh giá")
+                    else -> settings.t("Review Submitted", "Đã gửi đánh giá")
                 },
                 onBackClick = { navController.popBackStack() }
             )
@@ -389,9 +394,9 @@ fun ReviewScreen(
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
                         when {
-                            existingReview == null -> "Review Product"
-                            isEditingReview -> "Edit Product Review"
-                            else -> "Your Product Review"
+                            existingReview == null -> settings.t("Review Product", "Đánh giá sản phẩm")
+                            isEditingReview -> settings.t("Edit Product Review", "Sửa đánh giá sản phẩm")
+                            else -> settings.t("Your Product Review", "Đánh giá của bạn")
                         },
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
@@ -410,7 +415,7 @@ fun ReviewScreen(
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(productToReview.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                                Text("Order #${orderId.takeLast(6)}", color = Color.Gray, fontSize = 12.sp)
+                                Text(settings.t("Order #", "Đơn hàng #") + orderId.takeLast(6), color = Color.Gray, fontSize = 12.sp)
                             }
                         }
                     }
@@ -437,7 +442,7 @@ fun ReviewScreen(
                     if (isEditingReview) {
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            "You can edit this review once within 7 days.",
+                            settings.t("You can edit this review once within 7 days.", "Bạn có thể chỉnh sửa đánh giá này một lần trong vòng 7 ngày."),
                             color = Color(0xFF0057FF),
                             fontSize = 13.sp,
                             modifier = Modifier.fillMaxWidth()
@@ -448,8 +453,8 @@ fun ReviewScreen(
                         Spacer(Modifier.height(12.dp))
                         Text(
                             when {
-                                existingReview?.editCount ?: 0 >= 1 -> "Review can only be edited once."
-                                else -> "Review can only be edited within 7 days."
+                                existingReview?.editCount ?: 0 >= 1 -> settings.t("Review can only be edited once.", "Chỉ có thể chỉnh sửa đánh giá một lần.")
+                                else -> settings.t("Review can only be edited within 7 days.", "Chỉ có thể chỉnh sửa đánh giá trong vòng 7 ngày.")
                             },
                             color = Color.Gray,
                             fontSize = 13.sp,
@@ -463,7 +468,7 @@ fun ReviewScreen(
                         value = comment,
                         onValueChange = { comment = it },
                         modifier = Modifier.fillMaxWidth().height(120.dp),
-                        placeholder = { Text("Share your thoughts about this product...", color = Color.Gray, fontSize = 14.sp) },
+                        placeholder = { Text(settings.t("Share your thoughts about this product...", "Chia sẻ suy nghĩ của bạn về sản phẩm này..."), color = Color.Gray, fontSize = 14.sp) },
                         enabled = canEditReview,
                         shape = RoundedCornerShape(16.dp),
                         colors = TextFieldDefaults.colors(
@@ -499,10 +504,10 @@ fun ReviewScreen(
                     ) {
                         Text(
                             when {
-                                isSubmitting || uiState.isSubmittingReview -> "Submitting..."
-                                existingReview == null -> "Submit Review"
-                                isEditingReview -> "Save Edit"
-                                else -> "Reviewed"
+                                isSubmitting || uiState.isSubmittingReview -> settings.t("Submitting...", "Đang gửi...")
+                                existingReview == null -> settings.t("Submit Review", "Gửi đánh giá")
+                                isEditingReview -> settings.t("Save Edit", "Lưu thay đổi")
+                                else -> settings.t("Reviewed", "Đã đánh giá")
                             },
                             fontWeight = FontWeight.Bold
                         )
@@ -526,6 +531,7 @@ private fun canEditReview(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReviewDoneScreen(navController: NavController) {
+    val settings = LocalAppSettings.current
     LaunchedEffect(Unit) {
         delay(1500)
         navController.navigate(Screen.History.createRoute("History")) {
@@ -551,9 +557,9 @@ fun ReviewDoneScreen(navController: NavController) {
                         modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Success!", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                        Text(settings.t("Success!", "Thành công!"), fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
                         Spacer(Modifier.height(8.dp))
-                        Text("Thank you for your feedback!", color = Color.Gray, fontSize = 14.sp)
+                        Text(settings.t("Thank you for your feedback!", "Cảm ơn ý kiến đóng góp của bạn!"), color = Color.Gray, fontSize = 14.sp)
                         Spacer(Modifier.height(20.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             repeat(5) {

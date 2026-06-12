@@ -18,6 +18,7 @@ import com.example.fashionapp.ui.components.CommentBottomSheet
 import com.example.fashionapp.ui.components.FeedPostItem
 import com.example.fashionapp.ui.components.FeedPostSkeleton
 import com.example.fashionapp.ui.components.HomeTopBar
+import com.example.fashionapp.ui.app.settings.LocalAppSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +27,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     savedViewModel: SavedViewModel = viewModel()
 ) {
+    val settings = LocalAppSettings.current
     val uiState by viewModel.uiState.collectAsState()
     val savedUiState by savedViewModel.uiState.collectAsState()
 
@@ -85,7 +87,7 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Chưa có bài đăng nào", color = Color.Gray)
+                    Text(settings.t("No posts yet", "Chưa có bài đăng nào"), color = Color.Gray)
                 }
             }
 
