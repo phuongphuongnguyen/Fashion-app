@@ -213,8 +213,9 @@ fun ShopScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            val shopName = shopState.shopUser?.username?.takeIf { it.isNotBlank() }
-                ?: shopState.shopUser?.name
+            val shopName = shopState.shopUser?.displayName?.takeIf { it.isNotBlank() }
+                ?: shopState.shopUser?.name?.takeIf { it.isNotBlank() }
+                ?: shopState.shopUser?.username?.takeIf { it.isNotBlank() }
                 ?: shopPosts.firstOrNull()?.authorName
                 ?: "Shop"
 

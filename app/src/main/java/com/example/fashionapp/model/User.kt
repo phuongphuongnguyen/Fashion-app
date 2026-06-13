@@ -3,6 +3,7 @@ package com.example.fashionapp.model
 data class User(
     val id: String = "",
     val name: String = "",
+    val displayName: String = "",
     val avatarRef: String = "",
     val avatarUrl: String = "",
     val email: String = "",

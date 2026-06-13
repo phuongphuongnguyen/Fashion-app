@@ -161,7 +161,7 @@ fun HistoryScreen(
                     selected = selectedTab,
                     onCart = {
                         navController.navigate(Screen.Cart.route) {
-                            popUpTo(Screen.Cart.route) { inclusive = false }
+                            popUpTo(Screen.History.route) { inclusive = true }
                             launchSingleTop = true
                         }
                     },

@@ -404,7 +404,7 @@ private fun ProfileSubScreen(onBack: () -> Unit) {
 
     // Đọc displayName & avatar từ UserSession (Firestore) để hiển thị đúng
     val sessionUser by UserSession.currentUser.collectAsState()
-    var displayName by remember { mutableStateOf(sessionUser?.name ?: user?.displayName ?: "") }
+    var displayName by remember { mutableStateOf(sessionUser?.displayName?.takeIf { it.isNotBlank() } ?: sessionUser?.name ?: user?.displayName ?: "") }
     val email = user?.email ?: ""
 
     // photoUri: null = dùng avatar hiện tại từ Firestore, non-null = ảnh mới user vừa chọn
@@ -579,7 +579,9 @@ private fun ProfileSubScreen(onBack: () -> Unit) {
                             }
 
                             // 2. Cập nhật Firestore users/{uid}
-                            val updates = mutableMapOf<String, Any>("name" to displayName)
+                            val updates = mutableMapOf<String, Any>(
+                                "displayName" to displayName
+                            )
                             if (newAvatarRef != null) {
                                 updates["avatarRef"] = newAvatarRef
                             }
@@ -589,7 +591,7 @@ private fun ProfileSubScreen(onBack: () -> Unit) {
 
                             // 3. Cập nhật UserSession để các màn hình khác thấy ngay
                             val updatedUser = (sessionUser ?: User(id = uid)).copy(
-                                name = displayName,
+                                displayName = displayName,
                                 avatarRef = newAvatarRef.orEmpty().ifBlank { sessionUser?.avatarRef.orEmpty() },
                                 avatarUrl = displayAvatarUrl.ifBlank { currentAvatarUrl }
                             )
@@ -648,7 +650,7 @@ private fun ShippingSubScreen(onBack: () -> Unit) {
     val sessionUser by UserSession.currentUser.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var fullName by remember { mutableStateOf(sessionUser?.name ?: prefs.getString("ship_name", "") ?: "") }
+    var fullName by remember { mutableStateOf(sessionUser?.displayName?.takeIf { it.isNotBlank() } ?: sessionUser?.name ?: prefs.getString("ship_name", "") ?: "") }
     var address by remember { mutableStateOf(sessionUser?.address ?: prefs.getString("ship_address", "") ?: "") }
     var city by remember { mutableStateOf(prefs.getString("ship_city", "") ?: "") }
     var zipCode by remember { mutableStateOf(prefs.getString("ship_zip", "") ?: "") }
@@ -658,7 +660,7 @@ private fun ShippingSubScreen(onBack: () -> Unit) {
 
     LaunchedEffect(sessionUser) {
         sessionUser?.let {
-            if (fullName.isBlank()) fullName = it.name
+            if (fullName.isBlank()) fullName = it.displayName.ifBlank { it.name }
             if (address.isBlank()) address = it.address
             if (phone.isBlank()) phone = it.phoneNumber
         }
@@ -716,7 +718,7 @@ private fun ShippingSubScreen(onBack: () -> Unit) {
                         try {
                             val db = FirebaseFirestore.getInstance()
                             val updates = mapOf<String, Any>(
-                                "name" to fullName,
+                                "displayName" to fullName,
                                 "address" to address,
                                 "phoneNumber" to phone
                             )
@@ -725,7 +727,7 @@ private fun ShippingSubScreen(onBack: () -> Unit) {
                                 .await()
 
                             val updatedUser = (sessionUser ?: User(id = uid)).copy(
-                                name = fullName,
+                                displayName = fullName,
                                 address = address,
                                 phoneNumber = phone
                             )

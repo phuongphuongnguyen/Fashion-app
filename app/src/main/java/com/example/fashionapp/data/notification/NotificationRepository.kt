@@ -56,7 +56,7 @@ class NotificationRepository {
 
                 if (snapshot != null) {
                     val list = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(NotificationModel::class.java)
+                        doc.toObject(NotificationModel::class.java)?.copy(id = doc.id)
                     }
                     trySend(list)
                 }

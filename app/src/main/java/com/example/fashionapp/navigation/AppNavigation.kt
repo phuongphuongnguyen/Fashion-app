@@ -89,8 +89,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
         Screen.Shopping.route,
         Screen.Shop.route,
         Screen.Saved.route,
-        Screen.Profile.route,
-        Screen.History.route
+        Screen.Profile.route
     )
 
     Scaffold(

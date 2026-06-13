@@ -125,48 +125,50 @@ fun CartScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            Surface(shadowElevation = 16.dp, color = MaterialTheme.colorScheme.surface) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                     Column {
-                        Text(settings.t("Total", "Tổng thanh toán"), color = AppTheme.colors.textSecondary, fontSize = 12.sp)
-                        Text(settings.t("${selectedItems.size} item(s) selected", "Đã chọn ${selectedItems.size} sản phẩm"), color = AppTheme.colors.textSecondary, fontSize = 11.sp)
-                        Text("₫${formatPrice(total)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    }
-                    Button(
-                        onClick = {
-                            if (isEditing) {
-                                selectedItemIds.forEach { itemId ->
-                                    viewModel.updateCartQuantity(itemId, 0)
-                                }
-                                selectedItemIds = emptySet()
-                                isEditing = false
-                            } else {
-                                navController.navigate(Screen.Payment.createRoute(selectedItemIds)) {
-                                    launchSingleTop = true
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isEditing) AppTheme.colors.danger else MaterialTheme.colorScheme.primary
-                        ),
+            if (items.isNotEmpty()) {
+                Surface(shadowElevation = 16.dp, color = MaterialTheme.colorScheme.surface) {
+                    Row(
                         modifier = Modifier
-                            .width(140.dp)
-                            .height(48.dp),
-                        enabled = selectedItems.isNotEmpty()
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            if (isEditing) settings.t("Delete", "Xóa") else settings.t("Checkout", "Thanh toán"),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Column {
+                            Text(settings.t("Total", "Tổng thanh toán"), color = AppTheme.colors.textSecondary, fontSize = 12.sp)
+                            Text(settings.t("${selectedItems.size} item(s) selected", "Đã chọn ${selectedItems.size} sản phẩm"), color = AppTheme.colors.textSecondary, fontSize = 11.sp)
+                            Text("₫${formatPrice(total)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
+                        Button(
+                            onClick = {
+                                if (isEditing) {
+                                    selectedItemIds.forEach { itemId ->
+                                        viewModel.updateCartQuantity(itemId, 0)
+                                    }
+                                    selectedItemIds = emptySet()
+                                    isEditing = false
+                                } else {
+                                    navController.navigate(Screen.Payment.createRoute(selectedItemIds)) {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isEditing) AppTheme.colors.danger else MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .width(140.dp)
+                                .height(48.dp),
+                            enabled = selectedItems.isNotEmpty()
+                        ) {
+                            Text(
+                                if (isEditing) settings.t("Delete", "Xóa") else settings.t("Checkout", "Thanh toán"),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -181,18 +183,6 @@ fun CartScreen(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
-        } else if (items.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                EmptyCartState(
-                    errorMessage = uiState.cartError,
-                    onRetry = viewModel::refreshShoppingData
-                )
             }
         } else {
             LazyColumn(
@@ -216,79 +206,98 @@ fun CartScreen(
                         onCart = {},
                         onOngoing = {
                             navController.navigate(Screen.History.createRoute("Ongoing")) {
+                                popUpTo(Screen.Cart.route) { inclusive = true }
                                 launchSingleTop = true
                             }
                         },
                         onHistory = {
                             navController.navigate(Screen.History.createRoute("History")) {
+                                popUpTo(Screen.Cart.route) { inclusive = true }
                                 launchSingleTop = true
                             }
                         }
                     )
                 }
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable {
-                                selectedItemIds = if (allSelected) emptySet() else existingItemIds
-                            }
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = allSelected,
-                            onCheckedChange = { checked ->
-                                selectedItemIds = if (checked) existingItemIds else emptySet()
-                            },
-                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
-                            modifier = Modifier.size(34.dp)
-                        )
-                        Text(
-                            settings.t("Select all", "Chọn tất cả"),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            "${selectedItems.size}/${items.size}",
-                            color = AppTheme.colors.textSecondary,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-                items(items, key = { it.id }) { item ->
-                    SwipeToDeleteCartItem(
-                        onDelete = {
-                            viewModel.updateCartQuantity(item.id, 0)
-                            selectedItemIds = selectedItemIds - item.id
-                             scope.launch {
-                                val result = snackbarHostState.showSnackbar(
-                                    message = settings.t("Item removed", "Đã xóa sản phẩm"),
-                                    actionLabel = settings.t("Undo", "Hoàn tác")
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    viewModel.restoreCartItem(item)
-                                }
-                            }
+
+                if (items.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 160.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            EmptyCartState(
+                                errorMessage = uiState.cartError,
+                                onRetry = viewModel::refreshShoppingData
+                            )
                         }
-                    ) {
-                        CartItemRow(
-                            item = item,
-                            selected = item.id in selectedItemIds,
-                            onSelectedChange = { checked ->
-                                selectedItemIds = if (checked) {
-                                    selectedItemIds + item.id
-                                } else {
-                                    selectedItemIds - item.id
+                    }
+                } else {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable {
+                                    selectedItemIds = if (allSelected) emptySet() else existingItemIds
                                 }
-                            },
-                            onUpdateQuantity = { newQty ->
-                                viewModel.updateCartQuantity(item.id, newQty)
+                                .padding(horizontal = 8.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = allSelected,
+                                onCheckedChange = { checked ->
+                                    selectedItemIds = if (checked) existingItemIds else emptySet()
+                                },
+                                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
+                                modifier = Modifier.size(34.dp)
+                            )
+                            Text(
+                                settings.t("Select all", "Chọn tất cả"),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                "${selectedItems.size}/${items.size}",
+                                color = AppTheme.colors.textSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    items(items, key = { it.id }) { item ->
+                        SwipeToDeleteCartItem(
+                            onDelete = {
+                                viewModel.updateCartQuantity(item.id, 0)
+                                selectedItemIds = selectedItemIds - item.id
+                                 scope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = settings.t("Item removed", "Đã xóa sản phẩm"),
+                                        actionLabel = settings.t("Undo", "Hoàn tác")
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        viewModel.restoreCartItem(item)
+                                    }
+                                }
                             }
-                        )
+                        ) {
+                            CartItemRow(
+                                item = item,
+                                selected = item.id in selectedItemIds,
+                                onSelectedChange = { checked ->
+                                    selectedItemIds = if (checked) {
+                                        selectedItemIds + item.id
+                                    } else {
+                                        selectedItemIds - item.id
+                                    }
+                                },
+                                onUpdateQuantity = { newQty ->
+                                    viewModel.updateCartQuantity(item.id, newQty)
+                                }
+                            )
+                        }
                     }
                 }
             }
