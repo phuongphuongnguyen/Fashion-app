@@ -24,7 +24,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-
 // ── Palette (same as SettingsScreen) ──
 private val PrimaryBlue = Color(0xFF3669C9)
 
@@ -52,6 +51,23 @@ fun RegisterShopScreen(
     var shopName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
+
+    // Collect session user to auto-populate fields
+    val sessionUser by UserSession.currentUser.collectAsState()
+
+    LaunchedEffect(sessionUser) {
+        sessionUser?.let { user ->
+            if (shopName.isBlank()) {
+                shopName = user.name.ifBlank { user.username }
+            }
+            if (location.isBlank()) {
+                location = user.address
+            }
+            if (description.isBlank()) {
+                description = user.bio
+            }
+        }
+    }
 
     // State
     var isRegistering by remember { mutableStateOf(false) }
@@ -354,57 +370,70 @@ fun RegisterShopScreen(
                             val shopId = uid
                             val shopDocRef = db.collection("shops").document(shopId)
 
-                            // 2. Create shop document in Firestore
+                            // 2. Read existing shop document if any, and current user's profile
+                            val existingDoc = shopDocRef.get().await()
+                            val currentUser = UserSession.currentUser.value
+
+                            // 2.1 Setup shop fields: preserve existing counts, inherit followers, or fallback to default
                             val shopData = hashMapOf(
                                 "userId" to uid,
                                 "name" to shopName,
                                 "description" to description,
                                 "location" to location,
-                                "logoRef" to UserSession.currentUser.value?.avatarRef.orEmpty(),
-                                "followerCount" to 28900,
-                                "isOfficial" to true,
-                                "productCount" to 0,
-                                "rating" to 0.0,
-                                "responseRate" to 0,
-                                "responseTime" to "Trong vài phút",
-                                "reviewCount" to 0,
-                                "orderCount" to 0,
-                                "soldCount" to 0,
-                                "revenue" to 0.0,
-                                "createdAt" to Timestamp.now(),
+                                "logoRef" to currentUser?.avatarRef.orEmpty(),
+                                "followerCount" to (existingDoc.getLong("followerCount") 
+                                    ?: currentUser?.followersCount?.toLong() 
+                                    ?: 0L),
+                                "isOfficial" to (existingDoc.getBoolean("isOfficial") ?: true),
+                                "productCount" to (existingDoc.getLong("productCount") ?: 0L),
+                                "rating" to (existingDoc.getDouble("rating") ?: 0.0),
+                                "responseRate" to (existingDoc.getLong("responseRate") ?: 100L),
+                                "responseTime" to (existingDoc.getString("responseTime") ?: "Trong vài phút"),
+                                "reviewCount" to (existingDoc.getLong("reviewCount") ?: 0L),
+                                "orderCount" to (existingDoc.getLong("orderCount") ?: 0L),
+                                "soldCount" to (existingDoc.getLong("soldCount") ?: 0L),
+                                "revenue" to (existingDoc.getDouble("revenue") ?: 0.0),
+                                "createdAt" to (existingDoc.getTimestamp("createdAt") ?: Timestamp.now()),
                                 "updatedAt" to Timestamp.now()
                             )
-                            shopDocRef.set(shopData).await()
+                            shopDocRef.set(shopData, com.google.firebase.firestore.SetOptions.merge()).await()
 
-                            // 2.5 Initialize dailyRevenue subcollection for the current date with 0 values
+                            // 2.5 Initialize dailyRevenue subcollection for the current date with 0 values if not exists
                             try {
                                 val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
                                 val dayId = sdf.format(java.util.Date())
-                                val initialDailyRevenue = hashMapOf(
-                                    "orderCount" to 0,
-                                    "revenue" to 0.0,
-                                    "soldCount" to 0,
-                                    "updatedAt" to Timestamp.now()
-                                )
-                                shopDocRef.collection("dailyRevenue").document(dayId).set(initialDailyRevenue).await()
+                                val dailyRevRef = shopDocRef.collection("dailyRevenue").document(dayId)
+                                if (!dailyRevRef.get().await().exists()) {
+                                    val initialDailyRevenue = hashMapOf(
+                                        "orderCount" to 0,
+                                        "revenue" to 0.0,
+                                        "soldCount" to 0,
+                                        "updatedAt" to Timestamp.now()
+                                    )
+                                    dailyRevRef.set(initialDailyRevenue).await()
+                                }
                             } catch (e: Exception) {
                                 android.util.Log.e("RegisterShopScreen", "Failed to initialize dailyRevenue subcollection", e)
                             }
 
-                            // 3. Update user document: set role & shopId
+                            // 3. Update user document: set role, shopId, and sync name
                             db.collection("users").document(uid)
                                 .update(
                                     mapOf(
                                         "role" to "shop",
-                                        "shopId" to shopId
+                                        "shopId" to shopId,
+                                        "name" to shopName
                                     )
                                 ).await()
 
                             // 4. Update UserSession in-memory state
-                            val currentUser = UserSession.currentUser.value
                             if (currentUser != null) {
                                 UserSession.updateCurrentUser(
-                                    currentUser.copy(role = "shop", shopId = shopId)
+                                    currentUser.copy(
+                                        role = "shop",
+                                        shopId = shopId,
+                                        name = shopName
+                                    )
                                 )
                             }
 
