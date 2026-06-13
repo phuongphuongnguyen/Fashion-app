@@ -76,14 +76,15 @@ object SearchRepository {
                 async {
                     // Tên hiển thị có thể nằm ở 'name', 'displayName' hoặc 'username' tuỳ doc
                     val username = doc.getString("username").orEmpty()
-                    val name = (username.takeIf { it.isNotBlank() }
-                        ?: doc.getString("name")
-                        ?: doc.getString("displayName"))
-                        .orEmpty()
-                    if (name.isBlank()) return@async null
+                    val displayName = doc.getString("displayName").orEmpty().ifBlank {
+                        doc.getString("name").orEmpty().ifBlank { username }
+                    }
+                    val name = doc.getString("name").orEmpty().ifBlank { displayName }
+                    if (displayName.isBlank() && name.isBlank()) return@async null
                     User(
                         id = doc.id,
                         name = name,
+                        displayName = displayName,
                         avatarRef = doc.getString("avatarRef").orEmpty(),
                         avatarUrl = StorageUrlResolver.resolve(
                             doc.getString("avatarRef").orEmpty()

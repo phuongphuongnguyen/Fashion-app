@@ -16,14 +16,16 @@ class UserRepository {
 
     // Map 1 document users/{id} -> User, đọc field theo nhiều tên có thể có (data seed lệch field).
     private suspend fun userFromSnapshot(snapshot: DocumentSnapshot): User {
-        val name = (snapshot.getString("name")
-            ?: snapshot.getString("displayName")
-            ?: snapshot.getString("username"))
+        val displayName = (snapshot.getString("displayName")
+            ?: snapshot.getString("username")
+            ?: snapshot.getString("name"))
             .orEmpty()
+        val name = snapshot.getString("name").orEmpty().ifBlank { displayName }
         val avatarRef = snapshot.getString("avatarRef").orEmpty()
         return User(
             id = snapshot.id,
             name = name,
+            displayName = displayName,
             avatarRef = avatarRef,
             avatarUrl = StorageUrlResolver.resolve(avatarRef),
             email = snapshot.getString("email") ?: "",
@@ -156,7 +158,7 @@ class UserRepository {
         val avatarUrl = "https://api.dicebear.com/7.x/avataaars/svg?seed=$randomSeed"
         
         val data = hashMapOf(
-            "name" to name,
+            "displayName" to name,
             "avatarRef" to avatarUrl,
             "email" to email,
             "followersCount" to (100..1000).random(),

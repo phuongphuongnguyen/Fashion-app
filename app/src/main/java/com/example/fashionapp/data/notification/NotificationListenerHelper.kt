@@ -57,7 +57,7 @@ object NotificationListenerHelper {
                 for (change in snapshot.documentChanges) {
                     if (change.type == DocumentChange.Type.ADDED) {
                         val doc = change.document
-                        val notification = doc.toObject(NotificationModel::class.java)
+                        val notification = doc.toObject(NotificationModel::class.java)?.copy(id = doc.id) ?: continue
                         
                         val createdAt = notification.createdAt
                         val startedAt = listenerStartedAt

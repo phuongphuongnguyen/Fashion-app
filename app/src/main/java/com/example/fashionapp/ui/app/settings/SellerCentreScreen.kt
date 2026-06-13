@@ -350,10 +350,10 @@ fun SellerCentreScreen(
                                         )
                                     ).await()
 
-                                // Sync user name as well
-                                db.collection("users").document(uid)
-                                    .update("name", shopName)
-                                    .await()
+                                 // Sync user name as well
+                                 db.collection("users").document(uid)
+                                     .update("name", shopName)
+                                     .await()
 
                                 // Update UserSession in-memory state
                                 val currentUser = UserSession.currentUser.value

@@ -101,29 +101,18 @@ fun ProductAnalyticsScreen(
                         ProductHeader(
                             product = product,
                             onViewPage = { navController.navigate(Screen.ProductDetail.createRoute(product.id)) },
-                            onShowMenu = { showMenu = true }
+                            showMenu = showMenu,
+                            onShowMenu = { showMenu = true },
+                            onDismissMenu = { showMenu = false },
+                            onChangePrice = {
+                                showMenu = false
+                                showPriceDialog = true
+                            },
+                            onChangeStock = {
+                                showMenu = false
+                                showStockDialog = true
+                            }
                         )
-                        
-                        // Menu moved here to be near the header
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(settings.t("Change Price", "Thay đổi giá")) },
-                                onClick = {
-                                    showMenu = false
-                                    showPriceDialog = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(settings.t("Change Stock", "Thay đổi kho")) },
-                                onClick = {
-                                    showMenu = false
-                                    showStockDialog = true
-                                }
-                            )
-                        }
                     }
                     item { ProductMetricGrid(product = product, revenue = state.revenue) }
 
@@ -274,7 +263,15 @@ private fun ChangeStockDialog(
 }
 
 @Composable
-private fun ProductHeader(product: Product, onViewPage: () -> Unit, onShowMenu: () -> Unit) {
+private fun ProductHeader(
+    product: Product,
+    onViewPage: () -> Unit,
+    showMenu: Boolean,
+    onShowMenu: () -> Unit,
+    onDismissMenu: () -> Unit,
+    onChangePrice: () -> Unit,
+    onChangeStock: () -> Unit
+) {
     val settings = LocalAppSettings.current
     Column {
         Row(verticalAlignment = Alignment.Top) {
@@ -301,13 +298,28 @@ private fun ProductHeader(product: Product, onViewPage: () -> Unit, onShowMenu: 
                 Spacer(Modifier.height(6.dp))
                 Text("₫${formatMoney(product.price)}", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = MaterialTheme.colorScheme.secondary)
             }
-            
-            IconButton(onClick = onShowMenu) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = null,
-                    tint = AppTheme.colors.textSecondary
-                )
+
+            Box {
+                IconButton(onClick = onShowMenu) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = null,
+                        tint = AppTheme.colors.textSecondary
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = onDismissMenu
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(settings.t("Change Price", "Thay đổi giá")) },
+                        onClick = onChangePrice
+                    )
+                    DropdownMenuItem(
+                        text = { Text(settings.t("Change Stock", "Thay đổi kho")) },
+                        onClick = onChangeStock
+                    )
+                }
             }
         }
         Spacer(Modifier.height(10.dp))

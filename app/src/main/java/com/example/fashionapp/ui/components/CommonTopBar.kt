@@ -140,8 +140,8 @@ fun ShoppingTopBar(
                         Icon(
                             painter = painterResource(R.drawable.ic_camera),
                             contentDescription = "Camera",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(30.dp)
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(25.dp)
                         )
                     }
                 }

@@ -68,7 +68,7 @@ fun PaymentScreen(
     val shippingFee = if (selectedShippingMethod == "express") 50000.0 else 0.0
     val total = itemsTotal + shippingFee
     val checkoutUser = uiState.currentUserProfile ?: currentUser
-    val recipientName = checkoutUser?.name?.takeIf { it.isNotBlank() } ?: settings.t("Customer", "Khách hàng")
+    val recipientName = checkoutUser?.displayName?.takeIf { it.isNotBlank() } ?: checkoutUser?.name?.takeIf { it.isNotBlank() } ?: settings.t("Customer", "Khách hàng")
     val recipientPhone = checkoutUser?.phoneNumber.orEmpty()
     val shippingAddress = checkoutUser?.address.orEmpty()
     val hasShippingAddress = shippingAddress.isNotBlank()

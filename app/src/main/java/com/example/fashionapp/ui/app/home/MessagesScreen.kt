@@ -11,6 +11,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +40,10 @@ fun MessagesScreen(
     val settings = LocalAppSettings.current
     val notifications by viewModel.notifications.collectAsState()
 
+    val context = LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("chatbot_prefs", android.content.Context.MODE_PRIVATE) }
+    var isChatbotRead by remember { mutableStateOf(sharedPreferences.getBoolean("is_chatbot_read", false)) }
+
     Scaffold(
         topBar = {
             FashionTopBar(
@@ -51,7 +59,14 @@ fun MessagesScreen(
                 .padding(innerPadding)
         ) {
             // ── Fixed Chatbot Item ──
-            ChatbotEntryItem(onClick = { navController.navigate(Screen.Chatbot.route) })
+            ChatbotEntryItem(
+                isRead = isChatbotRead,
+                onClick = {
+                    sharedPreferences.edit().putBoolean("is_chatbot_read", true).apply()
+                    isChatbotRead = true
+                    navController.navigate(Screen.Chatbot.route)
+                }
+            )
             
             HorizontalDivider(thickness = 8.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
@@ -79,7 +94,7 @@ fun MessagesScreen(
 }
 
 @Composable
-private fun ChatbotEntryItem(onClick: () -> Unit) {
+private fun ChatbotEntryItem(isRead: Boolean, onClick: () -> Unit) {
     val settings = LocalAppSettings.current
     Row(
         modifier = Modifier
@@ -107,12 +122,14 @@ private fun ChatbotEntryItem(onClick: () -> Unit) {
                 fontSize = 13.sp
             )
         }
-        Icon(
-            painter = painterResource(R.drawable.ic_mess),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.size(20.dp)
-        )
+        if (!isRead) {
+            Icon(
+                painter = painterResource(R.drawable.ic_mess),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 
