@@ -6,12 +6,7 @@ import com.example.fashionapp.data.user.UserSession
 import com.google.firebase.auth.FirebaseAuth
 
 /**
- * Mở trang cá nhân của [targetId] — có thể là userId (bấm vào tác giả post) hoặc shopId
- * (bấm vào shop ở product detail).
- *
- * Nếu [targetId] chính là tài khoản đang đăng nhập (so khớp cả userId lẫn shopId) thì
- * chuyển sang TAB Profile (tab 4) giống như bấm vào tab — GIỮ bottom navigation, không có
- * nút back của ShopDetail. Ngược lại mở [Screen.ShopDetail] như bình thường.
+ * Nếu targetId là tài khoản đang đăng nhập thì điều hướng sang profile chính
  */
 fun NavController.openProfileOrShop(targetId: String) {
     if (targetId.isBlank()) return
@@ -22,7 +17,6 @@ fun NavController.openProfileOrShop(targetId: String) {
         (currentShopId.isNotBlank() && targetId == currentShopId)
 
     if (isSelf) {
-        // Giống hệt onTabSelected của bottom nav → vào tab Profile, vẫn còn bottom bar.
         navigate(Screen.Profile.route) {
             popUpTo(graph.findStartDestination().id) { saveState = true }
             launchSingleTop = true

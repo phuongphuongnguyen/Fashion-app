@@ -116,16 +116,11 @@ fun ShopScreen(
                 onBackClick = if (shopState.isOwnProfile) null else { { navController.popBackStack() } },
                 actions = {
                     if (shopState.isOwnProfile) {
-                        IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
-                            Icon(
-                                painter = painterResource(
-                                    if (settings.isDarkMode) R.drawable.ic_setting_dark else R.drawable.ic_setting
-                                ),
-                                contentDescription = settings.t("Settings", "Cài đặt"),
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(34.dp)
-                            )
-                        }
+                        com.example.fashionapp.ui.components.ActionIconButton(
+                            iconRes = if (settings.isDarkMode) R.drawable.ic_setting_dark else R.drawable.ic_setting,
+                            contentDescription = settings.t("Settings", "Cài đặt"),
+                            onClick = { navController.navigate(Screen.Settings.route) }
+                        )
                     }
                 }
             )

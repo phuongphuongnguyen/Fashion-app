@@ -105,7 +105,7 @@ class CreatePostViewModel : ViewModel() {
         }
     }
 
-    // Tạo sản phẩm mới kèm các biến thể (kích cỡ/màu sắc) và hình ảnh rồi cập nhật lên cửa hàng
+    // Tạo sản phẩm mới kèm các biến thể (kích cỡ/màu sắc) và hình ảnh, cập nhật lên cửa hàng
     fun submitProduct(
         shopId: String,
         name: String,
@@ -147,7 +147,7 @@ class CreatePostViewModel : ViewModel() {
         }
     }
 
-    // Reset lại trạng thái kết quả đăng tin (thành công/lỗi) để chuẩn bị cho lần thực thi tiếp theo
+    // Reset lại trạng thái kết quả đăng tin (thành công/lỗi)
     fun consumeResult() {
         _uiState.value = _uiState.value.copy(isSuccess = false, error = null)
     }
@@ -247,7 +247,6 @@ fun CreatePostScreen(
                     onRemoveImage = { uri -> imageUris = imageUris.filterNot { it == uri } }
                 )
             }
-            // Mode Toggle (Only if authorId is present - i.e. it's a Shop)
             if (!authorId.isNullOrBlank()) {
                 item {
                     TabRow(

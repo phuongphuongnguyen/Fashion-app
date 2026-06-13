@@ -57,7 +57,7 @@ class SearchViewModel(
 
     init {
         loadSubCategories()
-        // Chỉ search nếu được mở với query/category sẵn (vd. từ Shopping → click category)
+
         if (hasInitialCriteria) {
             runSearch(initialQuery, initialCategoryId, initialSort)
         }
@@ -85,8 +85,6 @@ class SearchViewModel(
         }
     }
 
-    // ── Public actions ────────────────────────────────────────────────────
-
     // Cập nhật chuỗi truy vấn hiện tại khi người dùng đang nhập vào thanh tìm kiếm
     fun onQueryChange(newQuery: String) {
         _uiState.update { it.copy(query = newQuery) }
@@ -111,7 +109,7 @@ class SearchViewModel(
         if (newId != null || q.isNotBlank()) {
             runSearch(q, newId)
         } else {
-            // Bỏ chọn category + không có query → về màn gợi ý
+            // Bỏ chọn category + không có query --> về màn gợi ý
             resetToSuggestions()
         }
     }
@@ -163,8 +161,6 @@ class SearchViewModel(
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
     // Reset trạng thái UI để hiển thị lại màn hình danh mục gợi ý và lịch sử tìm kiếm mặc định
     private fun resetToSuggestions() {
         _uiState.update {
@@ -203,7 +199,7 @@ class SearchViewModel(
     }
 }
 
-// ── Factory ───────────────────────────────────────────────────────────────────
+
 class SearchViewModelFactory(
     private val initialQuery: String,
     private val initialCategoryId: String?,

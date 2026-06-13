@@ -21,7 +21,7 @@ data class SubCategory(
 object SearchRepository {
     private val db = FirebaseFirestore.getInstance()
 
-    // ── In-Memory Cache ──────────────────────────────────────────────────────
+    // memory cache
     private var cachedProducts: List<Product>? = null
     private var cachedSubCategories: List<SubCategory>? = null
     private var cachedUsers: List<User>? = null
@@ -45,7 +45,7 @@ object SearchRepository {
         } catch (_: Exception) { emptyList() }
     }
 
-    // Tìm kiếm các sản phẩm phù hợp với từ khóa truy vấn (sau khi chuẩn hóa không dấu) và lọc theo phân mục
+    // Tìm kiếm từ khoá và lọc
     suspend fun search(query: String, categoryId: String? = null): List<Product> {
         val all = getAllProducts()
         val tokens = normalize(query).split(WHITESPACE).filter { it.isNotBlank() }
@@ -63,7 +63,7 @@ object SearchRepository {
         }
     }
 
-    // Truy vấn thông tin của toàn bộ người dùng từ Firestore để phục vụ tìm kiếm bạn bè/tác giả bài viết
+    // truy vấn user
     suspend fun getAllUsers(): List<User> = coroutineScope {
         cachedUsers?.let { return@coroutineScope it }
 
@@ -123,7 +123,7 @@ object SearchRepository {
         return normalize(parts.joinToString(" "))
     }
 
-    // Bỏ dấu tiếng Việt + lowercase. Đảm bảo "ao so mi" match được "Áo sơ mi".
+    // Bỏ dấu tiếng Việt + lowercase
     private fun normalize(input: String): String {
         if (input.isBlank()) return ""
         val decomposed = Normalizer.normalize(input, Normalizer.Form.NFD)
@@ -137,14 +137,14 @@ object SearchRepository {
     private val WHITESPACE = "\\s+".toRegex()
     private val COMBINING_MARKS = "\\p{Mn}+".toRegex()
 
-    // Xóa sạch bộ nhớ đệm (in-memory cache) của sản phẩm, danh mục và người dùng để bắt buộc tải mới
+    // Xóa sạch bộ nhớ đệm
     fun clearCache() {
         cachedProducts = null
         cachedSubCategories = null
         cachedUsers = null
     }
 
-    // Lấy danh sách các danh mục con phổ biến và tải trước các URL hình ảnh đại diện của chúng
+    // Lấy danh sách các danh mục con phổ biến và tải trước các URL hình ảnh đại diện
     suspend fun getSubCategories(): List<SubCategory> {
         cachedSubCategories?.let { return it }
         val targetIds = listOf("cat001a", "cat001b", "cat001c", "cat002", "cat003", "cat004", "cat005", "cat006", "cat007")

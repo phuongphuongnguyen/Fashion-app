@@ -177,7 +177,8 @@ object ShopRepository {
                     trySend(0f)
                     return@addSnapshotListener
                 }
-                trySend((snapshot.get("rating") as? Number)?.toFloat() ?: 0f)
+                val r = (snapshot.get("rating") as? Number)?.toDouble() ?: 0.0
+                trySend((Math.round(r * 10) / 10.0).toFloat())
             }
         awaitClose { listener.remove() }
     }
@@ -204,7 +205,7 @@ object ShopRepository {
                                 name = productMap["name"] as? String ?: "",
                                 price = safeDouble(productMap["price"]),
                                 imageUrl = StorageUrlResolver.resolve(productMap["imageUrl"] as? String ?: ""),
-                                rating = (productMap["rating"] as? Number)?.toFloat() ?: 0f,
+                                rating = ((productMap["rating"] as? Number)?.toDouble() ?: 0.0).let { Math.round(it * 10) / 10.0 }.toFloat(),
                                 soldCount = (productMap["soldCount"] as? Number)?.toInt() ?: 0,
                                 shopId = productMap["shopId"] as? String ?: doc.getString("shopId").orEmpty()
                             )
@@ -229,7 +230,7 @@ object ShopRepository {
         cachedCartItems?.let { emit(CartItemsSnapshot(it)) }
     }
 
-    // Thêm một sản phẩm mới hoặc tăng thêm số lượng sản phẩm sẵn có trong giỏ hàng (Cart) của người dùng
+    // thêm vào giỏ hàng
     suspend fun addToCart(userId: String, cartItem: CartItem): String {
         if (userId.isBlank()) return ""
         val cartDoc = db.collection("carts").document(userId)
@@ -347,7 +348,7 @@ object ShopRepository {
         }.await()
     }
 
-    // Xóa hàng loạt sản phẩm được chỉ định ra khỏi giỏ hàng của người dùng sau khi đã tiến hành mua hàng thành công
+    // Xóa sản phẩm được chỉ định ra khỏi giỏ hàng của người dùng sau khi đã tiến hành mua hàng thành công
     suspend fun clearCart(userId: String, cartItems: List<CartItem>) {
         if (userId.isBlank()) return
         val batch = db.batch()
@@ -1005,11 +1006,12 @@ object ShopRepository {
                 currentReviewCount + 1
             }
 
-            val newAverage = if (reviewSnapshot.exists() && oldRating != null) {
+            val calculatedAverage = if (reviewSnapshot.exists() && oldRating != null) {
                 ((currentRating * newReviewCount) - oldRating + safeRating) / newReviewCount
             } else {
                 ((currentRating * currentReviewCount) + safeRating) / newReviewCount
             }
+            val newAverage = Math.round(calculatedAverage * 10) / 10.0
 
             val reviewData = hashMapOf<String, Any>(
                 "id" to order.id,
@@ -1044,11 +1046,12 @@ object ShopRepository {
                 } else {
                     currentShopReviewCount + 1
                 }
-                val newShopAverage = if (reviewSnapshot.exists() && oldRating != null) {
+                val calculatedShopAverage = if (reviewSnapshot.exists() && oldRating != null) {
                     ((currentShopRating * newShopReviewCount) - oldRating + safeRating) / newShopReviewCount
                 } else {
                     ((currentShopRating * currentShopReviewCount) + safeRating) / newShopReviewCount
                 }
+                val newShopAverage = Math.round(calculatedShopAverage * 10) / 10.0
                 transaction.set(
                     ref,
                     mapOf(
