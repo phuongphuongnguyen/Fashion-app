@@ -56,9 +56,7 @@ import com.example.fashionapp.navigation.Screen
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.example.fashionapp.ui.theme.AppTheme
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun SearchScreen(
@@ -87,7 +85,7 @@ fun SearchScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        // ── Top Search Bar ───────────────────────────────────────────────
+        //  Top Search Bar
         SearchTopBar(
             query          = state.query,
             onQueryChange  = viewModel::onQueryChange,
@@ -112,7 +110,7 @@ fun SearchScreen(
             )
         }
 
-        // ── Nội dung ────────────────────────────────────────────────────
+        // Nội dung
         Column(modifier = Modifier.fillMaxSize()) {
 
             // SubCategories (circles)
@@ -185,9 +183,7 @@ fun SearchScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  SEARCH TOP BAR
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SearchTopBar(
@@ -269,9 +265,7 @@ private fun SearchTopBar(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  RESULTS HEADER
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ResultsHeader(
@@ -306,9 +300,7 @@ private fun ResultsHeader(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  SUGGESTIONS (history + popular)
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SuggestionsContent(
@@ -448,9 +440,7 @@ private fun KeywordChip(text: String, onClick: () -> Unit) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  SUBCATEGORIES ROW (circles)
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SubCategoriesRow(
@@ -531,9 +521,7 @@ private fun SubCategoryItem(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SEARCH RESULTS (user trên · sản phẩm dưới)
-// ─────────────────────────────────────────────────────────────────────────────
+//  SEARCH RESULTS (user trên - sản phẩm dưới)
 
 @Composable
 private fun SearchResults(
@@ -568,7 +556,7 @@ private fun SearchResults(
             }
         }
 
-        // ── Sản phẩm ─────────────────────────────────────────────────────
+        // products
         if (products.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 val title = when {
@@ -654,9 +642,7 @@ private fun UserResultRow(user: User, onClick: () -> Unit) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  PRODUCT CARD
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ProductGridCard(
@@ -743,9 +729,7 @@ private fun ProductGridCard(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  EMPTY STATE
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun EmptyState(query: String) {
@@ -778,9 +762,7 @@ private fun EmptyState(query: String) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 
 private fun formatPrice(price: Double): String =
     "%.0f".format(price).reversed().chunked(3).joinToString(".").reversed()

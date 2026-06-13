@@ -16,8 +16,7 @@ import com.example.fashionapp.data.shop.DailyRevenuePoint
 import com.example.fashionapp.ui.theme.AppTheme
 
 /**
- * Bar chart đơn giản tự vẽ bằng Compose (không cần thư viện ngoài).
- * Mỗi cột = 1 ngày; chiều cao tỉ lệ theo doanh thu so với ngày cao nhất.
+ * Bar chart đơn giản vẽ bằng Compose.
  */
 @Composable
 fun RevenueBarChart(
@@ -86,26 +85,25 @@ fun RevenueBarChart(
     }
 }
 
-// ── Helpers dùng chung trong package shopdashboard ──
+// Helpers dùng chung trong package shopdashboard
 
-// 945000.0 → "945.000"
+// format
 internal fun formatMoney(value: Double): String =
     "%.0f".format(value).reversed().chunked(3).joinToString(".").reversed()
 
-// 945000.0 → "945K", 14930000.0 → "14.9M"
+//format
 internal fun formatShortMoney(value: Double): String = when {
     value >= 1_000_000 -> "%.1fM".format(value / 1_000_000.0)
     value >= 1_000     -> "%.0fK".format(value / 1_000.0)
     else               -> "%.0f".format(value)
 }
 
-// "2026-06-09" → "09/06"
+
 internal fun shortDate(isoDate: String): String {
     val parts = isoDate.split("-")
     return if (parts.size == 3) "${parts[2]}/${parts[1]}" else isoDate
 }
 
-// "2026-06-09" → "09/06/2026"
 internal fun fullDate(isoDate: String): String {
     val parts = isoDate.split("-")
     return if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else isoDate

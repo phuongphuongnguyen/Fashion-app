@@ -15,7 +15,7 @@ object ProductRepository {
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
-    // ── In-Memory Cache ──────────────────────────────────────────────────────
+    // memory cache
     private val productCache = mutableMapOf<String, Product>()
     private var mostPopularCache: List<Product>? = null
 
@@ -93,7 +93,9 @@ object ProductRepository {
                     ?: StorageUrlResolver.resolve(doc.getString("imageUrl").orEmpty()).takeIf { it.isNotBlank() }
                     ?: "",
                 imageUrls       = imageUrls,
-                rating          = (doc.get("rating") as? Number)?.toFloat() ?: 0f,
+                rating          = ((doc.get("rating") as? Number)?.toDouble() ?: 0.0).let {
+                    Math.round(it * 10) / 10.0
+                }.toFloat(),
                 reviewCount     = safeInt(doc.get("reviewCount")),
                 soldCount       = safeInt(doc.get("soldCount")),
                 isSale          = discount > 0 || originalPrice > price,

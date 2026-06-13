@@ -9,7 +9,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 
-// ── Tổng hợp số liệu của shop (doc shops/{shopId}) ──
 data class ShopStats(
     val revenue: Double = 0.0,
     val soldCount: Int = 0,
@@ -21,23 +20,22 @@ data class ShopStats(
     val responseTime: String = ""
 )
 
-// ── Doanh thu 1 ngày (doc .../dailyRevenue/{yyyy-MM-dd}) ──
+// daily revenue
 data class DailyRevenuePoint(
-    val date: String = "",          // yyyy-MM-dd (chính là document id)
+    val date: String = "",          // yyyy-mm-dd
     val revenue: Double = 0.0,
     val orderCount: Int = 0,
     val soldCount: Int = 0
 )
 
-// ── 1 sản phẩm + doanh thu (Product model không có field revenue nên gộp thêm) ──
+
 data class ShopProductStat(
     val product: Product,
     val revenue: Double = 0.0
 )
 
 /**
- * Đọc số liệu cho màn Quản lý shop & Phân tích sản phẩm.
- * Tất cả query đều là single-field (không cần composite index).
+ * màn Quản lý shop và phân tích sản phẩm.
  */
 object ShopDashboardRepository {
     private val db = FirebaseFirestore.getInstance()
@@ -56,7 +54,7 @@ object ShopDashboardRepository {
                 soldCount = safeInt(doc.get("soldCount")),
                 orderCount = safeInt(doc.get("orderCount")),
                 productCount = safeInt(doc.get("productCount")),
-                rating = (doc.get("rating") as? Number)?.toFloat() ?: 0f,
+                rating = ((doc.get("rating") as? Number)?.toDouble() ?: 0.0).let { Math.round(it * 10) / 10.0 }.toFloat(),
                 reviewCount = safeInt(doc.get("reviewCount")),
                 responseRate = safeInt(doc.get("responseRate")),
                 responseTime = doc.getString("responseTime").orEmpty()
@@ -65,8 +63,6 @@ object ShopDashboardRepository {
             null
         }
     }
-
-    // shops/{shopId}/DailyRevenue → các ngày gần nhất (trả về tăng dần để vẽ chart trái→phải)
     suspend fun getShopDailyRevenue(shopId: String, limit: Int = 7): List<DailyRevenuePoint> {
         if (shopId.isBlank()) return emptyList()
         return fetchDailyRevenue(
@@ -75,7 +71,6 @@ object ShopDashboardRepository {
         )
     }
 
-    // products/{productId}/DailyRevenue → các ngày gần nhất
     suspend fun getProductDailyRevenue(productId: String, limit: Int = 7): List<DailyRevenuePoint> {
         if (productId.isBlank()) return emptyList()
         return fetchDailyRevenue(
@@ -86,8 +81,7 @@ object ShopDashboardRepository {
 
     private suspend fun fetchDailyRevenue(ref: CollectionReference, limit: Int): List<DailyRevenuePoint> {
         return try {
-            // Lấy tất cả rồi sort + cắt ở client → không cần index đặc biệt.
-            // (Mỗi shop/product chỉ có tối đa ~vài chục ngày nên đọc hết là ổn.)
+            // Lấy tất cả rồi sort
             val snap = ref.get().await()
             val result = snap.documents.map { d ->
                 DailyRevenuePoint(
@@ -97,9 +91,9 @@ object ShopDashboardRepository {
                     soldCount = safeInt(d.get("soldCount"))
                 )
             }
-                .sortedByDescending { it.date }   // mới nhất trước
-                .take(limit)                      // lấy `limit` ngày gần nhất
-                .sortedBy { it.date }             // rồi sort tăng dần để vẽ chart trái→phải
+                .sortedByDescending { it.date }
+                .take(limit)
+                .sortedBy { it.date }
 
             android.util.Log.d("ShopDashboardRepo", "Fetched ${result.size} points for path: ${ref.path}")
             result
@@ -109,7 +103,7 @@ object ShopDashboardRepository {
         }
     }
 
-    // products where shopId == shopId → kèm field revenue của từng doc (sắp doanh thu cao lên đầu)
+    //  sắp doanh thu product cao lên đầu
     suspend fun getProductsForShop(shopId: String): List<ShopProductStat> = coroutineScope {
         if (shopId.isBlank()) return@coroutineScope emptyList()
         try {

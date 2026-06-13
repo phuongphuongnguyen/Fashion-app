@@ -27,9 +27,7 @@ import com.example.fashionapp.ui.app.settings.AppSettingsViewModel
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.example.fashionapp.ui.theme.AppTheme
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  GENERIC TOP BAR (dùng chung cho các màn hình có back + actions tùy chỉnh)
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,9 +66,7 @@ fun FashionTopBar(
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  HOME TOP BAR
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,9 +100,7 @@ fun HomeTopBar(
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  SHOPPING TOP BAR
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,9 +161,7 @@ fun ShoppingTopBar(
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  SAVED TOP BAR
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -185,9 +177,7 @@ fun SavedTopBar(
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  PROFILE TOP BAR
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -212,9 +202,7 @@ fun ProfileTopBar(
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  COMMON COMPONENTS
-// ─────────────────────────────────────────────────────────────────────────────
 
 // Chọn biến thể icon theo dark mode (in-app toggle, không phải uiMode hệ thống).
 @Composable
@@ -222,10 +210,10 @@ private fun adaptiveIcon(light: Int, dark: Int): Int =
     if (LocalAppSettings.current.isDarkMode) dark else light
 
 @Composable
-private fun ActionIconButton(iconRes: Int, contentDescription: String, onClick: () -> Unit) {
+internal fun ActionIconButton(iconRes: Int, contentDescription: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(52.dp)
             .clip(CircleShape)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
@@ -233,15 +221,13 @@ private fun ActionIconButton(iconRes: Int, contentDescription: String, onClick: 
         Icon(
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
-            modifier = Modifier.size(34.dp),
+            modifier = Modifier.size(42.dp),
             tint = Color.Unspecified
         )
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  PREVIEWS
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)

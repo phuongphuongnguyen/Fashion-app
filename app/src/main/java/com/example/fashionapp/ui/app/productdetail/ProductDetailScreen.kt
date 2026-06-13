@@ -108,7 +108,7 @@ fun ProductDetailScreen(
         return
     }
 
-    // ── Bottom sheet state ─────────────────────────────────────────────────
+    // Bottom sheet state
     var showAddToCart by remember { mutableStateOf(false) }
     var showBuyNow    by remember { mutableStateOf(false) }
 
@@ -138,7 +138,7 @@ fun ProductDetailScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-            // ── Ảnh sản phẩm (pager) ────────────────────────────────────
+            // Ảnh sản phẩm (pager)
             item {
                 ImageSection(
                     imageUrls       = product.imageUrls,
@@ -153,7 +153,7 @@ fun ProductDetailScreen(
                 PriceSection(product = product)
             }
 
-            // ── Variations ───────────────────────────────────────────────
+            // Variations
             if (product.variants.isNotEmpty()) {
                 item {
                     VariationsSection(
@@ -164,14 +164,14 @@ fun ProductDetailScreen(
                 }
             }
 
-            // ── Specifications ───────────────────────────────────────────
+            //Specifications
             if (product.specifications.isNotEmpty()) {
                 item { SpecificationsSection(specs = product.specifications) }
             }
 
             // ── Delivery ─────────────────────────────────────────────────
             item { DeliverySection(freeShipping = product.freeShipping) }
-            // ── Shop Info ───────────────────────────────────────────
+            // Shop Info
             item {
                 ShopSection(
                     shopId   = product.shopId,
@@ -179,7 +179,7 @@ fun ProductDetailScreen(
                 )
             }
 
-            // ── Rating & Reviews ──────────────────────────────────────────
+            //  Rating & Reviews
             item { 
                 ProductReviewSection(
                     product = product, 
@@ -188,7 +188,7 @@ fun ProductDetailScreen(
                 ) 
             }
 
-            // ── Most Popular ─────────────────────────────────────────────
+            // Most Popular
             if (state.relatedProducts.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(8.dp))
@@ -203,7 +203,7 @@ fun ProductDetailScreen(
             }
         }
 
-        // ── Bottom Bar cố định ───────────────────────────────────────────
+        // Bottom Bar cố định
         BottomActionBar(
             product         = product,
             selectedVariant = state.selectedVariant,
@@ -215,9 +215,7 @@ fun ProductDetailScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  IMAGE SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -357,9 +355,9 @@ private fun ImageSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  PRICE SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun PriceSection(product: Product) {
@@ -436,9 +434,9 @@ private fun PriceSection(product: Product) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  VARIATIONS SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun VariationsSection(
@@ -538,9 +536,9 @@ private fun VariantChip(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  SPECIFICATIONS SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun SpecificationsSection(specs: Map<String, String>) {
@@ -579,9 +577,8 @@ private fun SpecificationsSection(specs: Map<String, String>) {
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  DELIVERY SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun DeliverySection(freeShipping: Boolean) {
@@ -648,9 +645,9 @@ private fun DeliveryRow(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  RATING & REVIEWS SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun ProductReviewSection(
@@ -803,9 +800,9 @@ private fun StarRow(rating: Float) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  MOST POPULAR SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun MostPopularSection(products: List<Product>, navController: NavController) {
@@ -926,9 +923,9 @@ private fun GridProductCard(product: Product, modifier: Modifier, onClick: () ->
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  BOTTOM ACTION BAR
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun BottomActionBar(
@@ -978,17 +975,17 @@ private fun BottomActionBar(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  HELPER
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 private fun formatPrice(price: Double): String {
     return "%.0f".format(price).reversed().chunked(3).joinToString(".").reversed()
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SHOP SECTION  (giống Shopee: avatar + tên shop + stats + nút Visit)
-// ─────────────────────────────────────────────────────────────────────────────
+
+//  SHOP SECTION  ( avatar + tên shop + stats + nút Visit)
+
 
 @Composable
 private fun ShopSection(
@@ -1130,7 +1127,7 @@ private fun ShopSection(
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
-// ── Helper format follower count ──────────────────────────────────────────────
+
 
 private fun formatFollowerCount(count: Int): String = when {
     count >= 1_000_000 -> "${"%.1f".format(count / 1_000_000.0)}M"

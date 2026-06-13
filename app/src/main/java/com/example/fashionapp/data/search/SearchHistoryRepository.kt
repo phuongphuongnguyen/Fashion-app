@@ -6,14 +6,14 @@ class SearchHistoryRepository(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    // Lấy danh sách lịch sử các từ khóa tìm kiếm đã lưu từ bộ nhớ cục bộ SharedPreferences
+    // Lấy danh sách lịch sử các từ khóa tìm kiếm đã lưu từ bộ nhớ
     fun getHistory(): List<String> {
         val raw = prefs.getString(KEY_HISTORY, null).orEmpty()
         if (raw.isBlank()) return emptyList()
         return raw.split(SEPARATOR).filter { it.isNotBlank() }
     }
 
-    // Thêm một từ khóa tìm kiếm mới vào lịch sử, giới hạn số lượng lưu tối đa và sắp xếp lên đầu danh sách
+    // Thêm một từ khóa tìm kiếm mới vào lịch sử
     fun addQuery(query: String) {
         val trimmed = query.trim()
         if (trimmed.isBlank()) return
@@ -42,7 +42,7 @@ class SearchHistoryRepository(context: Context) {
     companion object {
         private const val PREFS_NAME = "fashion_app_search"
         private const val KEY_HISTORY = "search_history"
-        private const val SEPARATOR = ""
+        private const val SEPARATOR = "||"
         private const val MAX_ITEMS = 10
 
         val POPULAR_KEYWORDS = listOf(

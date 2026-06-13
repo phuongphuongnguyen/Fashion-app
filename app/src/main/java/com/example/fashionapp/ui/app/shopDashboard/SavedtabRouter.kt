@@ -15,12 +15,8 @@ import com.example.fashionapp.ui.app.saved.SavedScreen
 import com.google.firebase.auth.FirebaseAuth
 
 /**
- * Tab thứ 3 (icon Saved) rẽ theo role của tài khoản đang đăng nhập:
- *  - role == "shop" → [ShopDashboardScreen] (quản lý shop: doanh thu, sản phẩm)
- *  - còn lại         → [SavedScreen] (bài viết đã lưu của user thường)
- *
+ * Tab thứ 3 (icon Saved) rẽ theo role của tài khoản đang đăng nhập
  * Role đọc ưu tiên từ [UserSession] (đã có sẵn → hiện ngay), đồng thời xác thực
- * lại bằng Firestore users/{uid}. So sánh không phân biệt hoa/thường.
  */
 @Composable
 fun SavedTabRouter(navController: NavController) {

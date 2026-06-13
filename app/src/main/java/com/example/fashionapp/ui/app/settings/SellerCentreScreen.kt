@@ -58,6 +58,7 @@ fun SellerCentreScreen(
     var isSaving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    var resolvedShopId by remember { mutableStateOf("") }
 
     val inputBgColor = if (isDark) Color(0xFF2A2A2A) else Color(0xFFF5F5F5)
 
@@ -69,7 +70,12 @@ fun SellerCentreScreen(
         }
         try {
             val db = FirebaseFirestore.getInstance()
-            val doc = db.collection("shops").document(uid).get().await()
+            // Fetch user document first to get the correct shopId (e.g., "shop001")
+            val userDoc = db.collection("users").document(uid).get().await()
+            val fetchedShopId = userDoc.getString("shopId").orEmpty().ifBlank { uid }
+            resolvedShopId = fetchedShopId
+
+            val doc = db.collection("shops").document(fetchedShopId).get().await()
             if (doc.exists()) {
                 shopName = doc.getString("name").orEmpty()
                 description = doc.getString("description").orEmpty()
@@ -333,7 +339,8 @@ fun SellerCentreScreen(
                                 val db = FirebaseFirestore.getInstance()
 
                                 // Update shop details
-                                db.collection("shops").document(uid)
+                                val targetShopId = resolvedShopId.ifBlank { uid }
+                                db.collection("shops").document(targetShopId)
                                     .update(
                                         mapOf(
                                             "name" to shopName,

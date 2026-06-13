@@ -29,10 +29,10 @@ class FeedRepository {
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
-    // ── In-Memory Cache ──────────────────────────────────────────────────────
+    //memory cache
     private var cachedPosts: List<Post> = emptyList()
 
-    // Lấy luồng dữ liệu danh sách 20 bài đăng mới nhất theo thời gian thực từ Firestore để hiển thị trên bảng tin chính
+    // dữ liệu danh sách 20 bài đăng mới nhất
     fun getPostsFlow(): Flow<List<Post>> = callbackFlow {
         val listener = db.collection("posts")
             .orderBy("createdAt", Query.Direction.DESCENDING)
@@ -56,7 +56,7 @@ class FeedRepository {
         if (cachedPosts.isNotEmpty()) emit(cachedPosts)
     }
 
-    // Lấy danh sách bài đăng của một tác giả cụ thể theo thời gian thực, phục vụ hiển thị trang cá nhân
+    // Lấy danh sách bài đăng
     fun getPostsByAuthorFlow(authorId: String): Flow<List<Post>> = callbackFlow {
         if (authorId.isBlank()) {
             trySend(emptyList())
@@ -64,7 +64,6 @@ class FeedRepository {
             return@callbackFlow
         }
 
-        // Chỉ lọc theo authorId (không orderBy để khỏi cần composite index),
         // sắp xếp mới nhất trước ở client.
         val listener = db.collection("posts")
             .whereEqualTo("authorId", authorId)
@@ -203,7 +202,6 @@ class FeedRepository {
         awaitClose { listener.remove() }
     }
 
-    // Thực hiện giao dịch (Transaction) bật hoặc tắt trạng thái thích bài viết đồng thời tăng giảm likeCount tương ứng
     suspend fun toggleLike(postId: String, userId: String) {
         if (postId.isBlank() || userId.isBlank()) return
         val postRef = db.collection("posts").document(postId)
@@ -227,7 +225,7 @@ class FeedRepository {
         }.await()
     }
 
-    // Thêm bình luận mới vào bài viết và cập nhật tăng số lượng bình luận của bài viết bằng Batch Write
+    // thêm bình luận
     suspend fun addComment(postId: String, comment: Comment) {
         if (postId.isBlank() || comment.text.isBlank()) return
         val commentRef = db.collection("posts").document(postId)
@@ -280,14 +278,7 @@ class FeedRepository {
         }
     }
 
-//    suspend fun addComment(postId: String, comment: Comment) {
-//        db.collection("posts").document(postId)
-//            .collection("comments").document(comment.id).set(comment).await()
-//        db.collection("posts").document(postId)
-//            .update("commentCount", FieldValue.increment(1)).await()
-//    }
 
-    // Tải hình ảnh của bài đăng lên Firebase Storage, sau đó tạo tài liệu bài viết mới trong Firestore
     suspend fun createPost(
         authorId: String,
         caption: String,
@@ -388,7 +379,7 @@ class FeedRepository {
         val logoRef: String
     )
 
-    // Xóa sạch bộ nhớ đệm (in-memory cache) của danh sách bài viết trên thiết bị
+    // Xóa sạch bộ nhớ đệm
     fun clearCache() {
         cachedPosts = emptyList()
     }

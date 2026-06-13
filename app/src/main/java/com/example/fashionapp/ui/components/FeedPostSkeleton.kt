@@ -8,10 +8,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/**
- * Khung xương khớp với layout của FeedPostItem để tránh nhảy layout khi
- * dữ liệu thật về.
- */
 @Composable
 fun FeedPostSkeleton() {
     Column {

@@ -30,16 +30,9 @@ import com.example.fashionapp.model.ProductVariant
 import com.example.fashionapp.ui.app.settings.LocalAppSettings
 import com.example.fashionapp.ui.theme.AppTheme
 
-// ── Palette (accent màu tồn kho — không phụ thuộc theme) ──────────────────────
+
 private val OrangeStock  = Color(0xFFFF9500)
 private val RedStock     = Color(0xFFFF3B30)
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  PUBLIC COMPOSABLE
-//
-//  isBuyNow = false → nút đen "Add to Cart"
-//  isBuyNow = true  → nút đen "Buy Now"
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +43,7 @@ fun AddQuantity(
     onConfirm: (variant: ProductVariant, quantity: Int) -> Unit,
 ) {
     val settings = LocalAppSettings.current
-    // ── Nhóm variants theo màu ────────────────────────────────────────────
+    // variants theo màu
     val colorGroups = remember(product.variants) {
         product.variants.groupBy { it.color }
     }
@@ -156,9 +149,9 @@ fun AddQuantity(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SUMMARY ROW: ảnh vuông + giá + chips màu/size + badge tồn kho
-// ─────────────────────────────────────────────────────────────────────────────
+
+// ảnh vuông + giá + chips màu/size + badge tồn kho
+
 
 @Composable
 private fun SummaryRow(product: Product, selectedVariant: ProductVariant?) {
@@ -238,9 +231,7 @@ private fun MiniChip(text: String) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  COLOR OPTIONS: ảnh sản phẩm cho từng màu + tick khi chọn
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ColorOptionsRow(
@@ -299,9 +290,9 @@ private fun ColorOptionsRow(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SIZE ROW: chip size, out-of-stock mờ xám
-// ─────────────────────────────────────────────────────────────────────────────
+
+//  chip size, out-of-stock mờ xám
+
 
 @Composable
 private fun SizeRow(
@@ -350,9 +341,7 @@ private fun SizeRow(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  QUANTITY ROW: − [n] +
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 @Composable
 private fun QuantityRow(
@@ -436,9 +425,6 @@ private fun CircleBtn(
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SectionLabel(text: String) {

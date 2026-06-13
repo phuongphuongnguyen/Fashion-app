@@ -122,7 +122,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                 startDestination = startDestination,
                 modifier = Modifier.fillMaxSize()
             ) {
-                // ── Auth ──────────────────────────────────────────────────
+                // auth
 
                 composable(Screen.Start.route) {
                     StartScreen(
@@ -197,7 +197,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     )
                 }
 
-                // ── Onboarding ────────────────────────────────────────────
+                // onboarding
 
                 composable(Screen.FirstLoginOnboarding.route) {
                     FirstLoginOnboardingScreen(
@@ -211,7 +211,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     )
                 }
 
-                // ── Main tabs ─────────────────────────────────────────────
+                // main tabs
 
                 composable(Screen.Home.route) {
                     HomeScreen(navController = navController)
@@ -237,7 +237,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     )
                 }
 
-                // ── App screens ───────────────────────────────────────────
+                // app screen
 
                 composable(
                     route = Screen.Settings.route,
@@ -319,14 +319,14 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     arguments = listOf(navArgument("shopId") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val shopId = backStackEntry.arguments?.getString("shopId").orEmpty()
-                    // Rẽ UI theo role: shop → ShopScreen, user thường → ProfileScreen
+                    // Rẽ UI theo role: shop -- ShopScreen, user thường -- ProfileScreen
                     ProfileRouterScreen(
                         id            = shopId,
                         navController = navController
                     )
                 }
 
-                // ── Shopping flow ─────────────────────────────────────────
+                // shopping flow
 
                 composable(Screen.Cart.route) {
                     CartScreen(navController = navController)
@@ -387,7 +387,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
                     ReviewDoneScreen(navController = navController)
                 }
 
-                // ── Saved / Social ────────────────────────────────────────
+                // saved, social
 
                 composable(
                     route = Screen.PostDetail.route,
@@ -401,7 +401,7 @@ fun AppNavigation(startDestination: String = Screen.Start.route) {
     }
 }
 
-// ── Bottom Bar ────────────────────────────────────────────────────────────────
+// bottom bar
 
 @Composable
 fun AppBottomBar(
@@ -459,7 +459,7 @@ fun AppBottomBar(
     }
 }
 
-// ── Bottom Nav Item ───────────────────────────────────────────────────────────
+// bottom nav
 
 @Composable
 fun BottomNavItemView(
